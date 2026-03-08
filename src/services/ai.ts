@@ -3,8 +3,19 @@ import { THEORIES_DICTIONARY } from '../lib/theories';
 import { ExtractedData, ClinicalInsight } from '../types';
 
 // Using the fast, free-tier friendly model
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai: GoogleGenAI | null = null;
 const MODEL = 'gemini-3-flash-preview';
+
+const getAI = () => {
+  if (!ai) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error("GEMINI_API_KEY is missing. La aplicación está en GitHub Pages sin una clave configurada.");
+    }
+    ai = new GoogleGenAI({ apiKey: key });
+  }
+  return ai;
+};
 
 export const extractEntities = async (narrative: string): Promise<ExtractedData> => {
   const prompt = `
@@ -23,7 +34,7 @@ export const extractEntities = async (narrative: string): Promise<ExtractedData>
     5. Extrae cualquier frase, queja o dato que NO encaje en la teoría principal o parezca ruido secundario en 'unmappedPhrases'.
   `;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: MODEL,
     contents: prompt,
     config: {
@@ -81,7 +92,7 @@ export const generateInsight = async (data: ExtractedData): Promise<ClinicalInsi
     2. Un cierre o reestructuración cognitiva. Una frase o párrafo corto que le quite el peso de la culpa, reencuadre su fantasía o sentimiento negativo en una necesidad humana comprensible, y le dé una nueva perspectiva sanadora.
   `;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: MODEL,
     contents: prompt,
     config: {
@@ -134,7 +145,7 @@ export const refineInsight = async (
     Por favor, reescribe la interpretación y el cierre incorporando este ajuste. Mantén el tono empático y profundo.
   `;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model: MODEL,
     contents: prompt,
     config: {
