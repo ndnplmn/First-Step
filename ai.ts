@@ -8,7 +8,7 @@ const MODEL = 'gemini-3-flash-preview';
 
 const getAI = () => {
   if (!ai) {
-    const key = process.env.GEMINI_API_KEY;
+    const key = import.meta.env.VITE_GEMINI_API_KEY;
     if (!key) {
       throw new Error("GEMINI_API_KEY is missing. La aplicación está en GitHub Pages sin una clave configurada.");
     }
