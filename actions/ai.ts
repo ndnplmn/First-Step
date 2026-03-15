@@ -8,6 +8,18 @@ import { generateId } from '@/lib/id';
 const getAI = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const MODEL = 'gemini-2.0-flash';
 
+function handleAIError(error: unknown): never {
+  if (error instanceof Error) {
+    if (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
+      throw new Error('Límite de uso de IA alcanzado. Intenta de nuevo en unos minutos.');
+    }
+    if (error.message.includes('401') || error.message.includes('403')) {
+      throw new Error('Error de autenticación con el servicio de IA.');
+    }
+  }
+  throw new Error('El servicio de IA no está disponible en este momento.');
+}
+
 // --- ACTION 1: Sintetizar conflictos y mapear a teoria ---
 export async function synthesizeConflicts(
   rawConflicts: string[]
@@ -29,43 +41,48 @@ export async function synthesizeConflicts(
     4. Lista cualquier frase que NO encaje en ninguna teoria
   `;
 
-  const response = await getAI().models.generateContent({
-    model: MODEL,
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          conflicts: {
-            type: Type.ARRAY,
-            items: {
+  let response;
+  try {
+    response = await getAI().models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            conflicts: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  raw: { type: Type.STRING },
+                  synthesized: { type: Type.STRING },
+                  theoryKey: { type: Type.STRING, enum: ['psychoanalytic', 'cbt', 'gestalt', 'systemic'] },
+                  subCategory: { type: Type.STRING },
+                },
+                required: ['raw', 'synthesized', 'theoryKey', 'subCategory'],
+              },
+            },
+            dominantTheory: {
               type: Type.OBJECT,
               properties: {
-                raw: { type: Type.STRING },
-                synthesized: { type: Type.STRING },
-                theoryKey: { type: Type.STRING, enum: ['psychoanalytic', 'cbt', 'gestalt', 'systemic'] },
+                key: { type: Type.STRING, enum: ['psychoanalytic', 'cbt', 'gestalt', 'systemic'] },
+                name: { type: Type.STRING },
                 subCategory: { type: Type.STRING },
+                confidence: { type: Type.NUMBER },
               },
-              required: ['raw', 'synthesized', 'theoryKey', 'subCategory'],
+              required: ['key', 'name', 'subCategory', 'confidence'],
             },
+            unmapped: { type: Type.ARRAY, items: { type: Type.STRING } },
           },
-          dominantTheory: {
-            type: Type.OBJECT,
-            properties: {
-              key: { type: Type.STRING, enum: ['psychoanalytic', 'cbt', 'gestalt', 'systemic'] },
-              name: { type: Type.STRING },
-              subCategory: { type: Type.STRING },
-              confidence: { type: Type.NUMBER },
-            },
-            required: ['key', 'name', 'subCategory', 'confidence'],
-          },
-          unmapped: { type: Type.ARRAY, items: { type: Type.STRING } },
+          required: ['conflicts', 'dominantTheory', 'unmapped'],
         },
-        required: ['conflicts', 'dominantTheory', 'unmapped'],
       },
-    },
-  });
+    });
+  } catch (error) {
+    handleAIError(error);
+  }
 
   const parsed = JSON.parse(response.text || '{}');
   const conflicts: Conflict[] = parsed.conflicts.map((c: Omit<Conflict, 'id'>) => ({
@@ -97,20 +114,25 @@ export async function extractMemoryKeywords(
     Retorna solo el array de strings, sin explicacion.
   `;
 
-  const response = await getAI().models.generateContent({
-    model: MODEL,
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+  let response;
+  try {
+    response = await getAI().models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+          required: ['keywords'],
         },
-        required: ['keywords'],
       },
-    },
-  });
+    });
+  } catch (error) {
+    handleAIError(error);
+  }
 
   const parsed = JSON.parse(response.text || '{"keywords":[]}');
   return parsed.keywords;
@@ -148,13 +170,18 @@ export async function generateInterpretation(params: {
     - Se empatico, no juzgues
   `;
 
-  const response = await getAI().models.generateContent({
-    model: MODEL,
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  });
+  let response;
+  try {
+    response = await getAI().models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+  } catch (error) {
+    handleAIError(error);
+  }
 
   const text = response.text || '';
   const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -192,13 +219,18 @@ export async function generateClosure(params: {
     NO expliques teorias. Solo habla al corazon del paciente.
   `;
 
-  const response = await getAI().models.generateContent({
-    model: MODEL,
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  });
+  let response;
+  try {
+    response = await getAI().models.generateContent({
+      model: MODEL,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+  } catch (error) {
+    handleAIError(error);
+  }
 
   const text = response.text || '';
   const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
