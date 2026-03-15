@@ -142,7 +142,6 @@ export function Dashboard({ patients, onSelect, onNew, onBack }: DashboardProps)
                 style={{
                   background: 'var(--color-surface)',
                   boxShadow: 'var(--shadow-card)',
-                  transition: 'box-shadow 0.2s ease',
                 }}
               >
                 <div className="flex items-start justify-between gap-4">
