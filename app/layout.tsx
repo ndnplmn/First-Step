@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
-import { Instrument_Serif, Plus_Jakarta_Sans, JetBrains_Mono, Geist } from 'next/font/google'
-import React from 'react'
+import { Instrument_Serif, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
-import { cn } from "@/lib/utils";
 
 const instrumentSerif = Instrument_Serif({
   weight: ['400'],
@@ -12,7 +10,11 @@ const instrumentSerif = Instrument_Serif({
   display: 'swap',
 })
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'})
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
@@ -31,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={cn(instrumentSerif.variable, jetbrainsMono.variable, "font-sans", geist.variable)}>
+    <html lang="es" className={`${instrumentSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-[var(--color-base)] min-h-screen">
         {children}
       </body>
