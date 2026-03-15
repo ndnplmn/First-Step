@@ -161,7 +161,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
               placeholder={current.placeholder}
               autoFocus
               className="w-full bg-transparent outline-none py-3 text-xl placeholder:opacity-40 border-b-2"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', transition: 'border-color 0.2s ease' }}
               onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
               onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
               onKeyDown={e => e.key === 'Enter' && canProceed && handleNext()}
@@ -178,7 +178,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
               min={1}
               max={120}
               className="w-full bg-transparent outline-none py-3 text-xl placeholder:opacity-40 border-b-2"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', transition: 'border-color 0.2s ease' }}
               onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
               onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
               onKeyDown={e => e.key === 'Enter' && canProceed && handleNext()}
