@@ -4,66 +4,72 @@ import { motion } from 'motion/react';
 import { FloatingBar } from '@/components/ui/floating-bar';
 
 interface WelcomeProps {
-  onStart: () => void;
-  onContinue?: () => void;
   hasExistingPatients: boolean;
+  onStart: () => void;
+  onContinue: () => void;
 }
 
-export function Welcome({ onStart, onContinue, hasExistingPatients }: WelcomeProps) {
+export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomeProps) {
   return (
-    <div className="min-h-screen flex flex-col justify-between px-6 pt-24 pb-12 max-w-[680px] mx-auto">
-      <div className="space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
+    <div
+      className="min-h-screen max-w-[680px] mx-auto px-6 pt-[20vh] pb-12 relative"
+      style={{
+        background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(193,127,89,0.13), transparent)',
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <h1
+          className="leading-[0.92] breathe"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(64px, 14vw, 112px)',
+            fontStyle: 'italic',
+          }}
         >
-          <h1
-            className="breathe text-[72px] leading-[0.95]"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
-          >
-            Primer<br />Paso
-          </h1>
-        </motion.div>
+          <span style={{ color: 'var(--color-deep)' }}>First</span>
+          <br />
+          <span style={{ color: 'var(--color-terracotta)' }}>Step</span>
+        </h1>
+      </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-lg max-w-xs leading-relaxed"
-          style={{ color: 'var(--color-muted)' }}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
+        className="mt-8 text-lg leading-relaxed max-w-[360px]"
+        style={{ color: 'var(--color-muted)' }}
+      >
+        Tu primer paso hacia el autoconocimiento. Un espacio íntimo, guiado y tuyo.
+      </motion.p>
+
+      <FloatingBar visible>
+        <motion.button
+          onClick={onStart}
+          whileTap={{ scale: 0.97 }}
+          className="w-full py-3.5 rounded-xl font-medium text-white"
+          style={{ background: 'var(--color-sage)' }}
         >
-          Un espacio seguro para entenderte a ti mismo y encontrar claridad.
-        </motion.p>
+          Comenzar sesión
+        </motion.button>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="w-12 h-px"
-          style={{ background: 'var(--color-border)' }}
-        />
-      </div>
-
-      <FloatingBar visible={true}>
-        <div className="space-y-3">
-          <button
-            onClick={onStart}
-            className="w-full py-3.5 rounded-xl font-medium text-white transition-all"
-            style={{ background: 'var(--color-sage)' }}
+        {hasExistingPatients && (
+          <motion.button
+            onClick={onContinue}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-3 rounded-xl font-medium text-sm"
+            style={{
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-muted)',
+              background: 'transparent',
+            }}
           >
-            Comenzar
-          </button>
-          {hasExistingPatients && (
-            <button
-              onClick={onContinue}
-              className="w-full py-3.5 rounded-xl font-medium transition-all"
-              style={{ color: 'var(--color-sage)', background: 'transparent' }}
-            >
-              Continuar donde lo dejé
-            </button>
-          )}
-        </div>
+            Ver expedientes
+          </motion.button>
+        )}
       </FloatingBar>
     </div>
   );
