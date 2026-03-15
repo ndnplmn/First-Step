@@ -167,8 +167,8 @@ export async function generateInterpretation(params: {
   const parsed = JSON.parse(response.text || '{}');
   const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
   const groundingSources = chunks
-    .filter((c: { web?: { uri?: string; title?: string } }) => c.web?.uri && c.web?.title)
-    .map((c: { web: { uri: string; title: string } }) => ({ uri: c.web.uri, title: c.web.title }));
+    .filter((c) => c.web?.uri && c.web?.title)
+    .map((c) => ({ uri: c.web!.uri!, title: c.web!.title! }));
 
   return { text: parsed.text, groundingSources };
 }
@@ -219,8 +219,8 @@ export async function generateClosure(params: {
   const parsed = JSON.parse(response.text || '{}');
   const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
   const groundingSources = chunks
-    .filter((c: { web?: { uri?: string; title?: string } }) => c.web?.uri && c.web?.title)
-    .map((c: { web: { uri: string; title: string } }) => ({ uri: c.web.uri, title: c.web.title }));
+    .filter((c) => c.web?.uri && c.web?.title)
+    .map((c) => ({ uri: c.web!.uri!, title: c.web!.title! }));
 
   return { text: parsed.text, groundingSources };
 }

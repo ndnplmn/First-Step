@@ -10,6 +10,7 @@ export function AIThinking() {
       className="relative rounded-2xl p-5 border-l-[3px] border-[var(--color-sage)]"
       style={{
         background: 'linear-gradient(135deg, var(--color-sage-light), var(--color-violet-light))',
+        boxShadow: '0 0 0 1px rgba(74,103,65,0.08)',
       }}
     >
       <motion.div
