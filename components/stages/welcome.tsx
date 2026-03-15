@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { FloatingBar } from '@/components/ui/floating-bar';
 
 interface WelcomeProps {
@@ -10,6 +10,8 @@ interface WelcomeProps {
 }
 
 export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomeProps) {
+  const shouldReduce = useReducedMotion();
+
   return (
     <div
       className="min-h-screen max-w-[680px] mx-auto px-6 pt-[20vh] pb-12 relative"
@@ -18,9 +20,9 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
       }}
     >
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
+        initial={shouldReduce ? false : { opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        transition={shouldReduce ? { duration: 0 } : { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
         <h1
           className="leading-[0.92] breathe"
@@ -37,9 +39,9 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
       </motion.div>
 
       <motion.p
-        initial={{ opacity: 0 }}
+        initial={shouldReduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
+        transition={shouldReduce ? { duration: 0 } : { duration: 0.6, delay: 0.4, ease: 'easeOut' }}
         className="mt-8 text-lg leading-relaxed max-w-[360px]"
         style={{ color: 'var(--color-muted)' }}
       >
@@ -48,8 +50,9 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
 
       <FloatingBar visible>
         <motion.button
+          type="button"
           onClick={onStart}
-          whileTap={{ scale: 0.97 }}
+          whileTap={shouldReduce ? {} : { scale: 0.97 }}
           className="w-full py-3.5 rounded-xl font-medium text-white"
           style={{ background: 'var(--color-sage)' }}
         >
@@ -58,8 +61,9 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
 
         {hasExistingPatients && (
           <motion.button
+            type="button"
             onClick={onContinue}
-            whileTap={{ scale: 0.98 }}
+            whileTap={shouldReduce ? {} : { scale: 0.98 }}
             className="w-full py-3 rounded-xl font-medium text-sm"
             style={{
               border: '1px solid var(--color-border)',
