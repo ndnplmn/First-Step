@@ -17,6 +17,7 @@ const STAGE_NAMES: Record<number, string> = {
 
 function formatRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
+  if (diff <= 0) return 'hace un momento';
   const hours = Math.floor(diff / 3_600_000);
   const days = Math.floor(diff / 86_400_000);
   if (hours < 1) return 'hace un momento';
