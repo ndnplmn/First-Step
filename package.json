@@ -1,7 +1,7 @@
 {
   "name": "first-step",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "next dev",
@@ -20,6 +20,7 @@
   "devDependencies": {
     "@types/node": "^22.19.15",
     "@types/react": "19.2.14",
+    "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2"
   }
