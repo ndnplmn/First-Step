@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { PatientSession, Memory } from '@/lib/types';
 import { extractMemoryKeywords } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
@@ -24,6 +24,7 @@ const FORM_QUESTIONS: { field: keyof MemoryForm; label: string; placeholder: str
 ];
 
 export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesProps) {
+  const shouldReduce = useReducedMotion();
   const [memories, setMemories] = useState<Memory[]>(session.memories);
   const [form, setForm] = useState<MemoryForm>(EMPTY_FORM);
   const [formStep, setFormStep] = useState(0);
@@ -92,9 +93,17 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
             <p className="italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>"{m.raw}"</p>
             <div className="flex flex-wrap gap-1.5">
               {m.keywords.map(kw => (
-                <span key={kw} className="px-2.5 py-1 rounded-full text-xs" style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}>
+                <motion.span
+                  key={kw}
+                  className="px-2.5 py-1 rounded-full text-xs"
+                  style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}
+                  initial={shouldReduce ? {} : { scale: 0.8, opacity: 0 }}
+                  animate={shouldReduce ? {} : { scale: 1, opacity: 1 }}
+                  whileHover={shouldReduce ? {} : { scale: 1.04 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                >
                   {kw}
-                </span>
+                </motion.span>
               ))}
             </div>
             <div className="text-sm space-y-1 pt-1 border-t" style={{ color: 'var(--color-muted)', borderColor: 'var(--color-border)' }}>
@@ -129,8 +138,6 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
               autoFocus
               className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 transition-all"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
-              onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
             />
           </motion.div>
         </AnimatePresence>
@@ -140,27 +147,31 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
               style={{ background: i <= formStep ? 'var(--color-sage)' : 'var(--color-border)' }} />
           ))}
         </div>
-        {isExtracting && <AIThinking />}
+        {isExtracting && <AIThinking phrases={['Escuchando el recuerdo...', 'Extrayendo la esencia...']} />}
       </div>
 
       <FloatingBar visible={true}>
         <div className="space-y-3">
-          <button
+          <motion.button
+            type="button"
             onClick={handleFormNext}
             disabled={!canProceed || isExtracting}
+            whileTap={shouldReduce ? {} : { scale: 0.97 }}
             className="w-full py-3.5 rounded-xl font-medium text-white disabled:opacity-40"
             style={{ background: 'var(--color-sage)' }}
           >
             {formStep < 2 ? 'Siguiente' : isExtracting ? 'Guardando...' : 'Guardar recuerdo'}
-          </button>
+          </motion.button>
           {memories.length >= 1 && (
-            <button
+            <motion.button
+              type="button"
               onClick={() => onAdvance(memories, [])}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
               className="w-full py-2.5 rounded-xl text-sm font-medium"
               style={{ color: 'var(--color-sage)', border: '1px solid var(--color-sage)' }}
             >
               Continuar a interpretación ({memories.length} {memories.length === 1 ? 'recuerdo' : 'recuerdos'}) →
-            </button>
+            </motion.button>
           )}
         </div>
       </FloatingBar>
