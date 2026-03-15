@@ -153,24 +153,16 @@ export async function generateInterpretation(params: {
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          text: { type: Type.STRING },
-        },
-        required: ['text'],
-      },
     },
   });
 
-  const parsed = JSON.parse(response.text || '{}');
+  const text = response.text || '';
   const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
   const groundingSources = chunks
     .filter((c) => c.web?.uri && c.web?.title)
     .map((c) => ({ uri: c.web!.uri!, title: c.web!.title! }));
 
-  return { text: parsed.text, groundingSources };
+  return { text, groundingSources };
 }
 
 // --- ACTION 4: Generar cierre simbolico ---
@@ -205,22 +197,14 @@ export async function generateClosure(params: {
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          text: { type: Type.STRING },
-        },
-        required: ['text'],
-      },
     },
   });
 
-  const parsed = JSON.parse(response.text || '{}');
+  const text = response.text || '';
   const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
   const groundingSources = chunks
     .filter((c) => c.web?.uri && c.web?.title)
     .map((c) => ({ uri: c.web!.uri!, title: c.web!.title! }));
 
-  return { text: parsed.text, groundingSources };
+  return { text, groundingSources };
 }
