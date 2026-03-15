@@ -254,7 +254,8 @@ input {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--color-base);
+    color: var(--color-deep);
   }
   html {
     @apply font-sans;
@@ -273,4 +274,21 @@ input {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* === DESIGN TOKEN OVERRIDES ===
+   Must come AFTER @theme inline (Shadcn) which overwrites --color-muted and
+   --color-border with its own near-white values. These re-assert our palette. */
+:root {
+  --color-base: #F5F0EB;
+  --color-surface: #FDFAF7;
+  --color-deep: #1C1915;
+  --color-sage: #4A6741;
+  --color-sage-light: #EEF2EC;
+  --color-terracotta: #C17F59;
+  --color-violet: #7A6E9E;
+  --color-violet-light: #F0EDF8;
+  --color-muted: #7A7068;
+  --color-border: rgba(28, 25, 21, 0.08);
+  --color-glass: rgba(245, 240, 235, 0.85);
 }
