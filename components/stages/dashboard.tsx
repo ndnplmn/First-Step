@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'motion/react';
 import type { Patient } from '@/lib/types';
 import { storage } from '@/lib/storage';
@@ -15,10 +16,14 @@ interface DashboardProps {
 }
 
 export function Dashboard({ patients, onSelect, onNew, onBack }: DashboardProps) {
-  const getPatientProgress = (patient: Patient) => {
-    const session = storage.getActiveSession(patient.id);
-    return session ? STAGE_NAMES[session.stage] : 'Completado';
-  };
+  const progressMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const patient of patients) {
+      const session = storage.getActiveSession(patient.id);
+      map[patient.id] = session ? STAGE_NAMES[session.stage] : 'Completado';
+    }
+    return map;
+  }, [patients]);
 
   return (
     <div className="min-h-screen max-w-[680px] mx-auto px-6 pt-16 pb-12">
@@ -64,7 +69,7 @@ export function Dashboard({ patients, onSelect, onNew, onBack }: DashboardProps)
                   className="px-2.5 py-1 rounded-full text-xs font-medium"
                   style={{ background: 'var(--color-sage-light)', color: 'var(--color-sage)' }}
                 >
-                  {getPatientProgress(patient)}
+                  {progressMap[patient.id]}
                 </span>
                 <p className="text-xs mt-1" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
                   {patient.id}

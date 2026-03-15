@@ -21,8 +21,14 @@ export default function Home() {
   const handlePatientSelect = (patient: Patient) => {
     setActivePatient(patient);
     const session = storage.getActiveSession(patient.id);
-    setActiveSession(session);
-    setView('SESSION');
+    if (session) {
+      setActiveSession(session);
+      setView('SESSION');
+    } else {
+      // Paciente ya completó su proceso — iniciar nueva sesión
+      setActiveSession(null);
+      setView('INTAKE');
+    }
   };
 
   const handleIntakeComplete = (patient: Patient, session: PatientSession) => {

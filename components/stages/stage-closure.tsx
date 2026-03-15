@@ -6,7 +6,7 @@ import type { PatientSession } from '@/lib/types';
 import { generateClosure } from '@/actions/ai';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
-import { User, ShareNetwork, Sparkle } from '@phosphor-icons/react';
+import { User, ShareNetwork, Sparkle, ArrowCounterClockwise } from '@phosphor-icons/react';
 
 interface StageClosureProps {
   session: PatientSession;
@@ -22,6 +22,7 @@ const NEXT_STEPS = [
 
 export function StageClosure({ session, onComplete, onUpdate }: StageClosureProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [closure, setClosure] = useState(session.closure);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
 
   const generate = async () => {
     setIsGenerating(true);
+    setIsError(false);
     try {
       const result = await generateClosure({
         conflicts: session.conflicts,
@@ -42,6 +44,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
       onUpdate({ closure: result });
     } catch (e) {
       console.error(e);
+      setIsError(true);
     } finally {
       setIsGenerating(false);
     }
@@ -62,6 +65,20 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
       </div>
 
       {isGenerating && <AIThinking />}
+
+      {isError && !isGenerating && (
+        <div className="rounded-2xl p-5 text-center space-y-3" style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Hubo un problema al generar el cierre.</p>
+          <button
+            onClick={generate}
+            className="flex items-center gap-2 mx-auto text-sm font-medium"
+            style={{ color: 'var(--color-sage)' }}
+          >
+            <ArrowCounterClockwise size={14} />
+            Intentar de nuevo
+          </button>
+        </div>
+      )}
 
       {closure && !isGenerating && (
         <motion.div

@@ -18,6 +18,7 @@ interface StageInterpretationProps {
 export function StageInterpretation({ session, onAdvance, onUpdate }: StageInterpretationProps) {
   const [interpretation, setInterpretation] = useState<Interpretation | null>(session.interpretation);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [resonated, setResonated] = useState(false);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
 
   const generate = async () => {
     setIsGenerating(true);
+    setIsError(false);
     try {
       const result = await generateInterpretation({
         conflicts: session.conflicts,
@@ -37,6 +39,7 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
       onUpdate({ interpretation: result });
     } catch (e) {
       console.error(e);
+      setIsError(true);
     } finally {
       setIsGenerating(false);
     }
@@ -65,6 +68,20 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
       </div>
 
       {isGenerating && <AIThinking />}
+
+      {isError && !isGenerating && (
+        <div className="rounded-2xl p-5 text-center space-y-3" style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
+          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Hubo un problema al generar la interpretación.</p>
+          <button
+            onClick={generate}
+            className="flex items-center gap-2 mx-auto text-sm font-medium"
+            style={{ color: 'var(--color-sage)' }}
+          >
+            <ArrowCounterClockwise size={14} />
+            Intentar de nuevo
+          </button>
+        </div>
+      )}
 
       {interpretation && !isGenerating && (
         <AICard
