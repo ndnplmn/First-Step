@@ -107,7 +107,7 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
           onChange={e => setRawInput(e.target.value)}
           placeholder="Escribe aquí un motivo..."
           rows={3}
-          className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 transition-all"
+          className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2"
           style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
           onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
           onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}

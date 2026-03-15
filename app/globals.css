@@ -132,6 +132,12 @@ input {
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
+/* Fluid typography scale */
+:root {
+  --text-display: clamp(64px, 14vw, 112px);
+  --text-chapter: clamp(36px, 6vw, 56px);
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
