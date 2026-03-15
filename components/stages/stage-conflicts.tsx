@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { PatientSession, Conflict, TheoryMatch } from '@/lib/types';
 import { synthesizeConflicts } from '@/actions/ai';
 import { AICard } from '@/components/ai/ai-card';
@@ -23,6 +23,7 @@ interface StageConflictsProps {
 }
 
 export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsProps) {
+  const shouldReduce = useReducedMotion();
   const [rawInput, setRawInput] = useState('');
   const [rawConflicts, setRawConflicts] = useState<string[]>(session.conflicts.map(c => c.raw));
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -82,21 +83,22 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
             key={conflict + i}
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
+            exit={{ opacity: 0, x: 16, transition: { duration: 0.18 } }}
             transition={{ type: 'spring', stiffness: 280, damping: 22 }}
             className="flex items-start gap-3 p-4 rounded-xl"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p className="flex-1 italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>"{conflict}"</p>
-            <button
+            <motion.button
+              type="button"
               onClick={() => removeConflict(i)}
-              className="mt-0.5 transition-colors"
+              whileHover={shouldReduce ? {} : { x: 2 }}
+              whileTap={shouldReduce ? {} : { scale: 0.9 }}
+              className="mt-0.5 flex-shrink-0"
               style={{ color: 'var(--color-muted)' }}
-              onMouseEnter={e => ((e.target as HTMLButtonElement).style.color = 'var(--color-terracotta)')}
-              onMouseLeave={e => ((e.target as HTMLButtonElement).style.color = 'var(--color-muted)')}
             >
               <X size={16} />
-            </button>
+            </motion.button>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -109,10 +111,9 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
           rows={3}
           className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2"
           style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
-          onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-          onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
         />
         <button
+          type="button"
           onClick={addConflict}
           disabled={rawInput.trim().length < 5}
           className="flex items-center gap-2 text-sm font-medium transition-all disabled:opacity-30"
@@ -123,7 +124,9 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
         </button>
       </div>
 
-      {isAnalyzing && <AIThinking />}
+      {isAnalyzing && (
+        <AIThinking phrases={['Leyendo entre líneas...', 'Identificando patrones...', 'Conectando con la teoría...']} />
+      )}
 
       {result && !isAnalyzing && (
         <AICard>
@@ -153,30 +156,36 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
       <FloatingBar visible={rawConflicts.length > 0}>
         <div className="space-y-3">
           {!result ? (
-            <button
+            <motion.button
+              type="button"
               onClick={analyze}
               disabled={isAnalyzing}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
               className="w-full py-3.5 rounded-xl font-medium text-white disabled:opacity-50"
               style={{ background: 'var(--color-sage)' }}
             >
               {isAnalyzing ? 'Analizando...' : 'Analizar mis conflictos'}
-            </button>
+            </motion.button>
           ) : (
             <>
-              <button
+              <motion.button
+                type="button"
                 onClick={analyze}
+                whileTap={shouldReduce ? {} : { scale: 0.98 }}
                 className="w-full py-2.5 rounded-xl text-sm font-medium"
                 style={{ color: 'var(--color-sage)', border: '1px solid var(--color-sage)' }}
               >
                 Re-analizar
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                type="button"
                 onClick={() => onAdvance(result.conflicts, result.theoryMatch, result.unmapped)}
+                whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 className="w-full py-3.5 rounded-xl font-medium text-white"
                 style={{ background: 'var(--color-sage)' }}
               >
                 Continuar a recuerdos →
-              </button>
+              </motion.button>
             </>
           )}
         </div>
