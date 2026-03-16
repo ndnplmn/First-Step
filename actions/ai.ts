@@ -1,16 +1,16 @@
 'use server';
 
-import { GoogleGenAI, Type } from '@google/genai';
+import Groq from 'groq-sdk';
 import { THEORIES_DICTIONARY } from '@/lib/theories';
 import { Conflict, Memory, TheoryMatch, Interpretation, Closure } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
-const getAI = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-const MODEL = 'gemini-2.0-flash';
+const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = 'llama-3.3-70b-versatile';
 
 function handleAIError(error: unknown): never {
   if (error instanceof Error) {
-    if (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
+    if (error.message.includes('429') || error.message.includes('rate_limit')) {
       throw new Error('Límite de uso de IA alcanzado. Intenta de nuevo en unos minutos.');
     }
     if (error.message.includes('401') || error.message.includes('403')) {
@@ -39,52 +39,36 @@ export async function synthesizeConflicts(
     Luego:
     3. Determina la teoria DOMINANTE del caso
     4. Lista cualquier frase que NO encaje en ninguna teoria
+
+    Responde SOLO con un objeto JSON con esta estructura exacta:
+    {
+      "conflicts": [
+        { "raw": "...", "synthesized": "...", "theoryKey": "psychoanalytic|cbt|gestalt|systemic", "subCategory": "..." }
+      ],
+      "dominantTheory": {
+        "key": "psychoanalytic|cbt|gestalt|systemic",
+        "name": "...",
+        "subCategory": "...",
+        "confidence": 0.0
+      },
+      "unmapped": ["..."]
+    }
   `;
 
-  let response;
+  let content: string;
   try {
-    response = await getAI().models.generateContent({
+    const response = await getAI().chat.completions.create({
       model: MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            conflicts: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  raw: { type: Type.STRING },
-                  synthesized: { type: Type.STRING },
-                  theoryKey: { type: Type.STRING, enum: ['psychoanalytic', 'cbt', 'gestalt', 'systemic'] },
-                  subCategory: { type: Type.STRING },
-                },
-                required: ['raw', 'synthesized', 'theoryKey', 'subCategory'],
-              },
-            },
-            dominantTheory: {
-              type: Type.OBJECT,
-              properties: {
-                key: { type: Type.STRING, enum: ['psychoanalytic', 'cbt', 'gestalt', 'systemic'] },
-                name: { type: Type.STRING },
-                subCategory: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-              },
-              required: ['key', 'name', 'subCategory', 'confidence'],
-            },
-            unmapped: { type: Type.ARRAY, items: { type: Type.STRING } },
-          },
-          required: ['conflicts', 'dominantTheory', 'unmapped'],
-        },
-      },
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
     });
+    content = response.choices[0]?.message?.content || '{}';
   } catch (error) {
     handleAIError(error);
   }
 
-  const parsed = JSON.parse(response.text || '{}');
+  const parsed = JSON.parse(content);
   const conflicts: Conflict[] = parsed.conflicts.map((c: Omit<Conflict, 'id'>) => ({
     ...c,
     id: generateId(),
@@ -111,30 +95,24 @@ export async function extractMemoryKeywords(
     Sentimiento ahora: "${memory.feelingNow}"
 
     Extrae 3-5 palabras clave emocionales o tematicas del recuerdo que sean relevantes para esta teoria.
-    Retorna solo el array de strings, sin explicacion.
+
+    Responde SOLO con un objeto JSON: { "keywords": ["palabra1", "palabra2", ...] }
   `;
 
-  let response;
+  let content: string;
   try {
-    response = await getAI().models.generateContent({
+    const response = await getAI().chat.completions.create({
       model: MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-          },
-          required: ['keywords'],
-        },
-      },
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
     });
+    content = response.choices[0]?.message?.content || '{"keywords":[]}';
   } catch (error) {
     handleAIError(error);
   }
 
-  const parsed = JSON.parse(response.text || '{"keywords":[]}');
+  const parsed = JSON.parse(content);
   return parsed.keywords;
 }
 
@@ -170,26 +148,19 @@ export async function generateInterpretation(params: {
     - Se empatico, no juzgues
   `;
 
-  let response;
+  let text: string;
   try {
-    response = await getAI().models.generateContent({
+    const response = await getAI().chat.completions.create({
       model: MODEL,
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
     });
+    text = response.choices[0]?.message?.content || '';
   } catch (error) {
     handleAIError(error);
   }
 
-  const text = response.text || '';
-  const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-  const groundingSources = chunks
-    .filter((c) => c.web?.uri && c.web?.title)
-    .map((c) => ({ uri: c.web!.uri!, title: c.web!.title! }));
-
-  return { text, groundingSources };
+  return { text, groundingSources: [] };
 }
 
 // --- ACTION 4: Generar cierre simbolico ---
@@ -219,24 +190,17 @@ export async function generateClosure(params: {
     NO expliques teorias. Solo habla al corazon del paciente.
   `;
 
-  let response;
+  let text: string;
   try {
-    response = await getAI().models.generateContent({
+    const response = await getAI().chat.completions.create({
       model: MODEL,
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
     });
+    text = response.choices[0]?.message?.content || '';
   } catch (error) {
     handleAIError(error);
   }
 
-  const text = response.text || '';
-  const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-  const groundingSources = chunks
-    .filter((c) => c.web?.uri && c.web?.title)
-    .map((c) => ({ uri: c.web!.uri!, title: c.web!.title! }));
-
-  return { text, groundingSources };
+  return { text, groundingSources: [] };
 }
