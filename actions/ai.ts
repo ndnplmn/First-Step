@@ -204,3 +204,47 @@ export async function generateClosure(params: {
 
   return { text, groundingSources: [] };
 }
+
+// --- ACTION 5: Generar preguntas de reflexion ---
+export async function generateReflectionQuestions(params: {
+  conflicts: Conflict[];
+  theoryMatch: TheoryMatch;
+  closure: string;
+}): Promise<string[]> {
+  const { conflicts, theoryMatch, closure } = params;
+
+  const prompt = `
+    Eres un psicoterapeuta que acaba de completar una sesion con un paciente.
+
+    El paciente trabajó con la teoria ${theoryMatch.name} (${theoryMatch.subCategory}).
+    Sus conflictos principales fueron: ${conflicts.map(c => c.synthesized).join(', ')}.
+    El cierre simbolico que recibio fue:
+    "${closure}"
+
+    Genera exactamente 3 preguntas de reflexion profunda y personalizada para que el paciente
+    lleve consigo despues de la sesion. Las preguntas deben:
+    - Surgir directamente de sus conflictos y teoria especifica
+    - Invitar a la contemplacion sin requerir respuesta inmediata
+    - Usar segunda persona singular ("¿Que sientes cuando...", "¿En que momentos...")
+    - Ser abiertas, no retorias ni con respuesta obvia
+    - Tener entre 10 y 25 palabras cada una
+
+    Responde SOLO con un objeto JSON: { "questions": ["...", "...", "..."] }
+  `;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.6,
+    });
+    content = response.choices[0]?.message?.content || '{"questions":[]}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  return Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : [];
+}
