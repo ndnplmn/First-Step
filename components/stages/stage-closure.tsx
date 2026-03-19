@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { PatientSession, Closure } from '@/lib/types';
-import { generateClosure } from '@/actions/ai';
+import { generateClosure, generateReflectionQuestions } from '@/actions/ai';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
-import { ArrowCounterClockwise, ArrowSquareOut, Sparkle } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, Users, ArrowsClockwise, House } from '@phosphor-icons/react';
 
 const THINKING_PHRASES = [
   'Preparando tu cierre...',
@@ -16,15 +16,11 @@ const THINKING_PHRASES = [
   'Abriendo un nuevo camino...',
 ];
 
-const NEXT_STEPS = [
-  { icon: '🧘', label: 'Practica un momento de quietud hoy' },
-  { icon: '📓', label: 'Escribe lo que descubriste en sesión' },
-  { icon: '💬', label: 'Comparte una reflexión con alguien de confianza' },
-];
+type ClosureAction = 'dashboard' | 'record' | 'new-session';
 
 interface StageClosureProps {
   session: PatientSession;
-  onComplete: () => void;
+  onComplete: (action: ClosureAction) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
@@ -32,12 +28,18 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
   const [fullClosure, setFullClosure] = useState<Closure | null>(session.closure ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [reflectionQuestions, setReflectionQuestions] = useState<string[]>(
+    session.reflectionQuestions ?? []
+  );
   const { text, isStreaming, isDone, startStream } = useAIStream();
   const shouldReduce = useReducedMotion();
 
   useEffect(() => {
     if (session.closure) {
       startStream(session.closure.text);
+      if (session.reflectionQuestions?.length) {
+        setReflectionQuestions(session.reflectionQuestions);
+      }
     } else {
       generate();
     }
@@ -48,6 +50,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
     setIsGenerating(true);
     setIsError(false);
     setFullClosure(null);
+    setReflectionQuestions([]);
     try {
       const result = await generateClosure({
         conflicts: session.conflicts,
@@ -58,6 +61,14 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
       setFullClosure(result);
       onUpdate({ closure: result });
       startStream(result.text);
+
+      const questions = await generateReflectionQuestions({
+        conflicts: session.conflicts,
+        theoryMatch: session.theoryMatch!,
+        closure: result.text,
+      });
+      setReflectionQuestions(questions);
+      onUpdate({ closure: result, reflectionQuestions: questions });
     } catch (e) {
       console.error(e);
       setIsError(true);
@@ -68,6 +79,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
 
   const displayText = shouldReduce ? (fullClosure?.text ?? '') : text;
   const showContent = shouldReduce ? !!fullClosure : (isDone || isStreaming);
+  const showActions = isDone || (!!shouldReduce && !!fullClosure);
 
   return (
     <div className="space-y-8 pb-48">
@@ -126,73 +138,125 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
               </motion.span>
             )}
           </p>
-
-          {isDone && fullClosure?.groundingSources && fullClosure.groundingSources.length > 0 && (
-            <div
-              className="mt-4 pt-4 flex flex-wrap gap-2"
-              style={{ borderTop: '1px solid var(--color-border)' }}
-            >
-              {fullClosure.groundingSources.map((s, i) => (
-                <motion.a
-                  key={i}
-                  href={s.uri}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
-                  style={{ background: 'var(--color-sage-light)', color: 'var(--color-sage)' }}
-                >
-                  <ArrowSquareOut size={10} />
-                  {s.title}
-                </motion.a>
-              ))}
-            </div>
-          )}
         </AICard>
       )}
 
+      {/* Preguntas de reflexion */}
       <AnimatePresence>
-        {isDone && (
+        {showActions && reflectionQuestions.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="space-y-3"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="rounded-2xl p-6 space-y-4"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
-            <p className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--color-muted)' }}>
-              <Sparkle size={14} weight="fill" style={{ color: 'var(--color-terracotta)' }} />
-              Próximos pasos sugeridos
+            <p
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
+            >
+              Para llevar contigo
             </p>
-            {NEXT_STEPS.map((step, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + i * 0.1, type: 'spring', stiffness: 280, damping: 22 }}
-                className="flex items-center gap-3 p-4 rounded-xl"
-                style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-              >
-                <span className="text-xl">{step.icon}</span>
-                <p className="text-sm leading-snug" style={{ color: 'var(--color-deep)' }}>
-                  {step.label}
-                </p>
-              </motion.div>
-            ))}
+            <div className="space-y-3">
+              {reflectionQuestions.map((q, i) => (
+                <motion.p
+                  key={i}
+                  initial={shouldReduce ? false : { opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.1, duration: 0.4 }}
+                  className="text-sm leading-relaxed pl-3"
+                  style={{
+                    color: 'var(--color-deep)',
+                    borderLeft: '2px solid var(--color-sage)',
+                  }}
+                >
+                  {q}
+                </motion.p>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <FloatingBar visible={isDone || (!!shouldReduce && !!fullClosure)}>
+      {/* Tarjetas de accion */}
+      <AnimatePresence>
+        {showActions && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="space-y-3"
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
+            >
+              ¿Qué quieres hacer ahora?
+            </p>
+
+            {/* Tarjeta: Compartir con terapeuta */}
+            <motion.button
+              type="button"
+              onClick={() => onComplete('record')}
+              whileHover={shouldReduce ? {} : { y: -2 }}
+              whileTap={shouldReduce ? {} : { scale: 0.98 }}
+              className="w-full flex items-center gap-4 p-5 rounded-2xl text-left"
+              style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-violet-light)' }}
+              >
+                <Users size={18} style={{ color: 'var(--color-violet)' }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                  Ver expediente con tu terapeuta
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                  Tu expediente completo está listo para revisarlo juntos
+                </p>
+              </div>
+            </motion.button>
+
+            {/* Tarjeta: Nuevo proceso */}
+            <motion.button
+              type="button"
+              onClick={() => onComplete('new-session')}
+              whileHover={shouldReduce ? {} : { y: -2 }}
+              whileTap={shouldReduce ? {} : { scale: 0.98 }}
+              className="w-full flex items-center gap-4 p-5 rounded-2xl text-left"
+              style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-sage-light)' }}
+              >
+                <ArrowsClockwise size={18} style={{ color: 'var(--color-sage)' }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                  Iniciar nuevo proceso
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                  Explora otro conflicto con una nueva sesión
+                </p>
+              </div>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <FloatingBar visible={showActions}>
         <motion.button
           type="button"
-          onClick={onComplete}
+          onClick={() => onComplete('dashboard')}
           whileTap={shouldReduce ? {} : { scale: 0.97 }}
-          className="w-full py-3.5 rounded-xl font-medium text-white"
-          style={{ background: 'var(--color-sage)' }}
+          className="w-full py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+          style={{ background: 'var(--color-surface)', color: 'var(--color-muted)', boxShadow: 'var(--shadow-card)' }}
         >
-          Finalizar sesión
+          <House size={16} />
+          Volver al inicio
         </motion.button>
       </FloatingBar>
     </div>
