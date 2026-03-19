@@ -21,7 +21,7 @@ interface SessionViewProps {
   patient: Patient;
   session: PatientSession;
   onSessionUpdate: (session: PatientSession) => void;
-  onComplete: () => void;
+  onComplete: (action: 'dashboard' | 'record' | 'new-session') => void;
 }
 
 export function SessionView({ patient, session, onSessionUpdate, onComplete }: SessionViewProps) {
