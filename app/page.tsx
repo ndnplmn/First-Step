@@ -5,7 +5,9 @@ import { Welcome } from '@/components/stages/welcome';
 import { Dashboard } from '@/components/stages/dashboard';
 import { Intake } from '@/components/stages/intake';
 import { SessionView } from '@/components/stages/session-view';
+import { PatientRecord } from '@/components/stages/patient-record';
 import { storage } from '@/lib/storage';
+import { generateId } from '@/lib/id';
 import type { Patient, PatientSession, AppView } from '@/lib/types';
 
 export default function Home() {
@@ -13,10 +15,31 @@ export default function Home() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
   const [activeSession, setActiveSession] = useState<PatientSession | null>(null);
+  const [recordPatient, setRecordPatient] = useState<Patient | null>(null);
+  const [recordSessions, setRecordSessions] = useState<PatientSession[]>([]);
 
   useEffect(() => {
     setPatients(storage.getPatients());
   }, []);
+
+  const createNewSession = (patient: Patient): PatientSession => {
+    const existingSessions = storage.getSessions(patient.id);
+    return {
+      id: generateId(),
+      patientId: patient.id,
+      sessionNumber: existingSessions.length + 1,
+      stage: 2,
+      conflicts: [],
+      theoryMatch: null,
+      memories: [],
+      interpretation: null,
+      closure: null,
+      unmappedPhrases: [],
+      reflectionQuestions: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  };
 
   const handlePatientSelect = (patient: Patient) => {
     setActivePatient(patient);
@@ -25,10 +48,18 @@ export default function Home() {
       setActiveSession(session);
       setView('SESSION');
     } else {
-      // Paciente ya completó su proceso — iniciar nueva sesión
-      setActiveSession(null);
-      setView('INTAKE');
+      const newSession = createNewSession(patient);
+      storage.saveSession(newSession);
+      setActiveSession(newSession);
+      setView('SESSION');
     }
+  };
+
+  const handleViewRecord = (patient: Patient) => {
+    const sessions = storage.getSessions(patient.id);
+    setRecordPatient(patient);
+    setRecordSessions(sessions);
+    setView('RECORD');
   };
 
   const handleIntakeComplete = (patient: Patient, session: PatientSession) => {
@@ -45,9 +76,18 @@ export default function Home() {
     setActiveSession(updated);
   };
 
-  const handleComplete = () => {
+  const handleComplete = (action: 'dashboard' | 'record' | 'new-session') => {
     setPatients(storage.getPatients());
-    setView('DASHBOARD');
+    if (action === 'dashboard') {
+      setView('DASHBOARD');
+    } else if (action === 'record' && activePatient) {
+      handleViewRecord(activePatient);
+    } else if (action === 'new-session' && activePatient) {
+      const newSession = createNewSession(activePatient);
+      storage.saveSession(newSession);
+      setActiveSession(newSession);
+      setView('SESSION');
+    }
   };
 
   if (view === 'WELCOME') {
@@ -65,6 +105,7 @@ export default function Home() {
       <Dashboard
         patients={patients}
         onSelect={handlePatientSelect}
+        onViewRecord={handleViewRecord}
         onNew={() => setView('INTAKE')}
         onBack={() => setView('WELCOME')}
       />
@@ -87,6 +128,16 @@ export default function Home() {
         session={activeSession}
         onSessionUpdate={handleSessionUpdate}
         onComplete={handleComplete}
+      />
+    );
+  }
+
+  if (view === 'RECORD' && recordPatient) {
+    return (
+      <PatientRecord
+        patient={recordPatient}
+        sessions={recordSessions}
+        onBack={() => setView('DASHBOARD')}
       />
     );
   }
