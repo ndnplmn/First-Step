@@ -22,6 +22,67 @@ interface StageConflictsProps {
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
+function UnmappedSection({ unmapped, shouldReduce }: { unmapped: string[]; shouldReduce: boolean }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <motion.div
+      initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2 }}
+      className="rounded-xl overflow-hidden"
+      style={{ border: '1px dashed var(--color-border)' }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="text-xs font-medium" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+          Pendiente de análisis ({unmapped.length})
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ color: 'var(--color-muted)' }}
+        >
+          ▾
+        </motion.span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-2">
+              <p className="text-xs mb-3" style={{ color: 'var(--color-muted)' }}>
+                Estas frases no encajaron claramente en una teoría. Tu terapeuta puede explorarlas contigo.
+              </p>
+              {unmapped.map((phrase, i) => (
+                <p
+                  key={i}
+                  className="text-sm px-3 py-2 rounded-lg"
+                  style={{
+                    color: 'var(--color-muted)',
+                    background: 'var(--color-surface)',
+                    fontStyle: 'italic',
+                  }}
+                >
+                  "{phrase}"
+                </p>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
   const [rawInput, setRawInput] = useState('');
@@ -151,6 +212,10 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
             </div>
           </div>
         </AICard>
+      )}
+
+      {result && result.unmapped.length > 0 && (
+        <UnmappedSection unmapped={result.unmapped} shouldReduce={!!shouldReduce} />
       )}
 
       <FloatingBar visible={rawConflicts.length > 0}>
