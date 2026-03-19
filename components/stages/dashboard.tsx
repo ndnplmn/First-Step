@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { Patient } from '@/lib/types';
 import { storage } from '@/lib/storage';
-import { ArrowLeft, Plus } from '@phosphor-icons/react';
+import { ArrowLeft, Plus, Eye } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
 
 const STAGE_NAMES: Record<number, string> = {
@@ -29,11 +29,12 @@ function formatRelativeTime(timestamp: number): string {
 interface DashboardProps {
   patients: Patient[];
   onSelect: (patient: Patient) => void;
+  onViewRecord: (patient: Patient) => void;
   onNew: () => void;
   onBack: () => void;
 }
 
-export function Dashboard({ patients, onSelect, onNew, onBack }: DashboardProps) {
+export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: DashboardProps) {
   const shouldReduce = useReducedMotion();
 
   const sessionMap = useMemo(() => {
@@ -171,8 +172,19 @@ export function Dashboard({ patients, onSelect, onNew, onBack }: DashboardProps)
                       {stageName}{relativeTime ? ` · ${relativeTime}` : ''}
                     </p>
                   </div>
-                  <div className="flex-shrink-0 pt-1">
+                  <div className="flex-shrink-0 flex flex-col items-end gap-2 pt-1">
                     <ChapterProgress currentStage={stage} />
+                    <motion.button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onViewRecord(patient); }}
+                      whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
+                      whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                      className="flex items-center gap-1 text-xs"
+                      style={{ color: 'var(--color-muted)' }}
+                    >
+                      <Eye size={14} />
+                      <span>Expediente</span>
+                    </motion.button>
                   </div>
                 </div>
               </motion.button>
