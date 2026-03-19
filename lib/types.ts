@@ -67,6 +67,7 @@ export type PatientSession = {
   interpretation: Interpretation | null;
   closure: Closure | null;
   unmappedPhrases: UnmappedPhrase[];
+  reflectionQuestions?: string[];
   createdAt: number;
   updatedAt: number;
 };
@@ -75,4 +76,5 @@ export type AppView =
   | 'WELCOME'
   | 'DASHBOARD'
   | 'INTAKE'
-  | 'SESSION';
+  | 'SESSION'
+  | 'RECORD';
