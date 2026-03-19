@@ -126,10 +126,18 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
             const relativeTime = info ? formatRelativeTime(info.updatedAt) : '';
 
             return (
-              <motion.button
+              <motion.div
                 key={patient.id}
-                type="button"
+                role="button"
+                tabIndex={0}
+                aria-label={`Abrir sesión de ${patient.name}`}
                 onClick={() => onSelect(patient)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelect(patient);
+                  }
+                }}
                 initial={shouldReduce ? false : { opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -140,7 +148,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                 }}
                 whileHover={shouldReduce ? {} : { y: -2 }}
                 whileTap={shouldReduce ? {} : { scale: 0.99 }}
-                className="w-full p-5 rounded-2xl text-left"
+                className="w-full p-5 rounded-2xl text-left cursor-pointer"
                 style={{
                   background: 'var(--color-surface)',
                   boxShadow: 'var(--shadow-card)',
@@ -176,6 +184,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                     <ChapterProgress currentStage={stage} />
                     <motion.button
                       type="button"
+                      aria-label={`Ver expediente de ${patient.name}`}
                       onClick={(e) => { e.stopPropagation(); onViewRecord(patient); }}
                       whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
                       whileTap={shouldReduce ? {} : { scale: 0.95 }}
@@ -187,7 +196,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                     </motion.button>
                   </div>
                 </div>
-              </motion.button>
+              </motion.div>
             );
           })}
         </div>
