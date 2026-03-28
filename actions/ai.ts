@@ -2,11 +2,37 @@
 
 import Groq from 'groq-sdk';
 import { THEORIES_DICTIONARY } from '@/lib/theories';
-import { Conflict, Memory, TheoryMatch, Interpretation, Closure } from '@/lib/types';
+import { Patient, Conflict, Memory, TheoryMatch, Interpretation, Closure, LifeChanges } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = 'llama-3.3-70b-versatile';
+
+function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges): string {
+  const lines = [
+    `Nombre: ${patient.name}, ${patient.age} años, ${patient.gender}`,
+    `Estado civil: ${patient.maritalStatus}`,
+    patient.hasChildren ? `Hijos: ${patient.childrenCount || 'sí'}` : 'Sin hijos',
+    `Vive: ${patient.livingSituation}${patient.livingSituationDetail ? ` (${patient.livingSituationDetail})` : ''}`,
+    `Ocupación: ${patient.employment}${patient.occupation ? ` — ${patient.occupation}` : ''}`,
+    patient.hasSupportNetwork
+      ? `Red de apoyo: sí${patient.supportDescription ? ` (${patient.supportDescription})` : ''}`
+      : 'Sin red de apoyo identificada',
+    patient.previousTherapy
+      ? `Terapia previa: sí${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}`
+      : 'Sin terapia previa',
+    patient.takingMedication
+      ? `Medicación: sí${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}`
+      : 'Sin medicación',
+    `Motivo de consulta: ${patient.consultationReason}`,
+  ];
+
+  if (lifeChanges && lifeChanges.categories.length > 0) {
+    lines.push(`Cambios recientes en su vida: ${lifeChanges.categories.join(', ')}${lifeChanges.detail ? `. Detalle: ${lifeChanges.detail}` : ''}`);
+  }
+
+  return lines.join('\n');
+}
 
 function handleAIError(error: unknown): never {
   if (error instanceof Error) {
@@ -22,12 +48,17 @@ function handleAIError(error: unknown): never {
 
 // --- ACTION 1: Sintetizar conflictos y mapear a teoria ---
 export async function synthesizeConflicts(
-  rawConflicts: string[]
+  rawConflicts: string[],
+  patient: Patient,
+  lifeChanges?: LifeChanges
 ): Promise<{ conflicts: Conflict[]; theoryMatch: TheoryMatch; unmapped: string[] }> {
   const prompt = `
     Analiza los siguientes motivos de consulta de un paciente.
 
     Motivos: ${rawConflicts.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
+
+    Contexto del paciente:
+    ${buildPatientContext(patient, lifeChanges)}
 
     Diccionario de Teorias Terapeuticas:
     ${THEORIES_DICTIONARY}
@@ -121,6 +152,8 @@ export async function generateInterpretation(params: {
   conflicts: Conflict[];
   theoryMatch: TheoryMatch;
   memories: Memory[];
+  patient: Patient;
+  lifeChanges?: LifeChanges;
 }): Promise<Interpretation> {
   const { conflicts, theoryMatch, memories } = params;
 
@@ -128,6 +161,9 @@ export async function generateInterpretation(params: {
     Eres un psicoterapeuta magistral con profundo conocimiento de la ${theoryMatch.name}.
 
     Teoria base: ${theoryMatch.name} — ${theoryMatch.subCategory}
+
+    Contexto del paciente:
+    ${buildPatientContext(params.patient, params.lifeChanges)}
 
     Conflictos del paciente:
     ${conflicts.map(c => `- ${c.synthesized}`).join('\n')}
@@ -169,6 +205,7 @@ export async function generateClosure(params: {
   theoryMatch: TheoryMatch;
   memories: Memory[];
   interpretation: string;
+  patient: Patient;
 }): Promise<Closure> {
   const { conflicts, theoryMatch, interpretation } = params;
 
@@ -177,6 +214,9 @@ export async function generateClosure(params: {
 
     El paciente tiene estos conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
     Teoria: ${theoryMatch.name} — ${theoryMatch.subCategory}
+
+    Contexto del paciente:
+    ${buildPatientContext(params.patient)}
 
     Se le ha dado esta interpretacion:
     "${interpretation}"
@@ -261,11 +301,15 @@ export async function generateStrategies(params: {
   conflicts: Conflict[];
   theoryMatch: TheoryMatch;
   interpretation: string;
+  patient: Patient;
 }): Promise<{ title: string; description: string }[]> {
   const { conflicts, theoryMatch, interpretation } = params;
 
   const prompt = `
     Eres un psicoterapeuta experto en ${theoryMatch.name} (${theoryMatch.subCategory}).
+
+    Contexto del paciente:
+    ${buildPatientContext(params.patient)}
 
     El paciente tiene estos conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 
@@ -306,6 +350,8 @@ export async function generateStrategies(params: {
 export async function getNextTherapistQuestion(params: {
   allInputs: string[];       // todo lo que el paciente ha compartido hasta ahora
   questionsAsked: string[];  // preguntas ya realizadas (evitar repetir)
+  patient: Patient;
+  lifeChanges?: LifeChanges;
 }): Promise<{ done: boolean; question: string | null }> {
   const { allInputs, questionsAsked } = params;
 
@@ -316,6 +362,9 @@ export async function getNextTherapistQuestion(params: {
     ${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
 
     ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
+
+    Contexto del paciente:
+    ${buildPatientContext(params.patient, params.lifeChanges)}
 
     Para formular una buena interpretación clínica necesitas conocer:
     A) La emoción central detrás del conflicto (¿qué siente el paciente?)
