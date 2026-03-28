@@ -71,7 +71,7 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
               background: 'transparent',
             }}
           >
-            Ver expedientes
+            Mis sesiones
           </motion.button>
         )}
       </FloatingBar>

@@ -16,19 +16,19 @@ interface IntakeProps {
 const QUESTIONS = [
   {
     field: 'name' as const,
-    label: '¿Cómo se llama\ntu paciente?',
+    label: '¿Cómo\nte llamas?',
     type: 'text' as const,
-    placeholder: 'Nombre completo',
+    placeholder: 'Tu nombre',
   },
   {
     field: 'age' as const,
-    label: '¿Cuántos años\ntiene?',
+    label: '¿Cuántos años\ntienes?',
     type: 'number' as const,
-    placeholder: 'Edad',
+    placeholder: 'Tu edad',
   },
   {
     field: 'gender' as const,
-    label: '¿Cómo se\nidentifica?',
+    label: '¿Cómo\nte identificas?',
     type: 'select' as const,
     options: ['Femenino', 'Masculino', 'Otro'] as Gender[],
   },
@@ -107,7 +107,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           className="text-xs"
           style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
         >
-          Nuevo expediente · Paso {step + 1} de {QUESTIONS.length}
+          Tu perfil · Paso {step + 1} de {QUESTIONS.length}
         </p>
         <div className="flex items-center gap-1">
           {QUESTIONS.map((_, i) => (
@@ -227,7 +227,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           className="w-full py-3.5 rounded-xl font-medium text-white"
           style={{ background: 'var(--color-sage)' }}
         >
-          {isLast ? 'Crear expediente' : 'Continuar →'}
+          {isLast ? 'Comenzar mi proceso' : 'Continuar →'}
         </motion.button>
       </FloatingBar>
 

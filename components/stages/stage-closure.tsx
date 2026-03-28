@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { PatientSession, Closure } from '@/lib/types';
-import { generateClosure, generateReflectionQuestions } from '@/actions/ai';
+import type { PatientSession, Closure, Strategy } from '@/lib/types';
+import { generateClosure, generateReflectionQuestions, generateStrategies } from '@/actions/ai';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
@@ -31,6 +31,10 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
   const [reflectionQuestions, setReflectionQuestions] = useState<string[]>(
     session.reflectionQuestions ?? []
   );
+  const [strategies, setStrategies] = useState<Strategy[]>(
+    session.closure?.strategies ?? []
+  );
+  const [showActions, setShowActions] = useState(false);
   const { text, isStreaming, isDone, startStream } = useAIStream();
   const shouldReduce = useReducedMotion();
 
@@ -46,11 +50,21 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Las acciones solo aparecen cuando el streaming ha terminado
+  useEffect(() => {
+    if (isDone && reflectionQuestions.length > 0 && strategies.length > 0) {
+      const timer = setTimeout(() => setShowActions(true), shouldReduce ? 0 : 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isDone, reflectionQuestions.length, strategies.length, shouldReduce]);
+
   const generate = async () => {
     setIsGenerating(true);
     setIsError(false);
     setFullClosure(null);
     setReflectionQuestions([]);
+    setStrategies([]);
+    setShowActions(false);
     try {
       const result = await generateClosure({
         conflicts: session.conflicts,
@@ -62,13 +76,23 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
       onUpdate({ closure: result });
       startStream(result.text);
 
-      const questions = await generateReflectionQuestions({
-        conflicts: session.conflicts,
-        theoryMatch: session.theoryMatch!,
-        closure: result.text,
-      });
+      const [questions, strats] = await Promise.all([
+        generateReflectionQuestions({
+          conflicts: session.conflicts,
+          theoryMatch: session.theoryMatch!,
+          closure: result.text,
+        }),
+        generateStrategies({
+          conflicts: session.conflicts,
+          theoryMatch: session.theoryMatch!,
+          interpretation: session.interpretation!.text,
+        }),
+      ]);
       setReflectionQuestions(questions);
-      onUpdate({ closure: result, reflectionQuestions: questions });
+      setStrategies(strats);
+      const closureWithStrategies = { ...result, strategies: strats };
+      setFullClosure(closureWithStrategies);
+      onUpdate({ closure: closureWithStrategies, reflectionQuestions: questions });
     } catch (e) {
       console.error(e);
       setIsError(true);
@@ -79,7 +103,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
 
   const displayText = shouldReduce ? (fullClosure?.text ?? '') : text;
   const showContent = shouldReduce ? !!fullClosure : (isDone || isStreaming);
-  const showActions = isDone || (!!shouldReduce && !!fullClosure);
+  const showReady = isDone || (!!shouldReduce && !!fullClosure);
 
   return (
     <div className="space-y-8 pb-48">
@@ -124,6 +148,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
         </div>
       )}
 
+      {/* Cierre simbólico */}
       {showContent && (
         <AICard sources={[]} actions={null}>
           <p className="leading-relaxed whitespace-pre-wrap">
@@ -141,13 +166,13 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
         </AICard>
       )}
 
-      {/* Preguntas de reflexion */}
+      {/* Preguntas de reflexión — con pausa después del cierre */}
       <AnimatePresence>
-        {showActions && reflectionQuestions.length > 0 && (
+        {showReady && reflectionQuestions.length > 0 && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.8 }}
             className="rounded-2xl p-6 space-y-4"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
@@ -155,7 +180,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
               className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
             >
-              Para llevar contigo
+              Antes de irte, tres preguntas para el camino
             </p>
             <div className="space-y-3">
               {reflectionQuestions.map((q, i) => (
@@ -163,7 +188,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
                   key={i}
                   initial={shouldReduce ? false : { opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.1, duration: 0.4 }}
+                  transition={{ delay: (shouldReduce ? 0 : 0.9) + i * 0.12, duration: 0.4 }}
                   className="text-sm leading-relaxed pl-3"
                   style={{
                     color: 'var(--color-deep)',
@@ -178,13 +203,52 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
         )}
       </AnimatePresence>
 
-      {/* Tarjetas de accion */}
+      {/* Estrategias prácticas */}
+      <AnimatePresence>
+        {showReady && strategies.length > 0 && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.2 }}
+            className="rounded-2xl p-6 space-y-4"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
+            >
+              Estrategias para tu día a día
+            </p>
+            <div className="space-y-4">
+              {strategies.map((s, i) => (
+                <motion.div
+                  key={i}
+                  initial={shouldReduce ? false : { opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: (shouldReduce ? 0 : 1.3) + i * 0.15, duration: 0.4 }}
+                  className="pl-3"
+                  style={{ borderLeft: '2px solid var(--color-terracotta)' }}
+                >
+                  <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                    {s.title}
+                  </p>
+                  <p className="text-sm mt-1 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                    {s.description}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tarjetas de acción — aparecen después de las estrategias */}
       <AnimatePresence>
         {showActions && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+            transition={{ duration: 0.5, delay: shouldReduce ? 0 : 0.3 }}
             className="space-y-3"
           >
             <p
@@ -194,7 +258,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
               ¿Qué quieres hacer ahora?
             </p>
 
-            {/* Tarjeta: Compartir con terapeuta */}
+            {/* Tarjeta: Ver mi resumen */}
             <motion.button
               type="button"
               onClick={() => onComplete('record')}
@@ -211,10 +275,10 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                  Ver expediente con tu terapeuta
+                  Ver mi resumen
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                  Tu expediente completo está listo para revisarlo juntos
+                  Revisa todo lo que exploraste en esta sesión
                 </p>
               </div>
             </motion.button>
@@ -243,22 +307,21 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
                 </p>
               </div>
             </motion.button>
+
+            {/* Volver al inicio — al final, discreto */}
+            <motion.button
+              type="button"
+              onClick={() => onComplete('dashboard')}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+              style={{ color: 'var(--color-muted)' }}
+            >
+              <House size={15} />
+              Volver al inicio
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <FloatingBar visible={showActions}>
-        <motion.button
-          type="button"
-          onClick={() => onComplete('dashboard')}
-          whileTap={shouldReduce ? {} : { scale: 0.97 }}
-          className="w-full py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-          style={{ background: 'var(--color-surface)', color: 'var(--color-muted)', boxShadow: 'var(--shadow-card)' }}
-        >
-          <House size={16} />
-          Volver al inicio
-        </motion.button>
-      </FloatingBar>
     </div>
   );
 }

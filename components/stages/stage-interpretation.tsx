@@ -11,9 +11,9 @@ import { FloatingBar } from '@/components/ui/floating-bar';
 import { Heart, ArrowCounterClockwise, ArrowSquareOut } from '@phosphor-icons/react';
 
 const THINKING_PHRASES = [
-  'Analizando tu historia...',
+  'Escuchando todo lo que compartiste...',
   'Conectando perspectivas...',
-  'Formulando comprensión...',
+  'Formulando algo para ti...',
 ];
 
 interface StageInterpretationProps {
@@ -27,8 +27,9 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
     session.interpretation ?? null
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [resonated, setResonated] = useState(false);
+  const [resonated, setResonated] = useState(!!session.interpretation?.resonatedAt);
   const [showRing, setShowRing] = useState(false);
   const { text, isStreaming, isDone, startStream } = useAIStream();
   const shouldReduce = useReducedMotion();
@@ -37,7 +38,13 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
     if (session.interpretation) {
       startStream(session.interpretation.text);
     } else {
-      generate();
+      // Momento de preparación antes de generar
+      setIsPreparing(true);
+      const timer = setTimeout(() => {
+        setIsPreparing(false);
+        generate();
+      }, shouldReduce ? 0 : 2000);
+      return () => clearTimeout(timer);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -93,9 +100,29 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
           Tu historia vista con claridad
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Basándome en todo lo que has compartido, aquí está lo que encuentro.
+          He escuchado todo lo que compartiste. Esto es lo que veo.
         </p>
       </div>
+
+      {/* Momento de preparación */}
+      <AnimatePresence>
+        {isPreparing && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.4 } }}
+            className="rounded-2xl p-6 text-center space-y-2"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
+              Voy a compartirte algo importante.
+            </p>
+            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              Tómate un momento antes de leer.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {isGenerating && <AIThinking phrases={THINKING_PHRASES} />}
 
@@ -129,8 +156,9 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
                   <motion.button
                     type="button"
                     onClick={handleResonate}
+                    disabled={resonated}
                     whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                    className="relative flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all"
+                    className="relative flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all disabled:cursor-default"
                     style={{
                       background: resonated ? 'var(--color-terracotta)' : 'var(--color-surface)',
                       color: resonated ? 'white' : 'var(--color-muted)',
@@ -170,7 +198,7 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
                   }}
                 >
                   <ArrowCounterClockwise size={14} />
-                  Reformular
+                  Ver desde otro ángulo
                 </motion.button>
               </>
             ) : null
@@ -212,6 +240,7 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
         </AICard>
       )}
 
+      {/* CTA solo visible cuando el streaming ha terminado */}
       <FloatingBar visible={isDone || (!!shouldReduce && !!fullInterpretation)}>
         <motion.button
           type="button"

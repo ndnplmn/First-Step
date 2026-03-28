@@ -29,6 +29,7 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
   const [form, setForm] = useState<MemoryForm>(EMPTY_FORM);
   const [formStep, setFormStep] = useState(0);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isFormActive, setIsFormActive] = useState(session.memories.length === 0);
 
   const currentQ = FORM_QUESTIONS[formStep];
 
@@ -58,6 +59,7 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
       onUpdate({ memories: updated });
       setForm(EMPTY_FORM);
       setFormStep(0);
+      setIsFormActive(false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -69,6 +71,7 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
 
   return (
     <div className="space-y-8 pb-48">
+      {/* Header */}
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
           Capítulo 3 — Recuerdos
@@ -77,10 +80,34 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
           Viaja a tus recuerdos
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Piensa en situaciones del pasado relacionadas con lo que sientes.
+          Los recuerdos conectan lo que sientes hoy con lo que viviste antes. Eso es lo que vamos a explorar.
         </p>
       </div>
 
+      {/* Puente: chips de conflictos de la etapa anterior */}
+      {session.conflicts.length > 0 && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-wrap gap-2 items-center"
+        >
+          <span className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+            Relacionado con:
+          </span>
+          {session.conflicts.map(c => (
+            <span
+              key={c.id}
+              className="px-2.5 py-1 rounded-full text-xs"
+              style={{ background: 'var(--color-surface)', color: 'var(--color-muted)', boxShadow: 'var(--shadow-card)' }}
+            >
+              {c.synthesized}
+            </span>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Recuerdos guardados */}
       <AnimatePresence>
         {memories.map(m => (
           <motion.div
@@ -90,22 +117,29 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
             className="rounded-2xl p-5 space-y-3"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
-            <p className="italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>"{m.raw}"</p>
-            <div className="flex flex-wrap gap-1.5">
-              {m.keywords.map(kw => (
-                <motion.span
-                  key={kw}
-                  className="px-2.5 py-1 rounded-full text-xs"
-                  style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}
-                  initial={shouldReduce ? {} : { scale: 0.8, opacity: 0 }}
-                  animate={shouldReduce ? {} : { scale: 1, opacity: 1 }}
-                  whileHover={shouldReduce ? {} : { scale: 1.04 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                >
-                  {kw}
-                </motion.span>
-              ))}
-            </div>
+            <p className="italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>&ldquo;{m.raw}&rdquo;</p>
+            {m.keywords.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {m.keywords.map(kw => (
+                    <motion.span
+                      key={kw}
+                      className="px-2.5 py-1 rounded-full text-xs"
+                      style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}
+                      initial={shouldReduce ? {} : { scale: 0.8, opacity: 0 }}
+                      animate={shouldReduce ? {} : { scale: 1, opacity: 1 }}
+                      whileHover={shouldReduce ? {} : { scale: 1.04 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                    >
+                      {kw}
+                    </motion.span>
+                  ))}
+                </div>
+                <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Palabras clave que la IA identificó en tu recuerdo
+                </p>
+              </div>
+            )}
             <div className="text-sm space-y-1 pt-1 border-t" style={{ color: 'var(--color-muted)', borderColor: 'var(--color-border)' }}>
               <p>Entonces: <span style={{ color: 'var(--color-deep)' }}>{m.feelingThen}</span></p>
               <p>Ahora: <span style={{ color: 'var(--color-deep)' }}>{m.feelingNow}</span></p>
@@ -114,64 +148,99 @@ export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesPro
         ))}
       </AnimatePresence>
 
-      <div className="rounded-2xl p-5 space-y-4" style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
-        <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          {memories.length === 0 ? 'Primer recuerdo' : 'Agregar otro recuerdo'}
-        </p>
-        <AnimatePresence mode="wait">
+      {/* Botón para añadir otro recuerdo si ya hay alguno */}
+      {memories.length > 0 && !isFormActive && (
+        <motion.button
+          type="button"
+          initial={shouldReduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onClick={() => setIsFormActive(true)}
+          className="text-sm font-medium"
+          style={{ color: 'var(--color-sage)' }}
+        >
+          + Agregar otro recuerdo
+        </motion.button>
+      )}
+
+      {/* Formulario de recuerdo */}
+      <AnimatePresence>
+        {isFormActive && (
           <motion.div
-            key={formStep}
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-            className="space-y-3"
+            initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
+            className="space-y-5"
           >
-            <p className="text-xl" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
-              {currentQ.label}
-            </p>
-            <textarea
-              value={form[currentQ.field]}
-              onChange={e => setForm(prev => ({ ...prev, [currentQ.field]: e.target.value }))}
-              placeholder={currentQ.placeholder}
-              rows={4}
-              autoFocus
-              className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 transition-all"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
-            />
+            {/* Indicador de paso */}
+            <div className="flex gap-1.5">
+              {FORM_QUESTIONS.map((_, i) => (
+                <div key={i} className="h-0.5 flex-1 rounded-full transition-all duration-300"
+                  style={{ background: i <= formStep ? 'var(--color-sage)' : 'var(--color-border)' }} />
+              ))}
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={formStep}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+                className="space-y-4"
+              >
+                <p className="text-xl" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
+                  {currentQ.label}
+                </p>
+                <textarea
+                  value={form[currentQ.field]}
+                  onChange={e => setForm(prev => ({ ...prev, [currentQ.field]: e.target.value }))}
+                  placeholder={currentQ.placeholder}
+                  rows={4}
+                  autoFocus
+                  className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 transition-all"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
+                  onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+                  onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                />
+              </motion.div>
+            </AnimatePresence>
+
+            {isExtracting && <AIThinking phrases={['Escuchando el recuerdo...', 'Extrayendo la esencia...']} />}
           </motion.div>
-        </AnimatePresence>
-        <div className="flex gap-1.5">
-          {FORM_QUESTIONS.map((_, i) => (
-            <div key={i} className="h-0.5 flex-1 rounded-full transition-all duration-300"
-              style={{ background: i <= formStep ? 'var(--color-sage)' : 'var(--color-border)' }} />
-          ))}
-        </div>
-        {isExtracting && <AIThinking phrases={['Escuchando el recuerdo...', 'Extrayendo la esencia...']} />}
-      </div>
+        )}
+      </AnimatePresence>
 
       <FloatingBar visible={true}>
         <div className="space-y-3">
-          <motion.button
-            type="button"
-            onClick={handleFormNext}
-            disabled={!canProceed || isExtracting}
-            whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            className="w-full py-3.5 rounded-xl font-medium text-white disabled:opacity-40"
-            style={{ background: 'var(--color-sage)' }}
-          >
-            {formStep < 2 ? 'Siguiente' : isExtracting ? 'Guardando...' : 'Guardar recuerdo'}
-          </motion.button>
-          {memories.length >= 1 && (
+          {isFormActive && (
             <motion.button
               type="button"
-              onClick={() => onAdvance(memories, [])}
+              onClick={handleFormNext}
+              disabled={!canProceed || isExtracting}
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              className="w-full py-2.5 rounded-xl text-sm font-medium"
-              style={{ color: 'var(--color-sage)', border: '1px solid var(--color-sage)' }}
+              className="w-full py-3.5 rounded-xl font-medium text-white disabled:opacity-40"
+              style={{ background: 'var(--color-sage)' }}
             >
-              Continuar a interpretación ({memories.length} {memories.length === 1 ? 'recuerdo' : 'recuerdos'}) →
+              {formStep < 2 ? 'Siguiente' : isExtracting ? 'Guardando...' : 'Guardar recuerdo'}
             </motion.button>
+          )}
+          {memories.length >= 1 && (
+            <>
+              <motion.button
+                type="button"
+                onClick={() => onAdvance(memories, [])}
+                whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                className="w-full py-3.5 rounded-xl font-medium text-white"
+                style={{ background: isFormActive ? 'transparent' : 'var(--color-sage)', color: isFormActive ? 'var(--color-sage)' : 'white', border: isFormActive ? '1px solid var(--color-sage)' : 'none' }}
+              >
+                Continuar a interpretación ({memories.length} {memories.length === 1 ? 'recuerdo' : 'recuerdos'}) →
+              </motion.button>
+              {!isFormActive && (
+                <p className="text-center text-xs" style={{ color: 'var(--color-muted)' }}>
+                  1 recuerdo es suficiente. Cada uno que añades da más profundidad.
+                </p>
+              )}
+            </>
           )}
         </div>
       </FloatingBar>

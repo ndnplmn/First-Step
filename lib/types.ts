@@ -1,6 +1,23 @@
 export type Gender = 'Femenino' | 'Masculino' | 'Otro';
 
-export type TheoryKey = 'psychoanalytic' | 'cbt' | 'gestalt' | 'systemic';
+export type TheoryKey =
+  | 'psychoanalytic'
+  | 'cbt'
+  | 'gestalt'
+  | 'systemic'
+  | 'humanistic'
+  | 'existential'
+  | 'attachment'
+  | 'dbt'
+  | 'act'
+  | 'narrative'
+  | 'solutionfocused'
+  | 'psychodynamic'
+  | 'interpersonal'
+  | 'emotionallyfocused'
+  | 'transpersonal'
+  | 'adlerian'
+  | 'logotherapy';
 
 export type Patient = {
   id: string;          // formato: #2026-NNNN
@@ -46,9 +63,15 @@ export type Interpretation = {
   resonatedAt?: number;  // timestamp si el paciente marco "me resuena"
 };
 
+export type Strategy = {
+  title: string;
+  description: string;
+};
+
 export type Closure = {
   text: string;
   groundingSources: GroundingSource[];
+  strategies?: Strategy[];
 };
 
 export type UnmappedPhrase = {

@@ -43,10 +43,10 @@ export async function synthesizeConflicts(
     Responde SOLO con un objeto JSON con esta estructura exacta:
     {
       "conflicts": [
-        { "raw": "...", "synthesized": "...", "theoryKey": "psychoanalytic|cbt|gestalt|systemic", "subCategory": "..." }
+        { "raw": "...", "synthesized": "...", "theoryKey": "psychoanalytic|psychodynamic|cbt|dbt|act|gestalt|systemic|humanistic|existential|attachment|narrative|solutionfocused|interpersonal|emotionallyfocused|transpersonal|adlerian|logotherapy", "subCategory": "..." }
       ],
       "dominantTheory": {
-        "key": "psychoanalytic|cbt|gestalt|systemic",
+        "key": "psychoanalytic|psychodynamic|cbt|dbt|act|gestalt|systemic|humanistic|existential|attachment|narrative|solutionfocused|interpersonal|emotionallyfocused|transpersonal|adlerian|logotherapy",
         "name": "...",
         "subCategory": "...",
         "confidence": 0.0
@@ -181,11 +181,18 @@ export async function generateClosure(params: {
     Se le ha dado esta interpretacion:
     "${interpretation}"
 
-    Ahora genera un CIERRE SIMBOLICO. Es un parrafo corto (3-5 oraciones) que:
+    Ahora genera un CIERRE SIMBOLICO. Es un texto de 2 partes separadas por una línea en blanco:
+
+    PARTE 1 (3-5 oraciones):
     1. Quite el peso de la culpa al paciente
     2. Reencuadre la fantasia o sentimiento negativo como una necesidad humana comprensible
     3. Le de una nueva perspectiva sanadora
     4. Use lenguaje poetico, caloroso, directo al paciente ("tu")
+
+    PARTE 2 (2-3 oraciones):
+    - Hazle saber con calidez que este es apenas el primer paso de un proceso
+    - Que cada sesión que continúe va a profundizar más en su historia y permitirá llegar a conclusiones más precisas sobre su conflicto
+    - Que el autoconocimiento es un camino que se recorre poco a poco, y que volver es parte de cuidarse
 
     NO expliques teorias. Solo habla al corazon del paciente.
   `;
@@ -247,4 +254,104 @@ export async function generateReflectionQuestions(params: {
 
   const parsed = JSON.parse(content);
   return Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : [];
+}
+
+// --- ACTION 6: Generar estrategias prácticas para el día a día ---
+export async function generateStrategies(params: {
+  conflicts: Conflict[];
+  theoryMatch: TheoryMatch;
+  interpretation: string;
+}): Promise<{ title: string; description: string }[]> {
+  const { conflicts, theoryMatch, interpretation } = params;
+
+  const prompt = `
+    Eres un psicoterapeuta experto en ${theoryMatch.name} (${theoryMatch.subCategory}).
+
+    El paciente tiene estos conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
+
+    Se le ha dado esta interpretación:
+    "${interpretation}"
+
+    Genera exactamente 3 ESTRATEGIAS PRÁCTICAS que el paciente pueda aplicar en su vida diaria para confrontar su problema. Las estrategias deben:
+    - Ser concretas, realizables y específicas (no genéricas como "medita" o "haz ejercicio")
+    - Estar fundamentadas en la teoría ${theoryMatch.name} pero explicadas en lenguaje cotidiano
+    - Incluir un título corto (3-5 palabras) y una descripción práctica (2-3 oraciones max)
+    - Ser acciones que pueda empezar hoy mismo, sin necesidad de un terapeuta presente
+    - Dirigirse al paciente en segunda persona ("cuando sientas...", "intenta...")
+    - Relacionarse directamente con los conflictos específicos del paciente
+
+    Responde SOLO con un objeto JSON: { "strategies": [{ "title": "...", "description": "..." }, ...] }
+  `;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.5,
+    });
+    content = response.choices[0]?.message?.content || '{"strategies":[]}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  return Array.isArray(parsed.strategies) ? parsed.strategies.slice(0, 3) : [];
+}
+
+// --- ACTION 7: Pregunta adaptativa del terapeuta ---
+// Evalúa si la IA ya tiene suficiente información para formular su análisis.
+// Si no, devuelve la pregunta más importante que falta. Si sí, devuelve done: true.
+export async function getNextTherapistQuestion(params: {
+  allInputs: string[];       // todo lo que el paciente ha compartido hasta ahora
+  questionsAsked: string[];  // preguntas ya realizadas (evitar repetir)
+}): Promise<{ done: boolean; question: string | null }> {
+  const { allInputs, questionsAsked } = params;
+
+  const prompt = `
+    Eres un psicoterapeuta experto realizando una primera sesión de evaluación.
+
+    El paciente ha compartido lo siguiente:
+    ${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
+
+    ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
+
+    Para formular una buena interpretación clínica necesitas conocer:
+    A) La emoción central detrás del conflicto (¿qué siente el paciente?)
+    B) El impacto en su vida cotidiana (¿cómo le afecta?)
+    C) La historia o contexto del conflicto (¿desde cuándo? ¿con quién?)
+
+    Analiza si ya tienes suficiente información sobre estos tres aspectos para poder formular una interpretación clínica profunda y personalizada.
+
+    Si ya tienes suficiente información (el paciente ya describió los tres aspectos con claridad): responde { "done": true, "question": null }
+
+    Si aún te falta información importante: responde con la UNA pregunta más importante que necesitas hacer para completar tu comprensión. La pregunta debe:
+    - Centrarse en el aspecto que más te falta (A, B o C)
+    - Ser empática, directa, en segunda persona
+    - Tener máximo 15 palabras
+    - NO repetir lo que ya preguntaste
+    - NO ser respondible con sí/no
+
+    Responde SOLO con un JSON: { "done": true/false, "question": "..." o null }
+  `;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+    });
+    content = response.choices[0]?.message?.content || '{"done": true, "question": null}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  return {
+    done: parsed.done === true,
+    question: typeof parsed.question === 'string' ? parsed.question : null,
+  };
 }

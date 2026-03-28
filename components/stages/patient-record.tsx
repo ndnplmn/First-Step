@@ -68,7 +68,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
           style={{ color: 'var(--color-muted)' }}
         >
           <ArrowLeft size={16} />
-          Expedientes
+          Mis sesiones
         </motion.button>
 
         <div className="flex-1">
@@ -82,9 +82,6 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
           >
             {patient.name}
           </h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-            {patient.id}
-          </p>
         </div>
       </header>
 
@@ -121,21 +118,21 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   boxShadow: 'var(--shadow-card)',
                 }}
               >
-                Sesión {s.sessionNumber}
+                Proceso {s.sessionNumber}
               </button>
             ))}
           </div>
         )}
 
         {!session && (
-          <p style={{ color: 'var(--color-muted)' }}>No hay sesiones registradas.</p>
+          <p style={{ color: 'var(--color-muted)' }}>Aún no has completado ningún proceso.</p>
         )}
 
         {session && (
           <div className="space-y-6">
             {/* Teoria dominante */}
             {session.theoryMatch && theory && (
-              <Section label="Teoría dominante">
+              <Section label="Tu patrón predominante">
                 <div className="flex flex-wrap gap-3 items-center">
                   <span
                     className="px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2"
@@ -159,7 +156,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
             {/* Conflictos */}
             {session.conflicts.length > 0 && (
-              <Section label="Conflictos">
+              <Section label="Lo que trajiste a sesión">
                 <div className="space-y-2">
                   {session.conflicts.map((c) => (
                     <div
@@ -201,7 +198,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
             {/* Recuerdos */}
             {session.memories.length > 0 && (
-              <Section label="Recuerdos">
+              <Section label="Recuerdos que exploraste">
                 <div className="space-y-3">
                   {session.memories.map((m) => (
                     <div
@@ -247,7 +244,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
             {/* Interpretacion */}
             {session.interpretation && (
-              <Section label="Interpretación clínica">
+              <Section label="Lo que la IA encontró en ti">
                 <div
                   className="p-5 rounded-xl space-y-3"
                   style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
@@ -257,7 +254,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   </p>
                   {session.interpretation.resonatedAt && (
                     <p className="text-xs" style={{ color: 'var(--color-terracotta)', fontFamily: 'var(--font-mono)' }}>
-                      ♥ El paciente marcó que esto le resonó
+                      ♥ Marcaste que esto te resonó
                     </p>
                   )}
                 </div>
@@ -266,7 +263,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
             {/* Cierre */}
             {session.closure && (
-              <Section label="Cierre simbólico">
+              <Section label="Tu cierre">
                 <div
                   className="p-5 rounded-xl"
                   style={{
@@ -284,7 +281,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
             {/* Preguntas de reflexion */}
             {session.reflectionQuestions && session.reflectionQuestions.length > 0 && (
-              <Section label="Preguntas de reflexión">
+              <Section label="Para llevar contigo">
                 <div className="space-y-3">
                   {session.reflectionQuestions.map((q, i) => (
                     <p

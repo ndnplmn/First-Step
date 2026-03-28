@@ -50,10 +50,10 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
 
   const countLabel =
     patients.length === 0
-      ? 'Aún no hay expedientes'
+      ? 'Aún no has iniciado ningún proceso'
       : patients.length === 1
-      ? '1 en proceso'
-      : `${patients.length} en proceso`;
+      ? '1 proceso'
+      : `${patients.length} procesos`;
 
   return (
     <div className="min-h-screen">
@@ -86,7 +86,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
             style={{ background: 'var(--color-sage)' }}
           >
             <Plus size={16} />
-            Nuevo paciente
+            Nuevo proceso
           </motion.button>
         </div>
       </header>
@@ -103,7 +103,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
               color: 'var(--color-deep)',
             }}
           >
-            Expedientes
+            Mis sesiones
           </h1>
           <p
             className="mt-1"
@@ -130,7 +130,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                 key={patient.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`Abrir sesión de ${patient.name}`}
+                aria-label={`Continuar proceso de ${patient.name}`}
                 onClick={() => onSelect(patient)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -184,7 +184,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                     <ChapterProgress currentStage={stage} />
                     <motion.button
                       type="button"
-                      aria-label={`Ver expediente de ${patient.name}`}
+                      aria-label={`Ver resumen del proceso de ${patient.name}`}
                       onClick={(e) => { e.stopPropagation(); onViewRecord(patient); }}
                       whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
                       whileTap={shouldReduce ? {} : { scale: 0.95 }}
@@ -192,7 +192,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                       style={{ color: 'var(--color-muted)' }}
                     >
                       <Eye size={14} />
-                      <span>Expediente</span>
+                      <span>Mi resumen</span>
                     </motion.button>
                   </div>
                 </div>
@@ -216,7 +216,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
               />
             </svg>
             <div className="text-center space-y-3">
-              <p style={{ color: 'var(--color-muted)' }}>Aún no hay expedientes</p>
+              <p style={{ color: 'var(--color-muted)' }}>Aún no has iniciado ningún proceso</p>
               <motion.button
                 type="button"
                 onClick={onNew}
@@ -224,7 +224,7 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                 className="text-sm font-medium"
                 style={{ color: 'var(--color-sage)' }}
               >
-                Crear el primero →
+                Comenzar ahora →
               </motion.button>
             </div>
           </div>
