@@ -1,5 +1,9 @@
 export type Gender = 'Femenino' | 'Masculino' | 'Otro';
 
+export type MaritalStatus = 'Soltero/a' | 'En pareja' | 'Casado/a' | 'Divorciado/a' | 'Viudo/a' | 'Separado/a';
+export type LivingSituation = 'Solo/a' | 'Con pareja' | 'Con familia' | 'Con compañeros' | 'Con padres' | 'Otro';
+export type EmploymentStatus = 'Empleado/a' | 'Desempleado/a' | 'Estudiante' | 'Independiente' | 'Jubilado/a' | 'Otro';
+
 export type TheoryKey =
   | 'psychoanalytic'
   | 'cbt'
@@ -24,6 +28,20 @@ export type Patient = {
   name: string;
   age: number;
   gender: Gender;
+  maritalStatus: MaritalStatus;
+  hasChildren: boolean;
+  childrenCount?: number;
+  livingSituation: LivingSituation;
+  livingSituationDetail?: string;
+  employment: EmploymentStatus;
+  occupation?: string;
+  hasSupportNetwork: boolean;
+  supportDescription?: string;
+  previousTherapy: boolean;
+  previousTherapyDetail?: string;
+  takingMedication: boolean;
+  medicationDetail?: string;
+  consultationReason: string;
   createdAt: number;
 };
 
@@ -79,6 +97,11 @@ export type UnmappedPhrase = {
   sessionNumber: number;
 };
 
+export type LifeChanges = {
+  categories: string[];
+  detail?: string;
+};
+
 export type PatientSession = {
   id: string;
   patientId: string;
@@ -91,6 +114,7 @@ export type PatientSession = {
   closure: Closure | null;
   unmappedPhrases: UnmappedPhrase[];
   reflectionQuestions?: string[];
+  lifeChanges?: LifeChanges;
   createdAt: number;
   updatedAt: number;
 };
@@ -99,5 +123,6 @@ export type AppView =
   | 'WELCOME'
   | 'DASHBOARD'
   | 'INTAKE'
+  | 'CHECK_IN'
   | 'SESSION'
   | 'RECORD';
