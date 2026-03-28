@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { PatientSession, Interpretation } from '@/lib/types';
+import type { Patient, PatientSession, Interpretation } from '@/lib/types';
 import { generateInterpretation } from '@/actions/ai';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
@@ -18,11 +18,12 @@ const THINKING_PHRASES = [
 
 interface StageInterpretationProps {
   session: PatientSession;
+  patient: Patient;
   onAdvance: (interpretation: Interpretation) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
-export function StageInterpretation({ session, onAdvance, onUpdate }: StageInterpretationProps) {
+export function StageInterpretation({ session, patient, onAdvance, onUpdate }: StageInterpretationProps) {
   const [fullInterpretation, setFullInterpretation] = useState<Interpretation | null>(
     session.interpretation ?? null
   );
@@ -58,6 +59,8 @@ export function StageInterpretation({ session, onAdvance, onUpdate }: StageInter
         conflicts: session.conflicts,
         theoryMatch: session.theoryMatch!,
         memories: session.memories,
+        patient,
+        lifeChanges: session.lifeChanges,
       });
       setFullInterpretation(result);
       onUpdate({ interpretation: result });

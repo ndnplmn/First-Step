@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { PatientSession, Conflict, TheoryMatch } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, TheoryMatch } from '@/lib/types';
 import { synthesizeConflicts, getNextTherapistQuestion } from '@/actions/ai';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
@@ -42,6 +42,7 @@ type Message = { role: MessageRole; text: string };
 
 interface StageConflictsProps {
   session: PatientSession;
+  patient: Patient;
   onAdvance: (conflicts: Conflict[], theoryMatch: TheoryMatch, unmapped: string[]) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
@@ -82,7 +83,7 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
   );
 }
 
-export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsProps) {
+export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
   const hasExistingData = session.conflicts.length > 0 && session.theoryMatch;
 
@@ -137,6 +138,8 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
       const { done, question } = await getNextTherapistQuestion({
         allInputs: patientInputs,
         questionsAsked,
+        patient,
+        lifeChanges: session.lifeChanges,
       });
 
       if (done || !question || questionsAsked.length >= MAX_QUESTIONS) {
@@ -170,6 +173,8 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
       const { done, question } = await getNextTherapistQuestion({
         allInputs: patientInputs,
         questionsAsked,
+        patient,
+        lifeChanges: session.lifeChanges,
       });
       if (done || !question) {
         goToAnalysis(patientInputs);
@@ -190,7 +195,7 @@ export function StageConflicts({ session, onAdvance, onUpdate }: StageConflictsP
     setIsAnalyzing(true);
     setError('');
     try {
-      const data = await synthesizeConflicts(inputs);
+      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges);
       setResult(data);
       onUpdate({ conflicts: data.conflicts, theoryMatch: data.theoryMatch });
     } catch {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { PatientSession, Memory } from '@/lib/types';
+import type { Patient, PatientSession, Memory } from '@/lib/types';
 import { extractMemoryKeywords } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
@@ -10,6 +10,7 @@ import { generateId } from '@/lib/id';
 
 interface StageMemoriesProps {
   session: PatientSession;
+  patient: Patient;
   onAdvance: (memories: Memory[], unmapped: string[]) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
@@ -23,7 +24,7 @@ const FORM_QUESTIONS: { field: keyof MemoryForm; label: string; placeholder: str
   { field: 'feelingNow', label: '¿Cómo te sientes ahora al recordarlo?', placeholder: 'Describe lo que sientes al contarlo hoy...' },
 ];
 
-export function StageMemories({ session, onAdvance, onUpdate }: StageMemoriesProps) {
+export function StageMemories({ session, patient: _patient, onAdvance, onUpdate }: StageMemoriesProps) {
   const shouldReduce = useReducedMotion();
   const [memories, setMemories] = useState<Memory[]>(session.memories);
   const [form, setForm] = useState<MemoryForm>(EMPTY_FORM);

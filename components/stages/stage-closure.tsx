@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { PatientSession, Closure, Strategy } from '@/lib/types';
+import type { Patient, PatientSession, Closure, Strategy } from '@/lib/types';
 import { generateClosure, generateReflectionQuestions, generateStrategies } from '@/actions/ai';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
@@ -20,11 +20,12 @@ type ClosureAction = 'dashboard' | 'record' | 'new-session';
 
 interface StageClosureProps {
   session: PatientSession;
+  patient: Patient;
   onComplete: (action: ClosureAction) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
-export function StageClosure({ session, onComplete, onUpdate }: StageClosureProps) {
+export function StageClosure({ session, patient, onComplete, onUpdate }: StageClosureProps) {
   const [fullClosure, setFullClosure] = useState<Closure | null>(session.closure ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -71,6 +72,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
         theoryMatch: session.theoryMatch!,
         memories: session.memories,
         interpretation: session.interpretation!.text,
+        patient,
       });
       setFullClosure(result);
       onUpdate({ closure: result });
@@ -86,6 +88,7 @@ export function StageClosure({ session, onComplete, onUpdate }: StageClosureProp
           conflicts: session.conflicts,
           theoryMatch: session.theoryMatch!,
           interpretation: session.interpretation!.text,
+          patient,
         }),
       ]);
       setReflectionQuestions(questions);

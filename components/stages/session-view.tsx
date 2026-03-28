@@ -67,6 +67,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
         {session.stage === 2 && (
           <StageConflicts
             session={session}
+            patient={patient}
             onAdvance={(conflicts: Conflict[], theoryMatch: TheoryMatch, unmapped: string[]) =>
               advanceStage({
                 conflicts,
@@ -84,6 +85,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
         {session.stage === 3 && (
           <StageMemories
             session={session}
+            patient={patient}
             onAdvance={(memories: Memory[], newUnmapped: string[]) =>
               advanceStage({
                 memories,
@@ -103,6 +105,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
         {session.stage === 4 && (
           <StageInterpretation
             session={session}
+            patient={patient}
             onAdvance={(interpretation: Interpretation) => advanceStage({ interpretation })}
             onUpdate={updateSession}
           />
@@ -111,6 +114,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
         {session.stage === 5 && (
           <StageClosure
             session={session}
+            patient={patient}
             onComplete={onComplete}
             onUpdate={updateSession}
           />
