@@ -6,6 +6,7 @@ import { Dashboard } from '@/components/stages/dashboard';
 import { Intake } from '@/components/stages/intake';
 import { SessionView } from '@/components/stages/session-view';
 import { PatientRecord } from '@/components/stages/patient-record';
+import { CheckIn } from '@/components/stages/check-in';
 import { storage } from '@/lib/storage';
 import { generateId } from '@/lib/id';
 import type { Patient, PatientSession, AppView } from '@/lib/types';
@@ -51,7 +52,7 @@ export default function Home() {
       const newSession = createNewSession(patient);
       storage.saveSession(newSession);
       setActiveSession(newSession);
-      setView('SESSION');
+      setView(newSession.sessionNumber > 1 ? 'CHECK_IN' : 'SESSION');
     }
   };
 
@@ -68,6 +69,12 @@ export default function Home() {
     setPatients(storage.getPatients());
     setActivePatient(patient);
     setActiveSession(session);
+    setView('SESSION');
+  };
+
+  const handleCheckInComplete = (updatedSession: PatientSession) => {
+    storage.saveSession(updatedSession);
+    setActiveSession(updatedSession);
     setView('SESSION');
   };
 
@@ -117,6 +124,16 @@ export default function Home() {
       <Intake
         onComplete={handleIntakeComplete}
         onBack={() => setView('WELCOME')}
+      />
+    );
+  }
+
+  if (view === 'CHECK_IN' && activePatient && activeSession) {
+    return (
+      <CheckIn
+        patient={activePatient}
+        session={activeSession}
+        onComplete={handleCheckInComplete}
       />
     );
   }
