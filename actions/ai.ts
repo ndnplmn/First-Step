@@ -1,8 +1,8 @@
 'use server';
 
 import Groq from 'groq-sdk';
-import { THEORIES_DICTIONARY } from '@/lib/theories';
-import { Patient, Conflict, Memory, TheoryMatch, Interpretation, Closure, LifeChanges } from '@/lib/types';
+import { FRAMEWORKS_DICTIONARY, SITUATION_MAPPING, GESTALT_ACTIVITIES } from '@/lib/theories';
+import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -46,41 +46,60 @@ function handleAIError(error: unknown): never {
   throw new Error('El servicio de IA no está disponible en este momento.');
 }
 
-// --- ACTION 1: Sintetizar conflictos y mapear a teoria ---
+function formatFrameworks(matches: FrameworkMatch[]): string {
+  return matches.map(m => `${m.role === 'primary' ? 'Marco primario' : m.role === 'secondary' ? 'Marco secundario' : 'Marco Gestalt'}: ${m.name} — ${m.focus}`).join('\n');
+}
+
+// --- ACTION 1: Sintetizar conflictos y mapear a combinacion de marcos terapeuticos ---
 export async function synthesizeConflicts(
   rawConflicts: string[],
   patient: Patient,
   lifeChanges?: LifeChanges
-): Promise<{ conflicts: Conflict[]; theoryMatch: TheoryMatch; unmapped: string[] }> {
+): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity; unmapped: string[] }> {
   const prompt = `
-    Analiza los siguientes motivos de consulta de un paciente.
+    Analiza los siguientes motivos de consulta de un paciente y mapéalos a una COMBINACIÓN de marcos terapéuticos.
 
     Motivos: ${rawConflicts.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
     Contexto del paciente:
     ${buildPatientContext(patient, lifeChanges)}
 
-    Diccionario de Teorias Terapeuticas:
-    ${THEORIES_DICTIONARY}
+    Diccionario de Marcos Terapéuticos:
+    ${FRAMEWORKS_DICTIONARY}
+
+    Mapeo de Situaciones a Marcos:
+    ${SITUATION_MAPPING}
+
+    Catálogo de Actividades Gestalt:
+    ${GESTALT_ACTIVITIES}
 
     Para cada motivo:
-    1. Sintetizalo en 2-3 palabras descriptivas (ej: "Rebeldia con autoridad")
-    2. Identifica la teoria y subcategoria que mejor encaja
+    1. Sintetízalo en 2-3 palabras descriptivas (ej: "Rebeldía con autoridad")
+    2. Identifica el marco terapéutico (frameworkKey) y subcategoría que mejor encaja
 
     Luego:
-    3. Determina la teoria DOMINANTE del caso
-    4. Lista cualquier frase que NO encaje en ninguna teoria
+    3. Determina la COMBINACIÓN de 3 marcos para el caso:
+       - primary: el marco principal que guía la intervención
+       - secondary: un marco complementario que enriquece
+       - gestalt: SIEMPRE Terapia Gestalt como tercer marco de profundización
+    4. Selecciona una actividad Gestalt concreta del catálogo, con tipo, título, descripción y prompt de facilitación personalizado al caso
+    5. Lista cualquier frase que NO encaje en ningún marco
 
     Responde SOLO con un objeto JSON con esta estructura exacta:
     {
       "conflicts": [
-        { "raw": "...", "synthesized": "...", "theoryKey": "psychoanalytic|psychodynamic|cbt|dbt|act|gestalt|systemic|humanistic|existential|attachment|narrative|solutionfocused|interpersonal|emotionallyfocused|transpersonal|adlerian|logotherapy", "subCategory": "..." }
+        { "raw": "...", "synthesized": "...", "frameworkKey": "tcc|tg3|dbt|apego_trauma|psicodinamico|integrativo|gestalt", "subCategory": "..." }
       ],
-      "dominantTheory": {
-        "key": "psychoanalytic|psychodynamic|cbt|dbt|act|gestalt|systemic|humanistic|existential|attachment|narrative|solutionfocused|interpersonal|emotionallyfocused|transpersonal|adlerian|logotherapy",
-        "name": "...",
-        "subCategory": "...",
-        "confidence": 0.0
+      "frameworkMatches": [
+        { "key": "tcc|tg3|dbt|apego_trauma|psicodinamico|integrativo|gestalt", "role": "primary", "name": "...", "focus": "...", "confidence": 0.0 },
+        { "key": "tcc|tg3|dbt|apego_trauma|psicodinamico|integrativo|gestalt", "role": "secondary", "name": "...", "focus": "...", "confidence": 0.0 },
+        { "key": "gestalt", "role": "gestalt", "name": "Terapia Gestalt", "focus": "...", "confidence": 1.0 }
+      ],
+      "gestaltActivity": {
+        "type": "silla_vacia|polaridades|awareness_corporal|experimento|dialogo_interno",
+        "title": "...",
+        "description": "...",
+        "prompt": "..."
       },
       "unmapped": ["..."]
     }
@@ -107,7 +126,8 @@ export async function synthesizeConflicts(
 
   return {
     conflicts,
-    theoryMatch: parsed.dominantTheory as TheoryMatch,
+    frameworkMatches: parsed.frameworkMatches as FrameworkMatch[],
+    gestaltActivity: parsed.gestaltActivity as GestaltActivity,
     unmapped: parsed.unmapped || [],
   };
 }
@@ -115,17 +135,18 @@ export async function synthesizeConflicts(
 // --- ACTION 2: Extraer keywords de un recuerdo ---
 export async function extractMemoryKeywords(
   memory: { raw: string; feelingThen: string; feelingNow: string },
-  theoryKey: string,
-  theorySubCategory: string
+  frameworks: string
 ): Promise<string[]> {
   const prompt = `
-    Un paciente ha descrito el siguiente recuerdo en el contexto de la teoria ${theoryKey} (${theorySubCategory}):
+    Un paciente ha descrito el siguiente recuerdo en el contexto de la siguiente combinación de marcos terapéuticos:
+
+    ${frameworks}
 
     Suceso: "${memory.raw}"
     Sentimiento entonces: "${memory.feelingThen}"
     Sentimiento ahora: "${memory.feelingNow}"
 
-    Extrae 3-5 palabras clave emocionales o tematicas del recuerdo que sean relevantes para esta teoria.
+    Extrae 3-5 palabras clave emocionales o temáticas del recuerdo que sean relevantes para esta combinación de marcos.
 
     Responde SOLO con un objeto JSON: { "keywords": ["palabra1", "palabra2", ...] }
   `;
@@ -150,23 +171,24 @@ export async function extractMemoryKeywords(
 // --- ACTION 3: Generar interpretacion clinica ---
 export async function generateInterpretation(params: {
   conflicts: Conflict[];
-  theoryMatch: TheoryMatch;
+  frameworkMatches: FrameworkMatch[];
   memories: Memory[];
   patient: Patient;
   lifeChanges?: LifeChanges;
 }): Promise<Interpretation> {
-  const { conflicts, theoryMatch, memories } = params;
+  const { conflicts, frameworkMatches, memories } = params;
 
   const prompt = `
-    Eres un psicoterapeuta magistral con profundo conocimiento de la ${theoryMatch.name}.
+    Eres un psicoterapeuta magistral que integra múltiples marcos terapéuticos.
 
-    Teoria base: ${theoryMatch.name} — ${theoryMatch.subCategory}
+    Combinación de marcos para este caso:
+    ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
     ${buildPatientContext(params.patient, params.lifeChanges)}
 
     Conflictos del paciente:
-    ${conflicts.map(c => `- ${c.synthesized}`).join('\n')}
+    ${conflicts.map(c => `- ${c.synthesized} (${c.frameworkKey}: ${c.subCategory})`).join('\n')}
 
     Recuerdos del paciente:
     ${memories.map(m => `
@@ -176,12 +198,19 @@ export async function generateInterpretation(params: {
     Palabras clave: ${m.keywords.join(', ')}
     `).join('\n---\n')}
 
-    Genera una interpretacion clinica profunda y reveladora.
-    - Dirigete directamente al paciente (segunda persona "tu")
-    - Conecta sus recuerdos con su conflicto actual basandote en la teoria
-    - Usa lenguaje accesible, no tecnico
-    - Minimo 3 parrafos, maximo 5
-    - Se empatico, no juzgues
+    Genera una interpretación clínica profunda y reveladora que integre los tres marcos.
+    Sigue esta secuencia clínica (Fase 2 — Procesamiento Emocional):
+    1. Conecta los recuerdos con los conflictos actuales desde el marco primario
+    2. Enriquece la comprensión con la perspectiva del marco secundario
+    3. Señala cómo el awareness Gestalt (cuerpo, emociones, contacto) profundiza la comprensión
+
+    Reglas:
+    - Dirígete directamente al paciente (segunda persona "tú")
+    - Conecta sus recuerdos con su conflicto actual integrando las tres perspectivas
+    - Usa lenguaje accesible, no técnico
+    - Mínimo 3 párrafos, máximo 5
+    - Sé empático, no juzgues
+    - NO nombres las teorías por su nombre técnico — habla desde ellas, no sobre ellas
   `;
 
   let text: string;
@@ -202,39 +231,51 @@ export async function generateInterpretation(params: {
 // --- ACTION 4: Generar cierre simbolico ---
 export async function generateClosure(params: {
   conflicts: Conflict[];
-  theoryMatch: TheoryMatch;
+  frameworkMatches: FrameworkMatch[];
   memories: Memory[];
   interpretation: string;
+  gestaltActivity: GestaltActivity;
   patient: Patient;
 }): Promise<Closure> {
-  const { conflicts, theoryMatch, interpretation } = params;
+  const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
 
   const prompt = `
     Eres un psicoterapeuta magistral.
 
     El paciente tiene estos conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
-    Teoria: ${theoryMatch.name} — ${theoryMatch.subCategory}
+    Marcos terapéuticos:
+    ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
     ${buildPatientContext(params.patient)}
 
-    Se le ha dado esta interpretacion:
+    Se le ha dado esta interpretación:
     "${interpretation}"
 
-    Ahora genera un CIERRE SIMBOLICO. Es un texto de 2 partes separadas por una línea en blanco:
+    Actividad Gestalt preparada para el paciente:
+    Tipo: ${gestaltActivity.type}
+    Título: "${gestaltActivity.title}"
+    Descripción: "${gestaltActivity.description}"
+
+    Ahora genera un CIERRE SIMBÓLICO. Es un texto de 3 partes separadas por una línea en blanco:
 
     PARTE 1 (3-5 oraciones):
     1. Quite el peso de la culpa al paciente
-    2. Reencuadre la fantasia o sentimiento negativo como una necesidad humana comprensible
-    3. Le de una nueva perspectiva sanadora
-    4. Use lenguaje poetico, caloroso, directo al paciente ("tu")
+    2. Reencuadre la fantasía o sentimiento negativo como una necesidad humana comprensible
+    3. Le dé una nueva perspectiva sanadora
+    4. Use lenguaje poético, cálido, directo al paciente ("tú")
 
     PARTE 2 (2-3 oraciones):
+    - Prepara al paciente para la actividad Gestalt que viene
+    - Menciónala de forma natural y cálida, como una invitación a explorar más profundo
+    - Conecta la actividad con lo que se ha trabajado en la sesión
+
+    PARTE 3 (2-3 oraciones):
     - Hazle saber con calidez que este es apenas el primer paso de un proceso
     - Que cada sesión que continúe va a profundizar más en su historia y permitirá llegar a conclusiones más precisas sobre su conflicto
     - Que el autoconocimiento es un camino que se recorre poco a poco, y que volver es parte de cuidarse
 
-    NO expliques teorias. Solo habla al corazon del paciente.
+    NO expliques teorías. Solo habla al corazón del paciente.
   `;
 
   let text: string;
@@ -255,25 +296,28 @@ export async function generateClosure(params: {
 // --- ACTION 5: Generar preguntas de reflexion ---
 export async function generateReflectionQuestions(params: {
   conflicts: Conflict[];
-  theoryMatch: TheoryMatch;
+  frameworkMatches: FrameworkMatch[];
   closure: string;
 }): Promise<string[]> {
-  const { conflicts, theoryMatch, closure } = params;
+  const { conflicts, frameworkMatches, closure } = params;
 
   const prompt = `
-    Eres un psicoterapeuta que acaba de completar una sesion con un paciente.
+    Eres un psicoterapeuta que acaba de completar una sesión con un paciente.
 
-    El paciente trabajó con la teoria ${theoryMatch.name} (${theoryMatch.subCategory}).
+    El paciente trabajó con esta combinación de marcos:
+    ${formatFrameworks(frameworkMatches)}
+
     Sus conflictos principales fueron: ${conflicts.map(c => c.synthesized).join(', ')}.
-    El cierre simbolico que recibio fue:
+    El cierre simbólico que recibió fue:
     "${closure}"
 
-    Genera exactamente 3 preguntas de reflexion profunda y personalizada para que el paciente
-    lleve consigo despues de la sesion. Las preguntas deben:
-    - Surgir directamente de sus conflictos y teoria especifica
-    - Invitar a la contemplacion sin requerir respuesta inmediata
-    - Usar segunda persona singular ("¿Que sientes cuando...", "¿En que momentos...")
-    - Ser abiertas, no retorias ni con respuesta obvia
+    Genera exactamente 3 preguntas de reflexión profunda y personalizada para que el paciente
+    lleve consigo después de la sesión. Las preguntas deben:
+    - Surgir directamente de sus conflictos y la combinación de marcos
+    - Al menos una pregunta debe invitar al awareness corporal o emocional (perspectiva Gestalt)
+    - Invitar a la contemplación sin requerir respuesta inmediata
+    - Usar segunda persona singular ("¿Qué sientes cuando...", "¿En qué momentos...")
+    - Ser abiertas, no retóricas ni con respuesta obvia
     - Tener entre 10 y 25 palabras cada una
 
     Responde SOLO con un objeto JSON: { "questions": ["...", "...", "..."] }
@@ -296,17 +340,21 @@ export async function generateReflectionQuestions(params: {
   return Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : [];
 }
 
-// --- ACTION 6: Generar estrategias prácticas para el día a día ---
+// --- ACTION 6: Generar estrategias practicas para el dia a dia ---
 export async function generateStrategies(params: {
   conflicts: Conflict[];
-  theoryMatch: TheoryMatch;
+  frameworkMatches: FrameworkMatch[];
   interpretation: string;
+  gestaltActivity: GestaltActivity;
   patient: Patient;
 }): Promise<{ title: string; description: string }[]> {
-  const { conflicts, theoryMatch, interpretation } = params;
+  const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
 
   const prompt = `
-    Eres un psicoterapeuta experto en ${theoryMatch.name} (${theoryMatch.subCategory}).
+    Eres un psicoterapeuta experto que integra múltiples marcos terapéuticos.
+
+    Marcos del caso:
+    ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
     ${buildPatientContext(params.patient)}
@@ -316,9 +364,16 @@ export async function generateStrategies(params: {
     Se le ha dado esta interpretación:
     "${interpretation}"
 
+    Actividad Gestalt del caso:
+    Tipo: ${gestaltActivity.type}
+    Título: "${gestaltActivity.title}"
+    Descripción: "${gestaltActivity.description}"
+
     Genera exactamente 3 ESTRATEGIAS PRÁCTICAS que el paciente pueda aplicar en su vida diaria para confrontar su problema. Las estrategias deben:
+    - Derivar de la COMBINACIÓN de los tres marcos (primario, secundario y Gestalt)
+    - Al menos una estrategia debe estar relacionada con la actividad Gestalt o el awareness corporal/emocional
     - Ser concretas, realizables y específicas (no genéricas como "medita" o "haz ejercicio")
-    - Estar fundamentadas en la teoría ${theoryMatch.name} pero explicadas en lenguaje cotidiano
+    - Estar fundamentadas en los marcos pero explicadas en lenguaje cotidiano
     - Incluir un título corto (3-5 palabras) y una descripción práctica (2-3 oraciones max)
     - Ser acciones que pueda empezar hoy mismo, sin necesidad de un terapeuta presente
     - Dirigirse al paciente en segunda persona ("cuando sientas...", "intenta...")
@@ -366,10 +421,10 @@ export async function getNextTherapistQuestion(params: {
     Contexto del paciente:
     ${buildPatientContext(params.patient, params.lifeChanges)}
 
-    Para formular una buena interpretación clínica necesitas conocer:
-    A) La emoción central detrás del conflicto (¿qué siente el paciente?)
-    B) El impacto en su vida cotidiana (¿cómo le afecta?)
-    C) La historia o contexto del conflicto (¿desde cuándo? ¿con quién?)
+    Para formular una buena interpretación clínica necesitas explorar la siguiente secuencia clínica:
+    A) Regulación: ¿Qué siente el paciente ahora? ¿Cómo afecta su cuerpo? (sensaciones, tensión, malestar físico)
+    B) Procesamiento emocional: ¿Qué emociones hay debajo? ¿Desde cuándo las siente? ¿Con quién se conectan?
+    C) Cambio cognitivo-conductual: ¿Cómo impacta su vida cotidiana? ¿Qué ha intentado hacer al respecto?
 
     Analiza si ya tienes suficiente información sobre estos tres aspectos para poder formular una interpretación clínica profunda y personalizada.
 
