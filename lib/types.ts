@@ -4,24 +4,33 @@ export type MaritalStatus = 'Soltero/a' | 'En pareja' | 'Casado/a' | 'Divorciado
 export type LivingSituation = 'Solo/a' | 'Con pareja' | 'Con familia' | 'Con compañeros' | 'Con padres' | 'Otro';
 export type EmploymentStatus = 'Empleado/a' | 'Desempleado/a' | 'Estudiante' | 'Independiente' | 'Jubilado/a' | 'Otro';
 
-export type TheoryKey =
-  | 'psychoanalytic'
-  | 'cbt'
-  | 'gestalt'
-  | 'systemic'
-  | 'humanistic'
-  | 'existential'
-  | 'attachment'
+export type FrameworkKey =
+  | 'tcc'
+  | 'tg3'
   | 'dbt'
-  | 'act'
-  | 'narrative'
-  | 'solutionfocused'
-  | 'psychodynamic'
-  | 'interpersonal'
-  | 'emotionallyfocused'
-  | 'transpersonal'
-  | 'adlerian'
-  | 'logotherapy';
+  | 'apego_trauma'
+  | 'psicodinamico'
+  | 'integrativo'
+  | 'gestalt';
+
+export type FrameworkRole = 'primary' | 'secondary' | 'gestalt';
+
+export type FrameworkMatch = {
+  key: FrameworkKey;
+  role: FrameworkRole;
+  name: string;
+  focus: string;
+  confidence: number;
+};
+
+export type GestaltActivityType = 'silla_vacia' | 'polaridades' | 'awareness_corporal' | 'experimento' | 'dialogo_interno';
+
+export type GestaltActivity = {
+  type: GestaltActivityType;
+  title: string;
+  description: string;
+  prompt: string;
+};
 
 export type Patient = {
   id: string;          // formato: #2026-NNNN
@@ -49,7 +58,7 @@ export type Conflict = {
   id: string;
   raw: string;           // texto libre del paciente
   synthesized: string;   // 2-3 palabras sintetizadas por IA
-  theoryKey: TheoryKey;
+  frameworkKey: FrameworkKey;
   subCategory: string;   // ej: "etapa anal", "distorsion cognitiva"
 };
 
@@ -61,13 +70,6 @@ export type Memory = {
   feelingNow: string;
   keywords: string[];    // extraidos por IA
   sessionNumber: number;
-};
-
-export type TheoryMatch = {
-  key: TheoryKey;
-  name: string;
-  subCategory: string;
-  confidence: number;    // 0-1
 };
 
 export type GroundingSource = {
@@ -108,7 +110,8 @@ export type PatientSession = {
   sessionNumber: number;
   stage: 1 | 2 | 3 | 4 | 5;
   conflicts: Conflict[];
-  theoryMatch: TheoryMatch | null;
+  frameworkMatches: FrameworkMatch[];
+  gestaltActivity: GestaltActivity | null;
   memories: Memory[];
   interpretation: Interpretation | null;
   closure: Closure | null;
