@@ -69,9 +69,10 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
     try {
       const result = await generateClosure({
         conflicts: session.conflicts,
-        theoryMatch: session.theoryMatch!,
+        frameworkMatches: session.frameworkMatches,
         memories: session.memories,
         interpretation: session.interpretation!.text,
+        gestaltActivity: session.gestaltActivity!,
         patient,
       });
       setFullClosure(result);
@@ -81,13 +82,14 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
       const [questions, strats] = await Promise.all([
         generateReflectionQuestions({
           conflicts: session.conflicts,
-          theoryMatch: session.theoryMatch!,
+          frameworkMatches: session.frameworkMatches,
           closure: result.text,
         }),
         generateStrategies({
           conflicts: session.conflicts,
-          theoryMatch: session.theoryMatch!,
+          frameworkMatches: session.frameworkMatches,
           interpretation: session.interpretation!.text,
+          gestaltActivity: session.gestaltActivity!,
           patient,
         }),
       ]);
@@ -112,7 +114,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
     <div className="space-y-8 pb-48">
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Capítulo 5 — Cierre
+          Fase 3 — Cambio cognitivo-conductual
         </p>
         <h2
           className="leading-tight breathe"
@@ -201,6 +203,40 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
                   {q}
                 </motion.p>
               ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Actividad Gestalt experiencial */}
+      <AnimatePresence>
+        {showReady && session.gestaltActivity && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.0 }}
+            className="rounded-2xl p-6 space-y-4"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-violet)' }}
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)' }}
+            >
+              Actividad experiencial
+            </p>
+            <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+              {session.gestaltActivity.title}
+            </p>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+              {session.gestaltActivity.description}
+            </p>
+            <div
+              className="rounded-xl p-4"
+              style={{ background: 'var(--color-violet-light)' }}
+            >
+              <p className="text-sm italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+                {session.gestaltActivity.prompt}
+              </p>
             </div>
           </motion.div>
         )}

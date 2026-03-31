@@ -57,7 +57,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
     try {
       const result = await generateInterpretation({
         conflicts: session.conflicts,
-        theoryMatch: session.theoryMatch!,
+        frameworkMatches: session.frameworkMatches,
         memories: session.memories,
         patient,
         lifeChanges: session.lifeChanges,
@@ -90,7 +90,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
     <div className="space-y-8 pb-48">
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Capítulo 4 — Comprensión
+          Fase 2 — Procesamiento emocional
         </p>
         <h2
           className="leading-tight breathe"

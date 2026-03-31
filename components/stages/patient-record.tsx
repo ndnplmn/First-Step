@@ -3,13 +3,22 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
-import { ArrowLeft, Brain, Clock, User } from '@phosphor-icons/react';
+import { ArrowLeft, Clock, User } from '@phosphor-icons/react';
 
-const THEORY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  psychoanalytic: { bg: 'var(--color-violet-light)', text: 'var(--color-violet)', label: 'Psicoanalítica' },
-  cbt: { bg: 'var(--color-sage-light)', text: 'var(--color-sage)', label: 'Cognitivo-Conductual' },
-  gestalt: { bg: 'rgba(193,127,89,0.12)', text: 'var(--color-terracotta)', label: 'Gestalt' },
-  systemic: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)', label: 'Sistémica Familiar' },
+const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
+  tcc: { bg: 'var(--color-sage-light)', text: 'var(--color-sage)' },
+  tg3: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
+  dbt: { bg: 'rgba(196,163,90,0.12)', text: 'var(--color-terracotta)' },
+  apego_trauma: { bg: 'var(--color-violet-light)', text: 'var(--color-violet)' },
+  psicodinamico: { bg: 'rgba(122,110,158,0.12)', text: 'var(--color-violet)' },
+  integrativo: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
+  gestalt: { bg: 'rgba(193,127,89,0.12)', text: 'var(--color-terracotta)' },
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  primary: 'Principal',
+  secondary: 'Apoyo',
+  gestalt: 'Gestalt',
 };
 
 function formatDate(timestamp: number): string {
@@ -47,7 +56,8 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
   const [activeSessionIdx, setActiveSessionIdx] = useState(sessions.length > 0 ? sessions.length - 1 : 0);
   const session = sessions[activeSessionIdx];
 
-  const theory = session?.theoryMatch ? THEORY_COLORS[session.theoryMatch.key] : null;
+  const primaryFramework = session?.frameworkMatches?.find(m => m.role === 'primary');
+  const primaryColor = primaryFramework ? FRAMEWORK_COLORS[primaryFramework.key] : null;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-base)' }}>
@@ -130,26 +140,29 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
         {session && (
           <div className="space-y-6">
-            {/* Teoria dominante */}
-            {session.theoryMatch && theory && (
-              <Section label="Tu patrón predominante">
-                <div className="flex flex-wrap gap-3 items-center">
-                  <span
-                    className="px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2"
-                    style={{ background: theory.bg, color: theory.text }}
-                  >
-                    <Brain size={14} />
-                    {theory.label}
-                  </span>
-                  <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                    {session.theoryMatch.subCategory}
-                  </span>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full"
-                    style={{ background: 'var(--color-surface)', color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
-                  >
-                    {Math.round(session.theoryMatch.confidence * 100)}% confianza
-                  </span>
+            {/* Marcos terapéuticos */}
+            {session.frameworkMatches.length > 0 && (
+              <Section label="Combinación de marcos terapéuticos">
+                <div className="space-y-2">
+                  {session.frameworkMatches.map((fm) => {
+                    const color = FRAMEWORK_COLORS[fm.key] ?? { bg: 'var(--color-surface)', text: 'var(--color-muted)' };
+                    return (
+                      <div key={fm.key} className="flex flex-wrap gap-2 items-center">
+                        <span
+                          className="px-3 py-1.5 rounded-full text-xs font-medium"
+                          style={{ background: color.bg, color: color.text }}
+                        >
+                          {ROLE_LABELS[fm.role] ?? fm.role}
+                        </span>
+                        <span className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                          {fm.name}
+                        </span>
+                        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                          {fm.focus}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </Section>
             )}
@@ -170,7 +183,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                       <p className="text-xs mt-1" style={{ color: 'var(--color-muted)', fontStyle: 'italic' }}>
                         "{c.raw}"
                       </p>
-                      <p className="text-xs mt-1" style={{ color: theory?.text ?? 'var(--color-muted)' }}>
+                      <p className="text-xs mt-1" style={{ color: FRAMEWORK_COLORS[c.frameworkKey]?.text ?? 'var(--color-muted)' }}>
                         {c.subCategory}
                       </p>
                     </div>
@@ -229,7 +242,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                             <span
                               key={i}
                               className="text-xs px-2 py-0.5 rounded-full"
-                              style={{ background: theory?.bg ?? 'var(--color-sage-light)', color: theory?.text ?? 'var(--color-sage)' }}
+                              style={{ background: primaryColor?.bg ?? 'var(--color-sage-light)', color: primaryColor?.text ?? 'var(--color-sage)' }}
                             >
                               {kw}
                             </span>
@@ -257,6 +270,28 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                       ♥ Marcaste que esto te resonó
                     </p>
                   )}
+                </div>
+              </Section>
+            )}
+
+            {/* Actividad Gestalt */}
+            {session.gestaltActivity && (
+              <Section label="Actividad experiencial">
+                <div
+                  className="p-5 rounded-xl space-y-3"
+                  style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-violet)' }}
+                >
+                  <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                    {session.gestaltActivity.title}
+                  </p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                    {session.gestaltActivity.description}
+                  </p>
+                  <div className="rounded-xl p-3" style={{ background: 'var(--color-violet-light)' }}>
+                    <p className="text-sm italic" style={{ color: 'var(--color-deep)' }}>
+                      {session.gestaltActivity.prompt}
+                    </p>
+                  </div>
                 </div>
               </Section>
             )}

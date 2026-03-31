@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Patient, PatientSession, Conflict, TheoryMatch, Memory, Interpretation, UnmappedPhrase } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase } from '@/lib/types';
 import { SessionHeader } from '@/components/ui/session-header';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { StageConflicts } from './stage-conflicts';
@@ -68,10 +68,11 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
           <StageConflicts
             session={session}
             patient={patient}
-            onAdvance={(conflicts: Conflict[], theoryMatch: TheoryMatch, unmapped: string[]) =>
+            onAdvance={(conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity, unmapped: string[]) =>
               advanceStage({
                 conflicts,
-                theoryMatch,
+                frameworkMatches,
+                gestaltActivity,
                 unmappedPhrases: unmapped.map((text: string): UnmappedPhrase => ({
                   text,
                   sessionNumber: session.sessionNumber,

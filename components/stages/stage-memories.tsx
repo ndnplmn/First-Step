@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { Patient, PatientSession, Memory } from '@/lib/types';
+import type { Patient, PatientSession, Memory, FrameworkMatch } from '@/lib/types';
 import { extractMemoryKeywords } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
@@ -24,6 +24,10 @@ const FORM_QUESTIONS: { field: keyof MemoryForm; label: string; placeholder: str
   { field: 'feelingNow', label: '¿Cómo te sientes ahora al recordarlo?', placeholder: 'Describe lo que sientes al contarlo hoy...' },
 ];
 
+function formatFrameworks(matches: FrameworkMatch[]): string {
+  return matches.map(m => `${m.role === 'primary' ? 'Marco primario' : m.role === 'secondary' ? 'Marco secundario' : 'Marco Gestalt'}: ${m.name} — ${m.focus}`).join('\n');
+}
+
 export function StageMemories({ session, patient: _patient, onAdvance, onUpdate }: StageMemoriesProps) {
   const shouldReduce = useReducedMotion();
   const [memories, setMemories] = useState<Memory[]>(session.memories);
@@ -31,6 +35,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
   const [formStep, setFormStep] = useState(0);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isFormActive, setIsFormActive] = useState(session.memories.length === 0);
+  const [groundingDone, setGroundingDone] = useState(session.memories.length > 0);
 
   const currentQ = FORM_QUESTIONS[formStep];
 
@@ -42,11 +47,8 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
     if (!form.raw.trim()) return;
     setIsExtracting(true);
     try {
-      const keywords = await extractMemoryKeywords(
-        form,
-        session.theoryMatch?.key || 'psychoanalytic',
-        session.theoryMatch?.subCategory || ''
-      );
+      const frameworksStr = formatFrameworks(session.frameworkMatches);
+      const keywords = await extractMemoryKeywords(form, frameworksStr);
       const memory: Memory = {
         id: generateId(),
         raw: form.raw,
@@ -72,21 +74,53 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
 
   return (
     <div className="space-y-8 pb-48">
-      {/* Header */}
+      {/* Header — Fase 1: Regulación y seguridad */}
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Capítulo 3 — Recuerdos
+          Fase 1 — Regulación y seguridad
         </p>
-        <h2 className="text-[40px] leading-tight breathe" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
-          Viaja a tus recuerdos
+        <h2
+          className="leading-tight breathe"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(36px, 6vw, 56px)',
+            color: 'var(--color-deep)',
+          }}
+        >
+          Un espacio seguro para recordar
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Los recuerdos conectan lo que sientes hoy con lo que viviste antes. Eso es lo que vamos a explorar.
+          Antes de explorar tus recuerdos, vamos a crear un espacio de calma. Respira, date permiso para ir a tu ritmo.
         </p>
       </div>
 
+      {/* Elemento de contención / grounding */}
+      {!groundingDone && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="rounded-2xl p-6 space-y-4"
+          style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+        >
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+            Tómate un momento. Siente el contacto de tus pies con el suelo, nota tu respiración. No hay prisa.
+            Cuando te sientas listo/a, vamos a explorar juntos un recuerdo que conecte con lo que estás viviendo.
+          </p>
+          <motion.button
+            type="button"
+            onClick={() => setGroundingDone(true)}
+            whileTap={shouldReduce ? {} : { scale: 0.97 }}
+            className="px-5 py-2.5 rounded-xl text-sm font-medium text-white"
+            style={{ background: 'var(--color-sage)' }}
+          >
+            Estoy listo/a
+          </motion.button>
+        </motion.div>
+      )}
+
       {/* Puente: chips de conflictos de la etapa anterior */}
-      {session.conflicts.length > 0 && (
+      {groundingDone && session.conflicts.length > 0 && (
         <motion.div
           initial={shouldReduce ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -110,7 +144,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
 
       {/* Recuerdos guardados */}
       <AnimatePresence>
-        {memories.map(m => (
+        {groundingDone && memories.map(m => (
           <motion.div
             key={m.id}
             initial={{ opacity: 0, y: 8 }}
@@ -150,7 +184,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
       </AnimatePresence>
 
       {/* Botón para añadir otro recuerdo si ya hay alguno */}
-      {memories.length > 0 && !isFormActive && (
+      {groundingDone && memories.length > 0 && !isFormActive && (
         <motion.button
           type="button"
           initial={shouldReduce ? false : { opacity: 0 }}
@@ -165,7 +199,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
 
       {/* Formulario de recuerdo */}
       <AnimatePresence>
-        {isFormActive && (
+        {groundingDone && isFormActive && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -211,7 +245,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
         )}
       </AnimatePresence>
 
-      <FloatingBar visible={true}>
+      <FloatingBar visible={groundingDone}>
         <div className="space-y-3">
           {isFormActive && (
             <motion.button
