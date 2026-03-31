@@ -2,31 +2,21 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { Patient, PatientSession, Conflict, TheoryMatch } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity } from '@/lib/types';
 import { synthesizeConflicts, getNextTherapistQuestion } from '@/actions/ai';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowRight } from '@phosphor-icons/react';
 
-const THEORY_NAMES: Record<string, string> = {
-  psychoanalytic: 'Psicoanalítica',
-  psychodynamic: 'Psicodinámica',
-  cbt: 'Cognitivo-Conductual',
+const FRAMEWORK_NAMES: Record<string, string> = {
+  tcc: 'Cognitivo-Conductual',
+  tg3: 'Tercera Generación (ACT/Mindfulness)',
   dbt: 'Dialéctico-Conductual',
-  act: 'Aceptación y Compromiso',
-  gestalt: 'Gestáltica',
-  systemic: 'Sistémica Familiar',
-  humanistic: 'Humanista',
-  existential: 'Existencial',
-  attachment: 'Teoría del Apego',
-  narrative: 'Narrativa',
-  solutionfocused: 'Centrada en Soluciones',
-  interpersonal: 'Interpersonal',
-  emotionallyfocused: 'Focalizada en Emociones',
-  transpersonal: 'Transpersonal',
-  adlerian: 'Psicología Individual (Adler)',
-  logotherapy: 'Logoterapia',
+  apego_trauma: 'Apego y Trauma',
+  psicodinamico: 'Psicodinámico',
+  integrativo: 'Integrativo Mente-Cuerpo',
+  gestalt: 'Gestalt',
 };
 
 const STARTER_PROMPTS = [
@@ -43,7 +33,7 @@ type Message = { role: MessageRole; text: string };
 interface StageConflictsProps {
   session: PatientSession;
   patient: Patient;
-  onAdvance: (conflicts: Conflict[], theoryMatch: TheoryMatch, unmapped: string[]) => void;
+  onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity, unmapped: string[]) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
@@ -85,7 +75,7 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
 
 export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
-  const hasExistingData = session.conflicts.length > 0 && session.theoryMatch;
+  const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
 
   // ─── Estado conversacional ────────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>([]);
@@ -100,11 +90,12 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   const [error, setError] = useState('');
   const [result, setResult] = useState<{
     conflicts: Conflict[];
-    theoryMatch: TheoryMatch;
+    frameworkMatches: FrameworkMatch[];
+    gestaltActivity: GestaltActivity;
     unmapped: string[];
   } | null>(
     hasExistingData
-      ? { conflicts: session.conflicts, theoryMatch: session.theoryMatch!, unmapped: session.unmappedPhrases.map(u => u.text) }
+      ? { conflicts: session.conflicts, frameworkMatches: session.frameworkMatches, gestaltActivity: session.gestaltActivity!, unmapped: session.unmappedPhrases.map(u => u.text) }
       : null
   );
 
@@ -197,7 +188,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     try {
       const data = await synthesizeConflicts(inputs, patient, session.lifeChanges);
       setResult(data);
-      onUpdate({ conflicts: data.conflicts, theoryMatch: data.theoryMatch });
+      onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity });
     } catch {
       setError('Hubo un problema al analizar. Intenta de nuevo.');
     } finally {
@@ -367,13 +358,30 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                         </span>
                       ))}
                     </div>
-                    <div className="pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
-                      <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                        Tu proceso se va a enfocar en:
-                      </p>
-                      <p className="font-medium mt-1" style={{ color: 'var(--color-deep)' }}>
-                        {THEORY_NAMES[result.theoryMatch.key]} — {result.theoryMatch.subCategory}
-                      </p>
+                    <div className="pt-3 border-t space-y-2" style={{ borderColor: 'var(--color-border)' }}>
+                      <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Tu proceso combinará estos enfoques:</p>
+                      {result.frameworkMatches.map((fm, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{
+                              background: fm.role === 'primary' ? 'var(--color-sage)' : fm.role === 'gestalt' ? 'var(--color-terracotta)' : 'var(--color-violet)',
+                              color: 'white'
+                            }}>
+                            {fm.role === 'primary' ? 'Principal' : fm.role === 'secondary' ? 'Apoyo' : 'Gestalt'}
+                          </span>
+                          <span className="text-sm" style={{ color: 'var(--color-deep)' }}>
+                            {FRAMEWORK_NAMES[fm.key] || fm.name}
+                          </span>
+                          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>— {fm.focus}</span>
+                        </div>
+                      ))}
+                      {result.gestaltActivity && (
+                        <div className="mt-2 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                          <p className="text-xs font-medium" style={{ color: 'var(--color-terracotta)' }}>
+                            Actividad Gestalt: {result.gestaltActivity.title}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </AICard>
@@ -419,7 +427,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                 Re-analizar
               </motion.button>
               <motion.button type="button"
-                onClick={() => onAdvance(result.conflicts, result.theoryMatch, result.unmapped)}
+                onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmapped)}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 className="w-full py-3.5 rounded-xl font-medium text-white"
                 style={{ background: 'var(--color-sage)' }}>
