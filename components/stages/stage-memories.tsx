@@ -100,7 +100,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
           initial={shouldReduce ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="rounded-2xl p-6 space-y-4"
+          className="rounded-[var(--radius-card)] p-6 space-y-4"
           style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
@@ -111,8 +111,8 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
             type="button"
             onClick={() => setGroundingDone(true)}
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            className="px-5 py-2.5 rounded-xl text-sm font-medium text-white"
-            style={{ background: 'var(--color-sage)' }}
+            className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
+            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
           >
             Estoy listo/a
           </motion.button>
@@ -149,7 +149,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
             key={m.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl p-5 space-y-3"
+            className="rounded-[var(--radius-card)] p-5 space-y-3"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p className="italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>&ldquo;{m.raw}&rdquo;</p>
@@ -232,7 +232,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
                   placeholder={currentQ.placeholder}
                   rows={4}
                   autoFocus
-                  className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 transition-all"
+                  className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
                   onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
                   onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
@@ -253,8 +253,8 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
               onClick={handleFormNext}
               disabled={!canProceed || isExtracting}
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              className="w-full py-3.5 rounded-xl font-medium text-white disabled:opacity-40"
-              style={{ background: 'var(--color-sage)' }}
+              className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-40 tracking-wide"
+              style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
             >
               {formStep < 2 ? 'Siguiente' : isExtracting ? 'Guardando...' : 'Guardar recuerdo'}
             </motion.button>
@@ -265,8 +265,8 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
                 type="button"
                 onClick={() => onAdvance(memories, [])}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                className="w-full py-3.5 rounded-xl font-medium text-white"
-                style={{ background: isFormActive ? 'transparent' : 'var(--color-sage)', color: isFormActive ? 'var(--color-sage)' : 'white', border: isFormActive ? '1px solid var(--color-sage)' : 'none' }}
+                className="w-full py-4 rounded-2xl font-semibold tracking-wide"
+                style={{ background: isFormActive ? 'transparent' : 'var(--color-sage)', color: isFormActive ? 'var(--color-sage)' : 'white', border: isFormActive ? '1px solid var(--color-sage)' : 'none', boxShadow: isFormActive ? 'none' : 'var(--shadow-glow-sage)' }}
               >
                 Continuar a interpretación ({memories.length} {memories.length === 1 ? 'recuerdo' : 'recuerdos'}) →
               </motion.button>

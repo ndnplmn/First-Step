@@ -19,7 +19,7 @@ export function ChapterProgress({ currentStage }: ChapterProgressProps) {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {STAGES.map((stage) => {
           const isDone = stage.number < currentStage;
           const isActive = stage.number === currentStage;
@@ -27,23 +27,25 @@ export function ChapterProgress({ currentStage }: ChapterProgressProps) {
           return (
             <motion.div
               key={stage.number}
-              className="h-[3px] rounded-full"
+              className="rounded-full"
               style={{
-                width: 28,
+                width: isActive ? 32 : 24,
+                height: 3,
                 background: isDone
                   ? 'var(--color-deep)'
                   : isActive
                   ? 'var(--color-sage)'
-                  : 'var(--color-border)',
+                  : 'var(--color-border-strong)',
+                transition: 'width 0.3s ease, background 0.3s ease',
               }}
               animate={
                 isActive && !shouldReduce
-                  ? { opacity: [1, 0.6, 1] }
+                  ? { opacity: [1, 0.5, 1] }
                   : { opacity: 1 }
               }
               transition={
                 isActive
-                  ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+                  ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
                   : { duration: 0 }
               }
               layout
@@ -56,8 +58,8 @@ export function ChapterProgress({ currentStage }: ChapterProgressProps) {
         key={currentStage}
         initial={{ opacity: 0, x: 4 }}
         animate={{ opacity: 1, x: 0 }}
-        className="text-xs"
-        style={{ fontFamily: 'var(--font-sans)', color: 'var(--color-muted)' }}
+        className="text-[11px] font-medium tracking-wide"
+        style={{ fontFamily: 'var(--font-sans)', color: 'var(--color-muted-soft)' }}
       >
         {STAGES[currentStage - 1].name}
       </motion.span>

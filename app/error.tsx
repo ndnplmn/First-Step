@@ -16,7 +16,7 @@ export default function Error({
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-6"
+      className="min-h-dvh flex flex-col items-center justify-center px-6"
       style={{ background: 'var(--color-base)' }}
     >
       <div className="max-w-[400px] text-center space-y-4">
@@ -37,8 +37,8 @@ export default function Error({
           type="button"
           onClick={reset}
           whileTap={{ scale: 0.97 }}
-          className="mt-4 px-6 py-3 rounded-xl text-white text-sm font-medium"
-          style={{ background: 'var(--color-sage)' }}
+          className="mt-4 px-6 py-3.5 rounded-2xl text-white text-sm font-semibold"
+          style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
         >
           Intentar de nuevo
         </motion.button>

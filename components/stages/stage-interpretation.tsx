@@ -114,7 +114,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
             initial={shouldReduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, transition: { duration: 0.4 } }}
-            className="rounded-2xl p-6 text-center space-y-2"
+            className="rounded-[var(--radius-card)] p-6 text-center space-y-2"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
@@ -131,7 +131,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
 
       {isError && !isGenerating && (
         <div
-          className="rounded-2xl p-5 text-center space-y-3"
+          className="rounded-[var(--radius-card)] p-5 text-center space-y-3"
           style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -249,8 +249,8 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
           type="button"
           onClick={() => onAdvance(fullInterpretation!)}
           whileTap={shouldReduce ? {} : { scale: 0.97 }}
-          className="w-full py-3.5 rounded-xl font-medium text-white"
-          style={{ background: 'var(--color-sage)' }}
+          className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
+          style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
         >
           Continuar al cierre →
         </motion.button>

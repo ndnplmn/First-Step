@@ -11,10 +11,10 @@ import { StageInterpretation } from './stage-interpretation';
 import { StageClosure } from './stage-closure';
 
 const STAGE_GRADIENTS: Record<number, string> = {
-  2: 'radial-gradient(ellipse 100% 55% at 50% 0%, rgba(107,94,82,0.09), transparent)',
-  3: 'radial-gradient(ellipse 100% 55% at 50% 0%, rgba(122,110,158,0.09), transparent)',
-  4: 'radial-gradient(ellipse 100% 55% at 50% 0%, rgba(74,103,65,0.09), transparent)',
-  5: 'radial-gradient(ellipse 100% 55% at 50% 0%, rgba(196,163,90,0.09), transparent)',
+  2: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(44,39,30,0.06), transparent)',
+  3: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(107,94,158,0.06), transparent)',
+  4: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(61,107,71,0.06), transparent)',
+  5: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(180,110,69,0.06), transparent)',
 };
 
 interface SessionViewProps {
@@ -55,7 +55,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-dvh flex flex-col"
       style={{
         background: STAGE_GRADIENTS[session.stage] ?? 'none',
         transition: 'background 0.8s ease',

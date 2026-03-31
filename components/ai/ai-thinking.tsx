@@ -28,17 +28,20 @@ export function AIThinking({ phrases = DEFAULT_PHRASES }: AIThinkingProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
-      className="flex items-center gap-4 py-2"
+      className="flex items-center gap-4 py-3"
     >
       <motion.div
-        className="w-10 h-10 rounded-full flex-shrink-0"
-        style={{ background: 'var(--color-sage)' }}
+        className="w-10 h-10 rounded-2xl flex-shrink-0"
+        style={{
+          background: 'linear-gradient(135deg, var(--color-sage), var(--color-sage))',
+          boxShadow: 'var(--shadow-glow-sage)',
+        }}
         animate={
           shouldReduce
             ? { opacity: 0.7 }
-            : { scale: [1, 1.1, 1], opacity: [0.55, 0.85, 0.55] }
+            : { scale: [1, 1.08, 1], opacity: [0.6, 0.9, 0.6] }
         }
-        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
       />
 
       <AnimatePresence mode="wait">

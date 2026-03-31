@@ -90,11 +90,11 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
                   : { duration: 0.35, delay: 0.15 + i * 0.05, ease: 'easeOut' }
               }
               whileTap={shouldReduce ? {} : { scale: 0.96 }}
-              className="rounded-xl px-4 py-2.5 text-sm font-medium transition-colors"
+              className="rounded-[var(--radius-inner)] px-4 py-2.5 text-sm font-medium transition-colors"
               style={{
                 background: isSelected ? 'var(--color-sage)' : 'var(--color-surface)',
                 color: isSelected ? 'white' : 'var(--color-deep)',
-                boxShadow: isSelected ? 'none' : 'var(--shadow-card)',
+                boxShadow: isSelected ? 'var(--shadow-glow-sage)' : 'var(--shadow-card)',
               }}
             >
               {option}
@@ -128,7 +128,7 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
               onChange={e => setDetail(e.target.value)}
               placeholder="Es opcional, pero puede ayudarme a entenderte mejor..."
               rows={4}
-              className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 transition-all"
+              className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
               onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
               onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
@@ -145,8 +145,8 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
             onClick={handleContinue}
             disabled={selected.length === 0}
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            className="w-full py-3.5 rounded-xl font-medium text-white disabled:opacity-40"
-            style={{ background: 'var(--color-sage)' }}
+            className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-40 tracking-wide"
+            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
           >
             Continuar →
           </motion.button>

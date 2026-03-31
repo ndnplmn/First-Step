@@ -250,7 +250,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
             exit={{ opacity: 0, transition: { duration: 0.15 } }}>
             {STARTER_PROMPTS.map(p => (
               <button key={p} type="button" onClick={() => setInput(p)}
-                className="px-3 py-1.5 rounded-full text-sm transition-all"
+                className="px-3.5 py-2 rounded-full text-sm transition-all"
                 style={{ background: 'var(--color-surface)', color: 'var(--color-muted)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--color-border)' }}>
                 {p}
               </button>
@@ -272,7 +272,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                 className={`flex ${msg.role === 'patient' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className="max-w-[85%] px-4 py-3 rounded-2xl"
+                  className="max-w-[85%] px-4 py-3.5 rounded-[18px]"
                   style={msg.role === 'patient' ? {
                     background: 'var(--color-sage)',
                     color: 'white',
@@ -322,7 +322,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
               placeholder={hasStarted ? 'Escribe tu respuesta aquí…' : 'Escribe lo que sientes, lo que te pasa…'}
               rows={hasStarted ? 3 : 4}
               autoFocus
-              className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 transition-all"
+              className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
               onFocus={e => (e.target.style.borderColor = isConversing ? 'var(--color-terracotta)' : 'var(--color-sage)')}
               onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
@@ -403,8 +403,8 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                 onClick={() => handleSend(input)}
                 disabled={input.trim().length < 5}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                className="w-full py-3.5 rounded-xl font-medium text-white disabled:opacity-40 flex items-center justify-center gap-2"
-                style={{ background: 'var(--color-sage)' }}>
+                className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 tracking-wide"
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
                 {hasStarted ? <>Responder <ArrowRight size={16} /></> : 'Compartir →'}
               </motion.button>
               {lastMessageIsTherapist && (
@@ -429,8 +429,8 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
               <motion.button type="button"
                 onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmapped)}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                className="w-full py-3.5 rounded-xl font-medium text-white"
-                style={{ background: 'var(--color-sage)' }}>
+                className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
                 Continuar a recuerdos →
               </motion.button>
             </>

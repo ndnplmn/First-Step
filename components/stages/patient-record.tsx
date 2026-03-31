@@ -60,13 +60,14 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
   const primaryColor = primaryFramework ? FRAMEWORK_COLORS[primaryFramework.key] : null;
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-base)' }}>
+    <div className="min-h-dvh" style={{ background: 'var(--color-base)' }}>
       {/* Sticky header */}
       <header
         className="sticky top-0 z-40 px-6 py-4 flex items-center gap-4"
         style={{
-          background: 'var(--color-glass)',
-          backdropFilter: 'blur(12px)',
+          background: 'var(--color-glass-heavy)',
+          backdropFilter: 'blur(24px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
           borderBottom: '1px solid var(--color-border)',
         }}
       >
@@ -174,7 +175,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   {session.conflicts.map((c) => (
                     <div
                       key={c.id}
-                      className="p-4 rounded-xl"
+                      className="p-4 rounded-[var(--radius-inner)]"
                       style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
                     >
                       <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
@@ -192,7 +193,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   {/* Frases sin mapear */}
                   {session.unmappedPhrases.length > 0 && (
                     <div
-                      className="p-4 rounded-xl"
+                      className="p-4 rounded-[var(--radius-inner)]"
                       style={{ border: '1px dashed var(--color-border)' }}
                     >
                       <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
@@ -216,7 +217,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   {session.memories.map((m) => (
                     <div
                       key={m.id}
-                      className="p-4 rounded-xl space-y-3"
+                      className="p-4 rounded-[var(--radius-inner)] space-y-3"
                       style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
                     >
                       <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
@@ -259,7 +260,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
             {session.interpretation && (
               <Section label="Lo que la IA encontró en ti">
                 <div
-                  className="p-5 rounded-xl space-y-3"
+                  className="p-5 rounded-[var(--radius-inner)] space-y-3"
                   style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--color-deep)' }}>
@@ -278,7 +279,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
             {session.gestaltActivity && (
               <Section label="Actividad experiencial">
                 <div
-                  className="p-5 rounded-xl space-y-3"
+                  className="p-5 rounded-[var(--radius-inner)] space-y-3"
                   style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-violet)' }}
                 >
                   <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
@@ -287,7 +288,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
                     {session.gestaltActivity.description}
                   </p>
-                  <div className="rounded-xl p-3" style={{ background: 'var(--color-violet-light)' }}>
+                  <div className="rounded-[var(--radius-inner)] p-3" style={{ background: 'var(--color-violet-light)' }}>
                     <p className="text-sm italic" style={{ color: 'var(--color-deep)' }}>
                       {session.gestaltActivity.prompt}
                     </p>
@@ -300,7 +301,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
             {session.closure && (
               <Section label="Tu cierre">
                 <div
-                  className="p-5 rounded-xl"
+                  className="p-5 rounded-[var(--radius-inner)]"
                   style={{
                     background: 'var(--color-surface)',
                     boxShadow: 'var(--shadow-card)',

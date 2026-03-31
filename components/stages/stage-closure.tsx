@@ -135,7 +135,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
 
       {isError && !isGenerating && (
         <div
-          className="rounded-2xl p-5 text-center space-y-3"
+          className="rounded-[var(--radius-card)] p-5 text-center space-y-3"
           style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
@@ -178,7 +178,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.8 }}
-            className="rounded-2xl p-6 space-y-4"
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p
@@ -215,7 +215,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.0 }}
-            className="rounded-2xl p-6 space-y-4"
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-violet)' }}
           >
             <p
@@ -231,7 +231,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
               {session.gestaltActivity.description}
             </p>
             <div
-              className="rounded-xl p-4"
+              className="rounded-[var(--radius-inner)] p-4"
               style={{ background: 'var(--color-violet-light)' }}
             >
               <p className="text-sm italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>
@@ -249,7 +249,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.2 }}
-            className="rounded-2xl p-6 space-y-4"
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p
@@ -303,7 +303,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
               onClick={() => onComplete('record')}
               whileHover={shouldReduce ? {} : { y: -2 }}
               whileTap={shouldReduce ? {} : { scale: 0.98 }}
-              className="w-full flex items-center gap-4 p-5 rounded-2xl text-left"
+              className="w-full flex items-center gap-4 p-5 rounded-[var(--radius-card)] text-left"
               style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
             >
               <div
@@ -328,7 +328,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
               onClick={() => onComplete('new-session')}
               whileHover={shouldReduce ? {} : { y: -2 }}
               whileTap={shouldReduce ? {} : { scale: 0.98 }}
-              className="w-full flex items-center gap-4 p-5 rounded-2xl text-left"
+              className="w-full flex items-center gap-4 p-5 rounded-[var(--radius-card)] text-left"
               style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
             >
               <div

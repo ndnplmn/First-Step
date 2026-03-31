@@ -56,13 +56,14 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
       : `${patients.length} procesos`;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh">
       {/* Sticky glass header */}
       <header
         className="sticky top-0 z-40 border-b"
         style={{
-          background: 'var(--color-glass)',
-          backdropFilter: 'blur(20px)',
+          background: 'var(--color-glass-heavy)',
+          backdropFilter: 'blur(24px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
           borderColor: 'var(--color-border)',
         }}
       >
@@ -82,8 +83,8 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
             type="button"
             onClick={onNew}
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white"
-            style={{ background: 'var(--color-sage)' }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
+            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
           >
             <Plus size={16} />
             Nuevo proceso
@@ -148,10 +149,11 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                 }}
                 whileHover={shouldReduce ? {} : { y: -2 }}
                 whileTap={shouldReduce ? {} : { scale: 0.99 }}
-                className="w-full p-5 rounded-2xl text-left cursor-pointer"
+                className="w-full p-5 rounded-[var(--radius-card)] text-left cursor-pointer"
                 style={{
                   background: 'var(--color-surface)',
                   boxShadow: 'var(--shadow-card)',
+                  transition: 'box-shadow 0.2s ease',
                 }}
               >
                 <div className="flex items-start justify-between gap-4">

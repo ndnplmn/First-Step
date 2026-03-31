@@ -125,12 +125,12 @@ function Chip({
       type="button"
       onClick={onClick}
       whileTap={reduce ? {} : { scale: 0.95 }}
-      className="px-4 py-2.5 rounded-xl text-sm font-medium"
+      className="px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-medium"
       style={{
         background: active ? 'var(--color-sage)' : 'var(--color-surface)',
         color: active ? 'white' : 'var(--color-deep)',
-        boxShadow: 'var(--shadow-card)',
-        transition: 'background 0.2s ease, color 0.2s ease',
+        boxShadow: active ? 'var(--shadow-glow-sage)' : 'var(--shadow-card)',
+        transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
       }}
     >
       {label}
@@ -178,7 +178,7 @@ function TextInput({
       placeholder={placeholder}
       min={min}
       max={max}
-      className="w-full bg-transparent outline-none py-3 text-lg placeholder:opacity-40 border-b-2"
+      className="w-full bg-transparent outline-none py-3.5 text-lg placeholder:opacity-35 border-b-2"
       style={{
         borderColor: 'var(--color-border)',
         color: 'var(--color-deep)',
@@ -205,7 +205,7 @@ function TextArea({
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       rows={3}
-      className="w-full bg-transparent outline-none resize-none p-4 rounded-xl border-2 text-base placeholder:opacity-40"
+      className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 text-base placeholder:opacity-35"
       style={{
         borderColor: 'var(--color-border)',
         color: 'var(--color-deep)',
@@ -344,7 +344,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="min-h-screen flex flex-col max-w-[680px] mx-auto px-6 pt-10 pb-48">
+    <div className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-10 pb-48">
       {/* Back button */}
       <motion.button
         type="button"
@@ -392,7 +392,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           return (
             <div
               key={i}
-              className="rounded-2xl overflow-hidden"
+              className="rounded-[var(--radius-card)] overflow-hidden"
               style={{
                 background: 'var(--color-surface)',
                 boxShadow: 'var(--shadow-card)',
@@ -459,8 +459,8 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           type="button"
           onClick={handleSubmit}
           whileTap={shouldReduce ? {} : { scale: 0.97 }}
-          className="w-full py-3.5 rounded-xl font-medium text-white"
-          style={{ background: 'var(--color-sage)' }}
+          className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
+          style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
         >
           Comenzar mi proceso
         </motion.button>

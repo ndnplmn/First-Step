@@ -16,30 +16,37 @@ export function AICard({ children, sources, actions }: AICardProps) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-      className="relative rounded-2xl p-5 border-l-[3px] border-[var(--color-sage)]"
+      transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+      className="relative rounded-[20px] p-6 border-l-[3px] border-[var(--color-sage)]"
       style={{
-        background: 'linear-gradient(135deg, var(--color-sage-light), var(--color-violet-light))',
+        background: 'linear-gradient(145deg, var(--color-sage-light) 0%, var(--color-violet-light) 100%)',
+        boxShadow: 'var(--shadow-card)',
       }}
     >
-      <div className="flex items-start gap-3">
-        <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-sage)] mt-2 flex-shrink-0" />
+      <div className="flex items-start gap-3.5">
+        <div
+          className="w-1.5 h-1.5 rounded-full mt-2.5 flex-shrink-0"
+          style={{ background: 'var(--color-sage)' }}
+        />
         <div className="flex-1 space-y-4">
-          <div className="text-[var(--color-deep)] leading-relaxed">
+          <div className="leading-relaxed" style={{ color: 'var(--color-deep)' }}>
             {children}
           </div>
 
           {sources && sources.length > 0 && (
-            <div className="pt-3 border-t border-[var(--color-border)]">
-              <p className="text-xs text-[var(--color-muted)] mb-2">Fuentes</p>
-              <div className="space-y-1">
+            <div className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+              <p className="text-[11px] font-medium tracking-wide mb-2.5" style={{ color: 'var(--color-muted-soft)' }}>
+                Fuentes
+              </p>
+              <div className="space-y-1.5">
                 {sources.map((source, i) => (
                   <a
                     key={i}
                     href={source.uri}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-[var(--color-sage)] hover:underline"
+                    className="flex items-center gap-1.5 text-xs font-medium hover:underline"
+                    style={{ color: 'var(--color-sage)' }}
                   >
                     <ArrowSquareOut size={12} />
                     {source.title}
@@ -50,7 +57,7 @@ export function AICard({ children, sources, actions }: AICardProps) {
           )}
 
           {actions && (
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-2.5 pt-1">
               {actions}
             </div>
           )}

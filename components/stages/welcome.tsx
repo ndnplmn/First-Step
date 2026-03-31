@@ -14,22 +14,23 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
 
   return (
     <div
-      className="min-h-screen max-w-[680px] mx-auto px-6 pt-[20vh] pb-12 relative"
+      className="min-h-dvh max-w-[680px] mx-auto px-6 pt-[22vh] pb-12 relative"
       style={{
-        background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(193,127,89,0.13), transparent)',
+        background: 'radial-gradient(ellipse 80% 45% at 50% -8%, rgba(180, 110, 69, 0.1), transparent)',
       }}
     >
       <motion.div
-        initial={shouldReduce ? false : { opacity: 0, y: 24 }}
+        initial={shouldReduce ? false : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={shouldReduce ? { duration: 0 } : { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        transition={shouldReduce ? { duration: 0 } : { duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
         <h1
-          className="leading-[0.92] breathe"
+          className="leading-[0.9] breathe"
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(64px, 14vw, 112px)',
+            fontSize: 'var(--text-display)',
             fontStyle: 'italic',
+            letterSpacing: '-0.02em',
           }}
         >
           <span style={{ color: 'var(--color-deep)' }}>First</span>
@@ -41,9 +42,12 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
       <motion.p
         initial={shouldReduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={shouldReduce ? { duration: 0 } : { duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-        className="mt-8 text-lg leading-relaxed max-w-[360px]"
-        style={{ color: 'var(--color-muted)' }}
+        transition={shouldReduce ? { duration: 0 } : { duration: 0.6, delay: 0.45, ease: 'easeOut' }}
+        className="mt-10 leading-relaxed max-w-[340px]"
+        style={{
+          color: 'var(--color-muted)',
+          fontSize: 'var(--text-body)',
+        }}
       >
         Tu primer paso hacia el autoconocimiento. Un espacio íntimo, guiado y tuyo.
       </motion.p>
@@ -53,8 +57,11 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
           type="button"
           onClick={onStart}
           whileTap={shouldReduce ? {} : { scale: 0.97 }}
-          className="w-full py-3.5 rounded-xl font-medium text-white"
-          style={{ background: 'var(--color-sage)' }}
+          className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
+          style={{
+            background: 'var(--color-sage)',
+            boxShadow: 'var(--shadow-glow-sage)',
+          }}
         >
           Comenzar sesión
         </motion.button>
@@ -64,11 +71,11 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
             type="button"
             onClick={onContinue}
             whileTap={shouldReduce ? {} : { scale: 0.98 }}
-            className="w-full py-3 rounded-xl font-medium text-sm"
+            className="w-full py-3.5 rounded-2xl font-medium text-sm"
             style={{
-              border: '1px solid var(--color-border)',
+              border: '1px solid var(--color-border-strong)',
               color: 'var(--color-muted)',
-              background: 'transparent',
+              background: 'var(--color-surface)',
             }}
           >
             Mis sesiones
