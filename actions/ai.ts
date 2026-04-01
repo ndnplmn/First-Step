@@ -55,7 +55,7 @@ export async function synthesizeConflicts(
   rawConflicts: string[],
   patient: Patient,
   lifeChanges?: LifeChanges
-): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity; unmapped: string[] }> {
+): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity; unmapped: string[]; narrativeSummary: string }> {
   const prompt = `
     Analiza los siguientes motivos de consulta de un paciente y mapéalos a una COMBINACIÓN de marcos terapéuticos.
 
@@ -84,6 +84,7 @@ export async function synthesizeConflicts(
        - gestalt: SIEMPRE Terapia Gestalt como tercer marco de profundización
     4. Selecciona una actividad Gestalt concreta del catálogo, con tipo, título, descripción y prompt de facilitación personalizado al caso
     5. Lista cualquier frase que NO encaje en ningún marco
+    6. Genera un "narrativeSummary": 2-3 oraciones en lenguaje cálido y accesible que describan el enfoque terapéutico SIN nombrar ninguna teoría ni marco. Habla directamente al paciente en segunda persona. Ejemplo: "Vamos a explorar cómo tus pensamientos influyen en lo que sientes, conectándolo con experiencias que te marcaron, y prestando atención a lo que tu cuerpo y emociones te dicen."
 
     Responde SOLO con un objeto JSON con esta estructura exacta:
     {
@@ -101,7 +102,8 @@ export async function synthesizeConflicts(
         "description": "...",
         "prompt": "..."
       },
-      "unmapped": ["..."]
+      "unmapped": ["..."],
+      "narrativeSummary": "..."
     }
   `;
 
@@ -129,6 +131,7 @@ export async function synthesizeConflicts(
     frameworkMatches: parsed.frameworkMatches as FrameworkMatch[],
     gestaltActivity: parsed.gestaltActivity as GestaltActivity,
     unmapped: parsed.unmapped || [],
+    narrativeSummary: parsed.narrativeSummary || '',
   };
 }
 
@@ -407,7 +410,7 @@ export async function getNextTherapistQuestion(params: {
   questionsAsked: string[];  // preguntas ya realizadas (evitar repetir)
   patient: Patient;
   lifeChanges?: LifeChanges;
-}): Promise<{ done: boolean; question: string | null }> {
+}): Promise<{ done: boolean; question: string | null; reflection: string | null }> {
   const { allInputs, questionsAsked } = params;
 
   const prompt = `
@@ -428,7 +431,7 @@ export async function getNextTherapistQuestion(params: {
 
     Analiza si ya tienes suficiente información sobre estos tres aspectos para poder formular una interpretación clínica profunda y personalizada.
 
-    Si ya tienes suficiente información (el paciente ya describió los tres aspectos con claridad): responde { "done": true, "question": null }
+    Si ya tienes suficiente información (el paciente ya describió los tres aspectos con claridad): responde { "done": true, "question": null, "reflection": null }
 
     Si aún te falta información importante: responde con la UNA pregunta más importante que necesitas hacer para completar tu comprensión. La pregunta debe:
     - Centrarse en el aspecto que más te falta (A, B o C)
@@ -437,7 +440,13 @@ export async function getNextTherapistQuestion(params: {
     - NO repetir lo que ya preguntaste
     - NO ser respondible con sí/no
 
-    Responde SOLO con un JSON: { "done": true/false, "question": "..." o null }
+    Además, incluye un "reflection": un micro-reflejo empático de 1-2 oraciones que valide lo que el paciente acaba de compartir ANTES de la pregunta. El reflejo debe:
+    - Reconocer la emoción o el esfuerzo del paciente
+    - Ser cálido y breve (máximo 2 oraciones)
+    - NO repetir lo que el paciente dijo literalmente
+    - Ejemplo: "Lo que describes suena realmente pesado. Gracias por confiarme algo así."
+
+    Responde SOLO con un JSON: { "done": true/false, "question": "..." o null, "reflection": "..." o null }
   `;
 
   let content: string;
@@ -448,7 +457,7 @@ export async function getNextTherapistQuestion(params: {
       response_format: { type: 'json_object' },
       temperature: 0.3,
     });
-    content = response.choices[0]?.message?.content || '{"done": true, "question": null}';
+    content = response.choices[0]?.message?.content || '{"done": true, "question": null, "reflection": null}';
   } catch (error) {
     handleAIError(error);
   }
@@ -457,5 +466,6 @@ export async function getNextTherapistQuestion(params: {
   return {
     done: parsed.done === true,
     question: typeof parsed.question === 'string' ? parsed.question : null,
+    reflection: typeof parsed.reflection === 'string' ? parsed.reflection : null,
   };
 }

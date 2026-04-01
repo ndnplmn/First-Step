@@ -15,12 +15,6 @@ const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
   gestalt: { bg: 'rgba(193,127,89,0.12)', text: 'var(--color-terracotta)' },
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  primary: 'Principal',
-  secondary: 'Apoyo',
-  gestalt: 'Gestalt',
-};
-
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString('es-ES', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -141,30 +135,12 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
         {session && (
           <div className="space-y-6">
-            {/* Marcos terapéuticos */}
-            {session.frameworkMatches.length > 0 && (
-              <Section label="Combinación de marcos terapéuticos">
-                <div className="space-y-2">
-                  {session.frameworkMatches.map((fm) => {
-                    const color = FRAMEWORK_COLORS[fm.key] ?? { bg: 'var(--color-surface)', text: 'var(--color-muted)' };
-                    return (
-                      <div key={fm.key} className="flex flex-wrap gap-2 items-center">
-                        <span
-                          className="px-3 py-1.5 rounded-full text-xs font-medium"
-                          style={{ background: color.bg, color: color.text }}
-                        >
-                          {ROLE_LABELS[fm.role] ?? fm.role}
-                        </span>
-                        <span className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                          {fm.name}
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          {fm.focus}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+            {/* Enfoque del proceso */}
+            {session.narrativeSummary && (
+              <Section label="Enfoque de tu proceso">
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+                  {session.narrativeSummary}
+                </p>
               </Section>
             )}
 

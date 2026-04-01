@@ -35,7 +35,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
   const [formStep, setFormStep] = useState(0);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isFormActive, setIsFormActive] = useState(session.memories.length === 0);
-  const [groundingDone, setGroundingDone] = useState(session.memories.length > 0);
+  const [showBreathing, setShowBreathing] = useState(false);
 
   const currentQ = FORM_QUESTIONS[formStep];
 
@@ -94,33 +94,71 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
         </p>
       </div>
 
-      {/* Elemento de contención / grounding */}
-      {!groundingDone && (
+      {/* Intro con ejercicio de respiración opcional */}
+      {memories.length === 0 && !isFormActive && (
         <motion.div
           initial={shouldReduce ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="rounded-[var(--radius-card)] p-6 space-y-4"
-          style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          className="space-y-4"
         >
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
-            Tómate un momento. Siente el contacto de tus pies con el suelo, nota tu respiración. No hay prisa.
-            Cuando te sientas listo/a, vamos a explorar juntos un recuerdo que conecte con lo que estás viviendo.
-          </p>
-          <motion.button
-            type="button"
-            onClick={() => setGroundingDone(true)}
-            whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
-            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+          <div
+            className="rounded-[var(--radius-card)] p-6 space-y-3"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
-            Estoy listo/a
-          </motion.button>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+              Ahora vamos a explorar un recuerdo que conecte con lo que estás viviendo. Ve a tu ritmo — no hay prisa.
+            </p>
+
+            <AnimatePresence>
+              {showBreathing && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-col items-center py-6 space-y-4">
+                    <motion.div
+                      className="w-16 h-16 rounded-full"
+                      style={{ background: 'var(--color-sage)', opacity: 0.3 }}
+                      animate={{ scale: [1, 1.4, 1.4, 1], opacity: [0.3, 0.5, 0.5, 0.3] }}
+                      transition={{ duration: 14, repeat: Infinity, times: [0, 0.286, 0.571, 1] }}
+                    />
+                    <p className="text-xs text-center" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+                      Inhala 4s · Sostén 4s · Exhala 6s
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex items-center gap-4">
+              <motion.button
+                type="button"
+                onClick={() => setIsFormActive(true)}
+                whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+              >
+                Continuar
+              </motion.button>
+              <button
+                type="button"
+                onClick={() => setShowBreathing(prev => !prev)}
+                className="text-sm"
+                style={{ color: 'var(--color-muted)' }}
+              >
+                {showBreathing ? 'Cerrar ejercicio' : 'Primero quiero respirar un momento'}
+              </button>
+            </div>
+          </div>
         </motion.div>
       )}
 
       {/* Puente: chips de conflictos de la etapa anterior */}
-      {groundingDone && session.conflicts.length > 0 && (
+      {session.conflicts.length > 0 && (
         <motion.div
           initial={shouldReduce ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -144,7 +182,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
 
       {/* Recuerdos guardados */}
       <AnimatePresence>
-        {groundingDone && memories.map(m => (
+        {memories.map(m => (
           <motion.div
             key={m.id}
             initial={{ opacity: 0, y: 8 }}
@@ -184,7 +222,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
       </AnimatePresence>
 
       {/* Botón para añadir otro recuerdo si ya hay alguno */}
-      {groundingDone && memories.length > 0 && !isFormActive && (
+      {memories.length > 0 && !isFormActive && (
         <motion.button
           type="button"
           initial={shouldReduce ? false : { opacity: 0 }}
@@ -199,7 +237,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
 
       {/* Formulario de recuerdo */}
       <AnimatePresence>
-        {groundingDone && isFormActive && (
+        {isFormActive && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -245,7 +283,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
         )}
       </AnimatePresence>
 
-      <FloatingBar visible={groundingDone}>
+      <FloatingBar visible>
         <div className="space-y-3">
           {isFormActive && (
             <motion.button

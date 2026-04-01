@@ -9,16 +9,6 @@ import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowRight } from '@phosphor-icons/react';
 
-const FRAMEWORK_NAMES: Record<string, string> = {
-  tcc: 'Cognitivo-Conductual',
-  tg3: 'Tercera Generación (ACT/Mindfulness)',
-  dbt: 'Dialéctico-Conductual',
-  apego_trauma: 'Apego y Trauma',
-  psicodinamico: 'Psicodinámico',
-  integrativo: 'Integrativo Mente-Cuerpo',
-  gestalt: 'Gestalt',
-};
-
 const STARTER_PROMPTS = [
   'Algo con mi familia me preocupa',
   'El trabajo me está agobiando mucho',
@@ -28,12 +18,12 @@ const STARTER_PROMPTS = [
 const MAX_QUESTIONS = 4;
 
 type MessageRole = 'patient' | 'therapist';
-type Message = { role: MessageRole; text: string };
+type Message = { role: MessageRole; text: string; isReflection?: boolean };
 
 interface StageConflictsProps {
   session: PatientSession;
   patient: Patient;
-  onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity, unmapped: string[]) => void;
+  onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity, unmapped: string[], narrativeSummary: string) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
@@ -93,9 +83,10 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     frameworkMatches: FrameworkMatch[];
     gestaltActivity: GestaltActivity;
     unmapped: string[];
+    narrativeSummary: string;
   } | null>(
     hasExistingData
-      ? { conflicts: session.conflicts, frameworkMatches: session.frameworkMatches, gestaltActivity: session.gestaltActivity!, unmapped: session.unmappedPhrases.map(u => u.text) }
+      ? { conflicts: session.conflicts, frameworkMatches: session.frameworkMatches, gestaltActivity: session.gestaltActivity!, unmapped: session.unmappedPhrases.map(u => u.text), narrativeSummary: session.narrativeSummary ?? '' }
       : null
   );
 
@@ -126,7 +117,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     // Evaluar si la IA necesita más info
     setIsEvaluating(true);
     try {
-      const { done, question } = await getNextTherapistQuestion({
+      const { done, question, reflection } = await getNextTherapistQuestion({
         allInputs: patientInputs,
         questionsAsked,
         patient,
@@ -136,7 +127,12 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
       if (done || !question || questionsAsked.length >= MAX_QUESTIONS) {
         goToAnalysis(patientInputs);
       } else {
-        setMessages(prev => [...prev, { role: 'therapist', text: question }]);
+        const newMsgs: Message[] = [];
+        if (reflection) {
+          newMsgs.push({ role: 'therapist', text: reflection, isReflection: true });
+        }
+        newMsgs.push({ role: 'therapist', text: question });
+        setMessages(prev => [...prev, ...newMsgs]);
         setQuestionsAsked(prev => [...prev, question]);
       }
     } catch {
@@ -161,7 +157,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
 
     setIsEvaluating(true);
     try {
-      const { done, question } = await getNextTherapistQuestion({
+      const { done, question, reflection } = await getNextTherapistQuestion({
         allInputs: patientInputs,
         questionsAsked,
         patient,
@@ -170,7 +166,12 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
       if (done || !question) {
         goToAnalysis(patientInputs);
       } else {
-        setMessages(prev => [...prev, { role: 'therapist', text: question }]);
+        const newMsgs: Message[] = [];
+        if (reflection) {
+          newMsgs.push({ role: 'therapist', text: reflection, isReflection: true });
+        }
+        newMsgs.push({ role: 'therapist', text: question });
+        setMessages(prev => [...prev, ...newMsgs]);
         setQuestionsAsked(prev => [...prev, question]);
       }
     } catch {
@@ -188,7 +189,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     try {
       const data = await synthesizeConflicts(inputs, patient, session.lifeChanges);
       setResult(data);
-      onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity });
+      onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
     } catch {
       setError('Hubo un problema al analizar. Intenta de nuevo.');
     } finally {
@@ -285,7 +286,10 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                   }}
                 >
                   <p className="leading-relaxed text-[15px]"
-                    style={msg.role === 'therapist' ? { fontFamily: 'var(--font-display)' } : {}}>
+                    style={{
+                      ...(msg.role === 'therapist' ? { fontFamily: 'var(--font-display)' } : {}),
+                      ...(msg.isReflection ? { fontStyle: 'italic', color: 'var(--color-muted)' } : {}),
+                    }}>
                     {msg.text}
                   </p>
                 </div>
@@ -358,31 +362,13 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                         </span>
                       ))}
                     </div>
-                    <div className="pt-3 border-t space-y-2" style={{ borderColor: 'var(--color-border)' }}>
-                      <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Tu proceso combinará estos enfoques:</p>
-                      {result.frameworkMatches.map((fm, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{
-                              background: fm.role === 'primary' ? 'var(--color-sage)' : fm.role === 'gestalt' ? 'var(--color-terracotta)' : 'var(--color-violet)',
-                              color: 'white'
-                            }}>
-                            {fm.role === 'primary' ? 'Principal' : fm.role === 'secondary' ? 'Apoyo' : 'Gestalt'}
-                          </span>
-                          <span className="text-sm" style={{ color: 'var(--color-deep)' }}>
-                            {FRAMEWORK_NAMES[fm.key] || fm.name}
-                          </span>
-                          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>— {fm.focus}</span>
-                        </div>
-                      ))}
-                      {result.gestaltActivity && (
-                        <div className="mt-2 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
-                          <p className="text-xs font-medium" style={{ color: 'var(--color-terracotta)' }}>
-                            Actividad Gestalt: {result.gestaltActivity.title}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                    {result.narrativeSummary && (
+                      <div className="pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                          {result.narrativeSummary}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </AICard>
                 {result.unmapped.length > 0 && <UnmappedSection unmapped={result.unmapped} />}
@@ -427,7 +413,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                 Re-analizar
               </motion.button>
               <motion.button type="button"
-                onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmapped)}
+                onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmapped, result.narrativeSummary)}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>

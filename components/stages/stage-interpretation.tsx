@@ -28,7 +28,8 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
     session.interpretation ?? null
   );
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isPreparing, setIsPreparing] = useState(false);
+  const [awaitingConsent, setAwaitingConsent] = useState(!session.interpretation);
+  const [pauseMode, setPauseMode] = useState(false);
   const [isError, setIsError] = useState(false);
   const [resonated, setResonated] = useState(!!session.interpretation?.resonatedAt);
   const [showRing, setShowRing] = useState(false);
@@ -37,18 +38,21 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
 
   useEffect(() => {
     if (session.interpretation) {
+      setAwaitingConsent(false);
       startStream(session.interpretation.text);
-    } else {
-      // Momento de preparación antes de generar
-      setIsPreparing(true);
-      const timer = setTimeout(() => {
-        setIsPreparing(false);
-        generate();
-      }, shouldReduce ? 0 : 2000);
-      return () => clearTimeout(timer);
     }
+    // If no interpretation, we wait for consent — no auto-generate
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleConsent = () => {
+    setAwaitingConsent(false);
+    generate();
+  };
+
+  const handlePause = () => {
+    setPauseMode(true);
+  };
 
   const generate = async () => {
     setIsGenerating(true);
@@ -107,22 +111,63 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
         </p>
       </div>
 
-      {/* Momento de preparación */}
+      {/* Consentimiento antes de interpretar */}
       <AnimatePresence>
-        {isPreparing && (
+        {awaitingConsent && !pauseMode && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, transition: { duration: 0.4 } }}
-            className="rounded-[var(--radius-card)] p-6 text-center space-y-2"
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              Voy a compartirte algo importante.
+              He escuchado todo lo que compartiste. Tengo algo para ti.
             </p>
-            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-              Tómate un momento antes de leer.
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+              Es una interpretación de lo que percibo en tu historia. ¿Te gustaría leerla?
             </p>
+            <div className="flex gap-3 pt-2">
+              <motion.button
+                type="button"
+                onClick={handleConsent}
+                whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+              >
+                Estoy lista
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={handlePause}
+                whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-medium"
+                style={{ color: 'var(--color-muted)' }}
+              >
+                Dame un momento
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+        {awaitingConsent && pauseMode && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[var(--radius-card)] p-6 space-y-4 text-center"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+              Tómate el tiempo que necesites. Aquí estaré.
+            </p>
+            <motion.button
+              type="button"
+              onClick={handleConsent}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
+              style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+            >
+              Cuando quieras
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>

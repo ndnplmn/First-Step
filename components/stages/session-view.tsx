@@ -68,7 +68,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
           <StageConflicts
             session={session}
             patient={patient}
-            onAdvance={(conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity, unmapped: string[]) =>
+            onAdvance={(conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity, unmapped: string[], narrativeSummary: string) =>
               advanceStage({
                 conflicts,
                 frameworkMatches,
@@ -77,6 +77,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
                   text,
                   sessionNumber: session.sessionNumber,
                 })),
+                narrativeSummary,
               })
             }
             onUpdate={updateSession}

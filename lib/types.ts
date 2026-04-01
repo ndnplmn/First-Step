@@ -117,6 +117,7 @@ export type PatientSession = {
   closure: Closure | null;
   unmappedPhrases: UnmappedPhrase[];
   reflectionQuestions?: string[];
+  narrativeSummary?: string;
   lifeChanges?: LifeChanges;
   createdAt: number;
   updatedAt: number;
