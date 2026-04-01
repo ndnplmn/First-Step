@@ -260,25 +260,27 @@ export async function generateClosure(params: {
     Título: "${gestaltActivity.title}"
     Descripción: "${gestaltActivity.description}"
 
-    Ahora genera un CIERRE SIMBÓLICO. Es un texto de 3 partes separadas por una línea en blanco:
+    Ahora genera una CARTA PERSONAL al paciente. El formato es epistolar — como una carta íntima de alguien que realmente lo escuchó.
 
-    PARTE 1 (3-5 oraciones):
-    1. Quite el peso de la culpa al paciente
-    2. Reencuadre la fantasía o sentimiento negativo como una necesidad humana comprensible
-    3. Le dé una nueva perspectiva sanadora
-    4. Use lenguaje poético, cálido, directo al paciente ("tú")
+    FORMATO:
+    - Empieza con "Querido/a ${params.patient.name},"
+    - Escribe en primera persona como el terapeuta
+    - 3 párrafos separados por una línea en blanco:
 
-    PARTE 2 (2-3 oraciones):
-    - Prepara al paciente para la actividad Gestalt que viene
-    - Menciónala de forma natural y cálida, como una invitación a explorar más profundo
-    - Conecta la actividad con lo que se ha trabajado en la sesión
+    PÁRRAFO 1 (3-5 oraciones):
+    Quita el peso de la culpa. Reencuadra su sentimiento negativo como una necesidad humana comprensible. Dale una nueva perspectiva sanadora. Usa lenguaje poético y cálido.
 
-    PARTE 3 (2-3 oraciones):
-    - Hazle saber con calidez que este es apenas el primer paso de un proceso
-    - Que cada sesión que continúe va a profundizar más en su historia y permitirá llegar a conclusiones más precisas sobre su conflicto
-    - Que el autoconocimiento es un camino que se recorre poco a poco, y que volver es parte de cuidarse
+    PÁRRAFO 2 (2-3 oraciones):
+    Prepáralo para la actividad Gestalt que viene. Menciónala como una invitación cálida a explorar más profundo. Conecta la actividad con lo que se ha trabajado.
 
-    NO expliques teorías. Solo habla al corazón del paciente.
+    PÁRRAFO 3 (2-3 oraciones):
+    Hazle saber que este es apenas el primer paso. Que cada sesión profundizará más. Que volver es parte de cuidarse.
+
+    - Cierra con una línea en blanco y luego exactamente:
+    Con cariño,
+    Tu primer paso
+
+    NO expliques teorías. Habla al corazón.
   `;
 
   let text: string;

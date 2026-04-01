@@ -11,9 +11,17 @@ import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowCounterClockwise, Users, ArrowsClockwise, House } from '@phosphor-icons/react';
 
 const THINKING_PHRASES = [
-  'Preparando tu cierre...',
+  'Escribiendo algo para ti...',
   'Destilando lo esencial...',
-  'Abriendo un nuevo camino...',
+  'Encontrando las palabras...',
+];
+
+const WELLBEING_OPTIONS = [
+  { value: 1, label: 'Muy mal' },
+  { value: 2, label: 'Mal' },
+  { value: 3, label: 'Regular' },
+  { value: 4, label: 'Bien' },
+  { value: 5, label: 'Muy bien' },
 ];
 
 type ClosureAction = 'dashboard' | 'record' | 'new-session';
@@ -36,6 +44,9 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
     session.closure?.strategies ?? []
   );
   const [showActions, setShowActions] = useState(false);
+  const [wellbeingAfter, setWellbeingAfter] = useState<number | null>(
+    session.wellbeingAfter ?? null
+  );
   const { text, isStreaming, isDone, startStream } = useAIStream();
   const shouldReduce = useReducedMotion();
 
@@ -51,13 +62,13 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Las acciones solo aparecen cuando el streaming ha terminado
+  // Las acciones solo aparecen cuando el wellbeing check-out está completo
   useEffect(() => {
-    if (isDone && reflectionQuestions.length > 0 && strategies.length > 0) {
-      const timer = setTimeout(() => setShowActions(true), shouldReduce ? 0 : 2000);
+    if (isDone && reflectionQuestions.length > 0 && strategies.length > 0 && wellbeingAfter !== null) {
+      const timer = setTimeout(() => setShowActions(true), shouldReduce ? 0 : 800);
       return () => clearTimeout(timer);
     }
-  }, [isDone, reflectionQuestions.length, strategies.length, shouldReduce]);
+  }, [isDone, reflectionQuestions.length, strategies.length, wellbeingAfter, shouldReduce]);
 
   const generate = async () => {
     setIsGenerating(true);
@@ -114,7 +125,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
     <div className="space-y-8 pb-48">
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Fase 3 — Cambio cognitivo-conductual
+          Fase 3 — Cierre
         </p>
         <h2
           className="leading-tight breathe"
@@ -124,10 +135,10 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
             color: 'var(--color-deep)',
           }}
         >
-          Un nuevo comienzo
+          Una carta para ti
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Antes de cerrar, quiero dejarte con algo que llevar contigo.
+          Escribí algo para ti.
         </p>
       </div>
 
@@ -281,7 +292,68 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
         )}
       </AnimatePresence>
 
-      {/* Tarjetas de acción — aparecen después de las estrategias */}
+      {/* Wellbeing check-out */}
+      <AnimatePresence>
+        {showReady && strategies.length > 0 && wellbeingAfter === null && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.4 }}
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
+            >
+              Antes de irte
+            </p>
+            <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
+              ¿Cómo te sientes ahora?
+            </p>
+            <div className="flex gap-3 flex-wrap">
+              {WELLBEING_OPTIONS.map(opt => (
+                <motion.button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setWellbeingAfter(opt.value);
+                    onUpdate({ wellbeingAfter: opt.value });
+                  }}
+                  whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                  className="px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-medium"
+                  style={{
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-deep)',
+                    boxShadow: 'var(--shadow-card)',
+                    transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                  }}
+                >
+                  {opt.label}
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation after wellbeing selection */}
+      <AnimatePresence>
+        {showReady && wellbeingAfter !== null && !showActions && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-center py-4"
+          >
+            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              Gracias por compartir. ♡
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tarjetas de acción — aparecen después del wellbeing check-out */}
       <AnimatePresence>
         {showActions && (
           <motion.div

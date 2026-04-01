@@ -118,6 +118,8 @@ export type PatientSession = {
   unmappedPhrases: UnmappedPhrase[];
   reflectionQuestions?: string[];
   narrativeSummary?: string;
+  wellbeingBefore?: number;  // 1-5 scale
+  wellbeingAfter?: number;   // 1-5 scale
   lifeChanges?: LifeChanges;
   createdAt: number;
   updatedAt: number;

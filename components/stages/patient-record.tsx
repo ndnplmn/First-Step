@@ -5,6 +5,14 @@ import { motion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { ArrowLeft, Clock, User } from '@phosphor-icons/react';
 
+const WELLBEING_LABELS: Record<number, string> = {
+  1: 'Muy mal',
+  2: 'Mal',
+  3: 'Regular',
+  4: 'Bien',
+  5: 'Muy bien',
+};
+
 const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
   tcc: { bg: 'var(--color-sage-light)', text: 'var(--color-sage)' },
   tg3: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
@@ -141,6 +149,34 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                 <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
                   {session.narrativeSummary}
                 </p>
+              </Section>
+            )}
+
+            {/* Bienestar */}
+            {(session.wellbeingBefore || session.wellbeingAfter) && (
+              <Section label="Tu bienestar">
+                <div className="flex gap-6">
+                  {session.wellbeingBefore && (
+                    <div>
+                      <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+                        Al inicio
+                      </p>
+                      <p className="text-lg font-medium" style={{ color: 'var(--color-deep)' }}>
+                        {WELLBEING_LABELS[session.wellbeingBefore] ?? session.wellbeingBefore}
+                      </p>
+                    </div>
+                  )}
+                  {session.wellbeingAfter && (
+                    <div>
+                      <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+                        Al final
+                      </p>
+                      <p className="text-lg font-medium" style={{ color: 'var(--color-deep)' }}>
+                        {WELLBEING_LABELS[session.wellbeingAfter] ?? session.wellbeingAfter}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </Section>
             )}
 
