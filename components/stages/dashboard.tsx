@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { Patient } from '@/lib/types';
 import { storage } from '@/lib/storage';
-import { ArrowLeft, Plus, Eye } from '@phosphor-icons/react';
+import { ArrowLeft, Plus, Eye, BookOpen, Path } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
 
 const STAGE_NAMES: Record<number, string> = {
@@ -30,11 +30,13 @@ interface DashboardProps {
   patients: Patient[];
   onSelect: (patient: Patient) => void;
   onViewRecord: (patient: Patient) => void;
+  onViewDiary: (patient: Patient) => void;
+  onViewProgress: (patient: Patient) => void;
   onNew: () => void;
   onBack: () => void;
 }
 
-export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: DashboardProps) {
+export function Dashboard({ patients, onSelect, onViewRecord, onViewDiary, onViewProgress, onNew, onBack }: DashboardProps) {
   const shouldReduce = useReducedMotion();
 
   const sessionMap = useMemo(() => {
@@ -195,6 +197,30 @@ export function Dashboard({ patients, onSelect, onViewRecord, onNew, onBack }: D
                     >
                       <Eye size={14} />
                       <span>Mi resumen</span>
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      aria-label={`Abrir diario emocional de ${patient.name}`}
+                      onClick={(e) => { e.stopPropagation(); onViewDiary(patient); }}
+                      whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
+                      whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                      className="flex items-center gap-1 text-xs"
+                      style={{ color: 'var(--color-muted)' }}
+                    >
+                      <BookOpen size={14} />
+                      <span>Mi diario</span>
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      aria-label={`Ver progreso de ${patient.name}`}
+                      onClick={(e) => { e.stopPropagation(); onViewProgress(patient); }}
+                      whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
+                      whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                      className="flex items-center gap-1 text-xs"
+                      style={{ color: 'var(--color-muted)' }}
+                    >
+                      <Path size={14} />
+                      <span>Tu camino</span>
                     </motion.button>
                   </div>
                 </div>

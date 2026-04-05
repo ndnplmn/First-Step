@@ -7,6 +7,8 @@ import { Intake } from '@/components/stages/intake';
 import { SessionView } from '@/components/stages/session-view';
 import { PatientRecord } from '@/components/stages/patient-record';
 import { CheckIn } from '@/components/stages/check-in';
+import { Diary } from '@/components/stages/diary';
+import { Progress } from '@/components/stages/progress';
 import { storage } from '@/lib/storage';
 import { generateId } from '@/lib/id';
 import type { Patient, PatientSession, AppView } from '@/lib/types';
@@ -64,6 +66,18 @@ export default function Home() {
     setView('RECORD');
   };
 
+  const handleViewDiary = (patient: Patient) => {
+    setActivePatient(patient);
+    setView('DIARY');
+  };
+
+  const handleViewProgress = (patient: Patient) => {
+    const sessions = storage.getSessions(patient.id);
+    setRecordPatient(patient);
+    setRecordSessions(sessions);
+    setView('PROGRESS');
+  };
+
   const handleIntakeComplete = (patient: Patient, session: PatientSession) => {
     storage.savePatient(patient);
     storage.saveSession(session);
@@ -114,6 +128,8 @@ export default function Home() {
         patients={patients}
         onSelect={handlePatientSelect}
         onViewRecord={handleViewRecord}
+        onViewDiary={handleViewDiary}
+        onViewProgress={handleViewProgress}
         onNew={() => setView('INTAKE')}
         onBack={() => setView('WELCOME')}
       />
@@ -153,6 +169,25 @@ export default function Home() {
   if (view === 'RECORD' && recordPatient) {
     return (
       <PatientRecord
+        patient={recordPatient}
+        sessions={recordSessions}
+        onBack={() => setView('DASHBOARD')}
+      />
+    );
+  }
+
+  if (view === 'DIARY' && activePatient) {
+    return (
+      <Diary
+        patient={activePatient}
+        onBack={() => setView('DASHBOARD')}
+      />
+    );
+  }
+
+  if (view === 'PROGRESS' && recordPatient) {
+    return (
+      <Progress
         patient={recordPatient}
         sessions={recordSessions}
         onBack={() => setView('DASHBOARD')}

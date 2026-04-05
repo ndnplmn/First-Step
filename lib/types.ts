@@ -99,6 +99,22 @@ export type UnmappedPhrase = {
   sessionNumber: number;
 };
 
+export type DiaryEmotion =
+  | 'Alegría' | 'Tristeza' | 'Ansiedad' | 'Calma'
+  | 'Enojo' | 'Miedo' | 'Esperanza' | 'Frustración'
+  | 'Gratitud' | 'Soledad' | 'Confusión' | 'Alivio';
+
+export type DiaryEntry = {
+  id: string;
+  patientId: string;
+  emotion: DiaryEmotion;
+  intensity: number;        // 1-5
+  triggers?: string;
+  copingUsed?: string;
+  note?: string;
+  createdAt: number;
+};
+
 export type LifeChanges = {
   categories: string[];
   detail?: string;
@@ -131,4 +147,6 @@ export type AppView =
   | 'INTAKE'
   | 'CHECK_IN'
   | 'SESSION'
-  | 'RECORD';
+  | 'RECORD'
+  | 'DIARY'
+  | 'PROGRESS';

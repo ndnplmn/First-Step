@@ -1,7 +1,8 @@
-import { Patient, PatientSession } from './types';
+import { Patient, PatientSession, DiaryEntry } from './types';
 
 const PATIENTS_KEY = 'fs_patients';
 const SESSIONS_KEY = 'fs_sessions';
+const DIARY_KEY_PREFIX = 'fs_diary_';
 
 export const storage = {
   getPatients(): Patient[] {
@@ -38,5 +39,23 @@ export const storage = {
   getActiveSession(patientId: string): PatientSession | null {
     const sessions = this.getSessions(patientId);
     return sessions.find(s => s.stage < 5) ?? null;
+  },
+
+  getDiaryEntries(patientId: string): DiaryEntry[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem(`${DIARY_KEY_PREFIX}${patientId}`) || '[]');
+    } catch { return []; }
+  },
+
+  saveDiaryEntry(entry: DiaryEntry): void {
+    const entries = this.getDiaryEntries(entry.patientId);
+    entries.unshift(entry);
+    localStorage.setItem(`${DIARY_KEY_PREFIX}${entry.patientId}`, JSON.stringify(entries));
+  },
+
+  deleteDiaryEntry(patientId: string, entryId: string): void {
+    const entries = this.getDiaryEntries(patientId).filter(e => e.id !== entryId);
+    localStorage.setItem(`${DIARY_KEY_PREFIX}${patientId}`, JSON.stringify(entries));
   },
 };
