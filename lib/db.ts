@@ -1,0 +1,216 @@
+import { createClient } from './supabase';
+import type { Patient, PatientSession, DiaryEntry } from './types';
+
+function rowToPatient(row: Record<string, unknown>, userId: string): Patient {
+  return {
+    id: userId,
+    name: row.name as string,
+    age: row.age as number,
+    gender: row.gender as Patient['gender'],
+    maritalStatus: row.marital_status as Patient['maritalStatus'],
+    hasChildren: row.has_children as boolean,
+    childrenCount: row.children_count as number | undefined,
+    livingSituation: row.living_situation as Patient['livingSituation'],
+    livingSituationDetail: row.living_situation_detail as string | undefined,
+    employment: row.employment as Patient['employment'],
+    occupation: row.occupation as string | undefined,
+    hasSupportNetwork: row.has_support_network as boolean,
+    supportDescription: row.support_description as string | undefined,
+    previousTherapy: row.previous_therapy as boolean,
+    previousTherapyDetail: row.previous_therapy_detail as string | undefined,
+    takingMedication: row.taking_medication as boolean,
+    medicationDetail: row.medication_detail as string | undefined,
+    consultationReason: row.consultation_reason as string,
+    createdAt: new Date(row.created_at as string).getTime(),
+  };
+}
+
+function patientToRow(patient: Patient) {
+  return {
+    id: patient.id,
+    name: patient.name,
+    age: patient.age,
+    gender: patient.gender,
+    marital_status: patient.maritalStatus,
+    has_children: patient.hasChildren,
+    children_count: patient.childrenCount,
+    living_situation: patient.livingSituation,
+    living_situation_detail: patient.livingSituationDetail,
+    employment: patient.employment,
+    occupation: patient.occupation,
+    has_support_network: patient.hasSupportNetwork,
+    support_description: patient.supportDescription,
+    previous_therapy: patient.previousTherapy,
+    previous_therapy_detail: patient.previousTherapyDetail,
+    taking_medication: patient.takingMedication,
+    medication_detail: patient.medicationDetail,
+    consultation_reason: patient.consultationReason,
+  };
+}
+
+function rowToSession(row: Record<string, unknown>): PatientSession {
+  return {
+    id: row.id as string,
+    patientId: row.user_id as string,
+    sessionNumber: row.session_number as number,
+    stage: row.stage as PatientSession['stage'],
+    conflicts: (row.conflicts as PatientSession['conflicts']) ?? [],
+    frameworkMatches: (row.framework_matches as PatientSession['frameworkMatches']) ?? [],
+    gestaltActivity: row.gestalt_activity as PatientSession['gestaltActivity'],
+    stage3Type: row.stage3_type as PatientSession['stage3Type'],
+    memories: (row.memories as PatientSession['memories']) ?? [],
+    interpretation: row.interpretation as PatientSession['interpretation'],
+    closure: row.closure as PatientSession['closure'],
+    unmappedPhrases: (row.unmapped_phrases as PatientSession['unmappedPhrases']) ?? [],
+    reflectionQuestions: (row.reflection_questions as string[]) ?? [],
+    narrativeSummary: row.narrative_summary as string | undefined,
+    wellbeingBefore: row.wellbeing_before as number | undefined,
+    wellbeingAfter: row.wellbeing_after as number | undefined,
+    lifeChanges: row.life_changes as PatientSession['lifeChanges'],
+    sessionIntention: row.session_intention as string | undefined,
+    createdAt: new Date(row.created_at as string).getTime(),
+    updatedAt: new Date(row.updated_at as string).getTime(),
+  };
+}
+
+export const db = {
+  async getProfile(): Promise<Patient | null> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    if (!data) return null;
+    return rowToPatient(data as Record<string, unknown>, user.id);
+  },
+
+  async saveProfile(patient: Patient): Promise<void> {
+    const supabase = createClient();
+    const row = patientToRow(patient);
+    await supabase.from('profiles').upsert(row);
+  },
+
+  async isOnboardingCompleted(): Promise<boolean> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { data } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', user.id)
+      .single();
+    return (data as Record<string, unknown> | null)?.onboarding_completed as boolean ?? false;
+  },
+
+  async markOnboardingCompleted(): Promise<void> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('profiles').upsert({ id: user.id, onboarding_completed: true });
+  },
+
+  async getSessions(): Promise<PatientSession[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    return ((data ?? []) as Record<string, unknown>[]).map(r => rowToSession(r));
+  },
+
+  async saveSession(session: PatientSession): Promise<void> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('sessions').upsert({
+      id: session.id,
+      user_id: user.id,
+      session_number: session.sessionNumber,
+      stage: session.stage,
+      conflicts: session.conflicts,
+      framework_matches: session.frameworkMatches,
+      gestalt_activity: session.gestaltActivity,
+      stage3_type: session.stage3Type,
+      memories: session.memories,
+      interpretation: session.interpretation,
+      closure: session.closure,
+      unmapped_phrases: session.unmappedPhrases,
+      reflection_questions: session.reflectionQuestions ?? [],
+      narrative_summary: session.narrativeSummary,
+      wellbeing_before: session.wellbeingBefore,
+      wellbeing_after: session.wellbeingAfter,
+      life_changes: session.lifeChanges,
+      session_intention: session.sessionIntention,
+      updated_at: new Date().toISOString(),
+    });
+  },
+
+  async getActiveSession(): Promise<PatientSession | null> {
+    const sessions = await this.getSessions();
+    return sessions.find(s => s.stage < 5) ?? null;
+  },
+
+  async getDiaryEntries(): Promise<DiaryEntry[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from('diary_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    return ((data ?? []) as Record<string, unknown>[]).map(r => ({
+      id: r.id as string,
+      patientId: r.user_id as string,
+      emotion: r.emotion as DiaryEntry['emotion'],
+      intensity: r.intensity as number,
+      triggers: r.triggers as string | undefined,
+      copingUsed: r.coping_used as string | undefined,
+      note: r.note as string | undefined,
+      createdAt: new Date(r.created_at as string).getTime(),
+    }));
+  },
+
+  async saveDiaryEntry(entry: DiaryEntry): Promise<void> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('diary_entries').upsert({
+      id: entry.id,
+      user_id: user.id,
+      emotion: entry.emotion,
+      intensity: entry.intensity,
+      triggers: entry.triggers,
+      coping_used: entry.copingUsed,
+      note: entry.note,
+    });
+  },
+
+  async deleteDiaryEntry(entryId: string): Promise<void> {
+    const supabase = createClient();
+    await supabase.from('diary_entries').delete().eq('id', entryId);
+  },
+
+  async signIn(email: string, password: string) {
+    const supabase = createClient();
+    return supabase.auth.signInWithPassword({ email, password });
+  },
+
+  async signUp(email: string, password: string) {
+    const supabase = createClient();
+    return supabase.auth.signUp({ email, password });
+  },
+
+  async signOut() {
+    const supabase = createClient();
+    return supabase.auth.signOut();
+  },
+
+  async getUser() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  },
+};
