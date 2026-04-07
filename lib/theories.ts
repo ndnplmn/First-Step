@@ -1,4 +1,4 @@
-import type { FrameworkKey, Stage3Type } from './types';
+import type { FrameworkKey, Stage3Type, GestaltActivityType, GestaltActivity } from './types';
 
 export const FRAMEWORKS_DICTIONARY: Record<FrameworkKey, {
   name: string;
@@ -64,30 +64,30 @@ export const FRAMEWORK_NAMES: Record<FrameworkKey, string> = {
   conductual: 'Sensibilización Sistemática',
 };
 
-export const GESTALT_ACTIVITIES = {
+export const GESTALT_ACTIVITIES: Record<GestaltActivityType, Omit<GestaltActivity, 'type'>> = {
   silla_vacia: {
     title: 'Silla Vacía',
     description: 'Diálogo con una persona o parte del self ausente',
-    facilitation: 'Imagina que [persona/parte] está sentada frente a ti. ¿Qué le dirías?',
+    prompt: 'Imagina que [persona/parte] está sentada frente a ti. ¿Qué le dirías?',
   },
   polaridades: {
     title: 'Diálogo de Polaridades',
     description: 'Conversación entre dos partes opuestas del self',
-    facilitation: 'Hay una parte de ti que [X] y otra que [Y]. Dale voz a cada una.',
+    prompt: 'Hay una parte de ti que [X] y otra que [Y]. Dale voz a cada una.',
   },
   awareness_corporal: {
     title: 'Awareness Corporal',
     description: 'Exploración consciente de las sensaciones del cuerpo',
-    facilitation: 'Cierra los ojos. ¿Dónde sientes esto en tu cuerpo? ¿Qué forma tiene?',
+    prompt: 'Cierra los ojos. ¿Dónde sientes esto en tu cuerpo? ¿Qué forma tiene?',
   },
   experimento: {
     title: 'Experimento Gestáltico',
     description: 'Acción simbólica para completar una situación inconclusa',
-    facilitation: 'Te propongo un experimento. ¿Estarías dispuesto/a a intentarlo?',
+    prompt: 'Te propongo un experimento. ¿Estarías dispuesto/a a intentarlo?',
   },
   dialogo_interno: {
     title: 'Diálogo Interno',
     description: 'Conversación entre el crítico interno y el yo compasivo',
-    facilitation: '¿Qué dice tu crítico interno? Ahora, ¿qué respondería tu yo más compasivo?',
+    prompt: '¿Qué dice tu crítico interno? Ahora, ¿qué respondería tu yo más compasivo?',
   },
 };
