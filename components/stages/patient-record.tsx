@@ -14,13 +14,11 @@ const WELLBEING_LABELS: Record<number, string> = {
 };
 
 const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
-  tcc: { bg: 'var(--color-sage-light)', text: 'var(--color-sage)' },
-  tg3: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
-  dbt: { bg: 'rgba(196,163,90,0.12)', text: 'var(--color-terracotta)' },
-  apego_trauma: { bg: 'var(--color-violet-light)', text: 'var(--color-violet)' },
-  psicodinamico: { bg: 'rgba(122,110,158,0.12)', text: 'var(--color-violet)' },
-  integrativo: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
-  gestalt: { bg: 'rgba(193,127,89,0.12)', text: 'var(--color-terracotta)' },
+  freudiano:    { bg: 'rgba(122,110,158,0.12)', text: 'var(--color-violet)' },
+  bioenergetico: { bg: 'var(--color-sage-light)', text: 'var(--color-sage)' },
+  adleriano:    { bg: 'rgba(196,163,90,0.12)', text: 'var(--color-terracotta)' },
+  gestalt:      { bg: 'rgba(193,127,89,0.12)', text: 'var(--color-terracotta)' },
+  conductual:   { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
 };
 
 function formatDate(timestamp: number): string {
@@ -58,7 +56,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
   const [activeSessionIdx, setActiveSessionIdx] = useState(sessions.length > 0 ? sessions.length - 1 : 0);
   const session = sessions[activeSessionIdx];
 
-  const primaryFramework = session?.frameworkMatches?.find(m => m.role === 'primary');
+  const primaryFramework = session?.frameworkMatches?.[0];
   const primaryColor = primaryFramework ? FRAMEWORK_COLORS[primaryFramework.key] : null;
 
   return (

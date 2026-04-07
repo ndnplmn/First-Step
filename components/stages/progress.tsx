@@ -12,13 +12,11 @@ const WELLBEING_LABELS: Record<number, string> = {
 };
 
 const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
-  tcc: { bg: 'var(--color-sage-light)', text: 'var(--color-sage)' },
-  tg3: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
-  dbt: { bg: 'rgba(196,163,90,0.12)', text: 'var(--color-terracotta)' },
-  apego_trauma: { bg: 'var(--color-violet-light)', text: 'var(--color-violet)' },
-  psicodinamico: { bg: 'rgba(122,110,158,0.12)', text: 'var(--color-violet)' },
-  integrativo: { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
-  gestalt: { bg: 'rgba(193,127,89,0.12)', text: 'var(--color-terracotta)' },
+  freudiano:    { bg: 'rgba(122,110,158,0.12)', text: 'var(--color-violet)' },
+  bioenergetico: { bg: 'var(--color-sage-light)', text: 'var(--color-sage)' },
+  adleriano:    { bg: 'rgba(196,163,90,0.12)', text: 'var(--color-terracotta)' },
+  gestalt:      { bg: 'rgba(193,127,89,0.12)', text: 'var(--color-terracotta)' },
+  conductual:   { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
 };
 
 /* ── helpers ───────────────────────────────────────────── */
@@ -119,7 +117,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
             {sorted.map((session, i) => {
               const isLast = i === sorted.length - 1;
               const isExpanded = expandedId === session.id;
-              const primary = session.frameworkMatches?.find(m => m.role === 'primary');
+              const primary = session.frameworkMatches?.[0];
               const primaryColor = primary ? FRAMEWORK_COLORS[primary.key] : null;
 
               const wbBefore = session.wellbeingBefore ? WELLBEING_LABELS[session.wellbeingBefore] : null;
