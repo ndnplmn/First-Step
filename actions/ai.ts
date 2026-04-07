@@ -412,7 +412,7 @@ export async function getNextTherapistQuestion(params: {
   questionsAsked: string[];  // preguntas ya realizadas (evitar repetir)
   patient: Patient;
   lifeChanges?: LifeChanges;
-}): Promise<{ done: boolean; question: string | null; reflection: string | null }> {
+}): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
 
   const prompt = `
@@ -433,22 +433,32 @@ export async function getNextTherapistQuestion(params: {
 
     Analiza si ya tienes suficiente información sobre estos tres aspectos para poder formular una interpretación clínica profunda y personalizada.
 
-    Si ya tienes suficiente información (el paciente ya describió los tres aspectos con claridad): responde { "done": true, "question": null, "reflection": null }
+    CASO 1 — Ya tienes suficiente información:
+    Responde: done: true, question: null, reflection: null
+    Y genera un "bridgeMessage" personalizado que:
+    1. Reconozca en 1 oración cálida lo que el paciente compartió (menciona 1-2 temas concretos que emergieron, sin lenguaje clínico)
+    2. Pregunte si hay algo más que quiera compartir o algún tema que no hayan tenido espacio de tocar
+    - Máximo 3 oraciones en total
+    - Tono íntimo, segunda persona
+    - NO uses frases genéricas como "has compartido mucho" — sé específico con lo que el paciente realmente mencionó
+    - Ejemplo: "Lo que describes sobre tu trabajo y la sensación de distancia en casa forma un cuadro muy claro. Antes de que lo destilemos juntos: ¿hay algo más que quieras contarme, o algún tema que sientas que no tuvimos espacio de tocar?"
 
-    Si aún te falta información importante: responde con la UNA pregunta más importante que necesitas hacer para completar tu comprensión. La pregunta debe:
-    - Centrarse en el aspecto que más te falta (A, B o C)
-    - Ser empática, directa, en segunda persona
-    - Tener máximo 15 palabras
-    - NO repetir lo que ya preguntaste
-    - NO ser respondible con sí/no
+    CASO 2 — Aún te falta información importante:
+    Responde: done: false, bridgeMessage: null
+    Y genera:
+    - "question": la UNA pregunta más importante que necesitas hacer. Debe:
+      - Centrarse en el aspecto que más te falta (A, B o C)
+      - Ser empática, directa, en segunda persona
+      - Tener máximo 15 palabras
+      - NO repetir lo que ya preguntaste
+      - NO ser respondible con sí/no
+    - "reflection": un micro-reflejo empático de 1-2 oraciones que valide lo que el paciente acaba de compartir ANTES de la pregunta. El reflejo debe:
+      - Reconocer la emoción o el esfuerzo del paciente
+      - Ser cálido y breve (máximo 2 oraciones)
+      - NO repetir lo que el paciente dijo literalmente
+      - Ejemplo: "Lo que describes suena realmente pesado. Gracias por confiarme algo así."
 
-    Además, incluye un "reflection": un micro-reflejo empático de 1-2 oraciones que valide lo que el paciente acaba de compartir ANTES de la pregunta. El reflejo debe:
-    - Reconocer la emoción o el esfuerzo del paciente
-    - Ser cálido y breve (máximo 2 oraciones)
-    - NO repetir lo que el paciente dijo literalmente
-    - Ejemplo: "Lo que describes suena realmente pesado. Gracias por confiarme algo así."
-
-    Responde SOLO con un JSON: { "done": true/false, "question": "..." o null, "reflection": "..." o null }
+    Responde SOLO con un JSON: { "done": true/false, "question": "..." o null, "reflection": "..." o null, "bridgeMessage": "..." o null }
   `;
 
   let content: string;
@@ -459,15 +469,17 @@ export async function getNextTherapistQuestion(params: {
       response_format: { type: 'json_object' },
       temperature: 0.3,
     });
-    content = response.choices[0]?.message?.content || '{"done": true, "question": null, "reflection": null}';
+    content = response.choices[0]?.message?.content || '{"done": true, "question": null, "reflection": null, "bridgeMessage": null}';
   } catch (error) {
     handleAIError(error);
   }
 
   const parsed = JSON.parse(content);
+  const done = parsed.done === true;
   return {
-    done: parsed.done === true,
-    question: typeof parsed.question === 'string' ? parsed.question : null,
-    reflection: typeof parsed.reflection === 'string' ? parsed.reflection : null,
+    done,
+    question: !done && typeof parsed.question === 'string' ? parsed.question : null,
+    reflection: !done && typeof parsed.reflection === 'string' ? parsed.reflection : null,
+    bridgeMessage: done && typeof parsed.bridgeMessage === 'string' ? parsed.bridgeMessage : null,
   };
 }

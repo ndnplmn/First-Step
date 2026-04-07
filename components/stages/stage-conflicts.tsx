@@ -15,7 +15,6 @@ const STARTER_PROMPTS = [
   'No sé qué hacer con mi vida',
 ];
 
-const MAX_QUESTIONS = 4;
 
 type MessageRole = 'patient' | 'therapist';
 type Message = { role: MessageRole; text: string; isReflection?: boolean };
@@ -73,6 +72,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   const [questionsAsked, setQuestionsAsked] = useState<string[]>([]);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [skipsInARow, setSkipsInARow] = useState(0);
+  const [showBridge, setShowBridge] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(!!hasExistingData);
 
   // Análisis final
@@ -117,15 +117,20 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     // Evaluar si la IA necesita más info
     setIsEvaluating(true);
     try {
-      const { done, question, reflection } = await getNextTherapistQuestion({
+      const { done, question, reflection, bridgeMessage: bridgeMsg } = await getNextTherapistQuestion({
         allInputs: patientInputs,
         questionsAsked,
         patient,
         lifeChanges: session.lifeChanges,
       });
 
-      if (done || !question || questionsAsked.length >= MAX_QUESTIONS) {
-        goToAnalysis(patientInputs);
+      if (done || !question) {
+        if (bridgeMsg) {
+          setMessages(prev => [...prev, { role: 'therapist', text: bridgeMsg }]);
+          setShowBridge(true);
+        } else {
+          goToAnalysis(patientInputs);
+        }
       } else {
         const newMsgs: Message[] = [];
         if (reflection) {
@@ -148,23 +153,28 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     const newSkips = skipsInARow + 1;
     setSkipsInARow(newSkips);
 
-    const patientInputs = getPatientInputs(messages);
-
-    if (newSkips >= 2 || questionsAsked.length >= MAX_QUESTIONS) {
-      goToAnalysis(patientInputs);
+    if (newSkips >= 3) {
+      goToAnalysis(getPatientInputs(messages));
       return;
     }
 
+    const patientInputs = getPatientInputs(messages);
+
     setIsEvaluating(true);
     try {
-      const { done, question, reflection } = await getNextTherapistQuestion({
+      const { done, question, reflection, bridgeMessage: bridgeMsg } = await getNextTherapistQuestion({
         allInputs: patientInputs,
         questionsAsked,
         patient,
         lifeChanges: session.lifeChanges,
       });
       if (done || !question) {
-        goToAnalysis(patientInputs);
+        if (bridgeMsg) {
+          setMessages(prev => [...prev, { role: 'therapist', text: bridgeMsg }]);
+          setShowBridge(true);
+        } else {
+          goToAnalysis(patientInputs);
+        }
       } else {
         const newMsgs: Message[] = [];
         if (reflection) {
@@ -183,6 +193,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
 
   // ─── Análisis final ───────────────────────────────────────────────
   const goToAnalysis = async (inputs: string[]) => {
+    setShowBridge(false);
     setShowAnalysis(true);
     setIsAnalyzing(true);
     setError('');
@@ -198,6 +209,11 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   };
 
   const reanalyze = () => goToAnalysis(getPatientInputs(messages));
+
+  const handleContinueDeep = () => {
+    setShowBridge(false);
+    setSkipsInARow(0);
+  };
 
   // ─── Helpers de estado ────────────────────────────────────────────
   const isConversing = messages.length > 0 && !showAnalysis;
@@ -307,7 +323,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
 
       {/* ─── Textarea (siempre visible mientras no estamos en análisis) ─── */}
       <AnimatePresence>
-        {!showAnalysis && !isEvaluating && (
+        {!showAnalysis && !isEvaluating && !showBridge && (
           <motion.div key="textarea-area"
             initial={shouldReduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -383,7 +399,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         <div className="space-y-3">
 
           {/* Enviar mensaje */}
-          {!showAnalysis && !isEvaluating && (
+          {!showAnalysis && !isEvaluating && !showBridge && (
             <>
               <motion.button type="button"
                 onClick={() => handleSend(input)}
@@ -400,6 +416,29 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                   → Prefiero no responder esto
                 </button>
               )}
+            </>
+          )}
+
+          {/* Mensaje puente */}
+          {showBridge && !isEvaluating && (
+            <>
+              <motion.button
+                type="button"
+                onClick={() => goToAnalysis(getPatientInputs(messages))}
+                whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                className="w-full py-4 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 tracking-wide"
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+              >
+                Estoy listo/a para continuar <ArrowRight size={16} />
+              </motion.button>
+              <button
+                type="button"
+                onClick={handleContinueDeep}
+                className="w-full py-2 text-sm text-center hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--color-muted)' }}
+              >
+                → Quiero profundizar en algo
+              </button>
             </>
           )}
 
