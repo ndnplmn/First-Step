@@ -1,8 +1,8 @@
 'use server';
 
 import Groq from 'groq-sdk';
-import { FRAMEWORKS_DICTIONARY, SITUATION_MAPPING, GESTALT_ACTIVITIES } from '@/lib/theories';
-import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges } from '@/lib/types';
+import { FRAMEWORKS_DICTIONARY, GESTALT_ACTIVITIES } from '@/lib/theories';
+import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -51,63 +51,66 @@ function handleAIError(error: unknown): never {
 }
 
 function formatFrameworks(matches: FrameworkMatch[]): string {
-  return matches.map(m => `${m.role === 'primary' ? 'Marco primario' : m.role === 'secondary' ? 'Marco secundario' : 'Marco Gestalt'}: ${m.name} — ${m.focus}`).join('\n');
+  return matches.map((m, i) => `${i === 0 ? 'Marco primario' : 'Marco secundario'}: ${m.name} — ${m.focus}`).join('\n');
 }
 
-// --- ACTION 1: Sintetizar conflictos y mapear a combinacion de marcos terapeuticos ---
+// --- ACTION 1: Sintetizar conflictos y mapear a marco terapeutico clasico ---
 export async function synthesizeConflicts(
   rawConflicts: string[],
   patient: Patient,
   lifeChanges?: LifeChanges,
   sessionIntention?: string
-): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity; unmapped: string[]; narrativeSummary: string }> {
+): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity | null; stage3Type: Stage3Type; unmappedPhrases: string[]; narrativeSummary: string }> {
+  const frameworksDesc = Object.entries(FRAMEWORKS_DICTIONARY)
+    .map(([key, fw]) => `- ${key}: ${fw.name} — ${fw.description}`)
+    .join('\n');
+
+  const gestaltActivitiesDesc = Object.entries(GESTALT_ACTIVITIES)
+    .map(([key, act]) => `- ${key}: ${act.title} — ${act.description}`)
+    .join('\n');
+
   const prompt = `
-    Analiza los siguientes motivos de consulta de un paciente y mapéalos a una COMBINACIÓN de marcos terapéuticos.
+    Analiza los siguientes motivos de consulta de un paciente y mápalos al marco terapéutico clásico más adecuado.
 
     Motivos: ${rawConflicts.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
     Contexto del paciente:
     ${buildPatientContext(patient, lifeChanges, sessionIntention)}
 
-    Diccionario de Marcos Terapéuticos:
-    ${FRAMEWORKS_DICTIONARY}
+    Marcos Terapéuticos Disponibles:
+    ${frameworksDesc}
 
-    Mapeo de Situaciones a Marcos:
-    ${SITUATION_MAPPING}
-
-    Catálogo de Actividades Gestalt:
-    ${GESTALT_ACTIVITIES}
+    Catálogo de Actividades Gestalt (solo si el marco elegido es "gestalt"):
+    ${gestaltActivitiesDesc}
 
     Para cada motivo:
     1. Sintetízalo en 2-3 palabras descriptivas (ej: "Rebeldía con autoridad")
-    2. Identifica el marco terapéutico (frameworkKey) y subcategoría que mejor encaja
+    2. Identifica el frameworkKey y subcategoría que mejor encaja
 
     Luego:
-    3. Determina la COMBINACIÓN de 3 marcos para el caso:
-       - primary: el marco principal que guía la intervención
-       - secondary: un marco complementario que enriquece
-       - gestalt: SIEMPRE Terapia Gestalt como tercer marco de profundización
-    4. Selecciona una actividad Gestalt concreta del catálogo, con tipo, título, descripción y prompt de facilitación personalizado al caso
-    5. Lista cualquier frase que NO encaje en ningún marco
-    6. Genera un "narrativeSummary": 2-3 oraciones en lenguaje cálido y accesible que describan el enfoque terapéutico SIN nombrar ninguna teoría ni marco. Habla directamente al paciente en segunda persona. Ejemplo: "Vamos a explorar cómo tus pensamientos influyen en lo que sientes, conectándolo con experiencias que te marcaron, y prestando atención a lo que tu cuerpo y emociones te dicen."
+    3. Elige UN marco primario de entre: freudiano | bioenergetico | adleriano | gestalt | conductual
+    4. Opcionalmente, incluye un marco secundario complementario
+    5. Si el marco primario es "gestalt", incluye un objeto "gestaltActivity" con type, title, description y prompt personalizado al caso. Si no es gestalt, devuelve "gestaltActivity": null
+    6. Determina el "stage3Type" según el marco primario:
+       - freudiano → "memories"
+       - bioenergetico → "bodywork"
+       - adleriano → "social_context"
+       - gestalt → "gestalt_activity"
+       - conductual → "exposure"
+    7. Lista cualquier frase que NO encaje en ningún marco en "unmappedPhrases"
+    8. Genera un "narrativeSummary": 2-3 oraciones en lenguaje cálido y accesible que describan el enfoque terapéutico SIN nombrar ninguna teoría ni marco. Habla directamente al paciente en segunda persona.
 
     Responde SOLO con un objeto JSON con esta estructura exacta:
     {
       "conflicts": [
-        { "raw": "...", "synthesized": "...", "frameworkKey": "tcc|tg3|dbt|apego_trauma|psicodinamico|integrativo|gestalt", "subCategory": "..." }
+        { "raw": "...", "synthesized": "...", "frameworkKey": "freudiano|bioenergetico|adleriano|gestalt|conductual", "subCategory": "..." }
       ],
       "frameworkMatches": [
-        { "key": "tcc|tg3|dbt|apego_trauma|psicodinamico|integrativo|gestalt", "role": "primary", "name": "...", "focus": "...", "confidence": 0.0 },
-        { "key": "tcc|tg3|dbt|apego_trauma|psicodinamico|integrativo|gestalt", "role": "secondary", "name": "...", "focus": "...", "confidence": 0.0 },
-        { "key": "gestalt", "role": "gestalt", "name": "Terapia Gestalt", "focus": "...", "confidence": 1.0 }
+        { "key": "freudiano|bioenergetico|adleriano|gestalt|conductual", "name": "...", "focus": "...", "confidence": 0.9 }
       ],
-      "gestaltActivity": {
-        "type": "silla_vacia|polaridades|awareness_corporal|experimento|dialogo_interno",
-        "title": "...",
-        "description": "...",
-        "prompt": "..."
-      },
-      "unmapped": ["..."],
+      "gestaltActivity": null,
+      "stage3Type": "memories|bodywork|social_context|gestalt_activity|exposure",
+      "unmappedPhrases": ["..."],
       "narrativeSummary": "..."
     }
   `;
@@ -131,12 +134,18 @@ export async function synthesizeConflicts(
     id: generateId(),
   }));
 
+  const frameworkMatches = parsed.frameworkMatches as FrameworkMatch[];
+  const gestaltActivity = parsed.gestaltActivity as GestaltActivity | null;
+  const unmappedPhrases: string[] = parsed.unmappedPhrases || [];
+  const narrativeSummary: string = parsed.narrativeSummary || '';
+
   return {
     conflicts,
-    frameworkMatches: parsed.frameworkMatches as FrameworkMatch[],
-    gestaltActivity: parsed.gestaltActivity as GestaltActivity,
-    unmapped: parsed.unmapped || [],
-    narrativeSummary: parsed.narrativeSummary || '',
+    frameworkMatches,
+    gestaltActivity,
+    stage3Type: parsed.stage3Type ?? 'memories',
+    unmappedPhrases,
+    narrativeSummary,
   };
 }
 
@@ -206,15 +215,16 @@ export async function generateInterpretation(params: {
     Palabras clave: ${m.keywords.join(', ')}
     `).join('\n---\n')}
 
-    Genera una interpretación clínica profunda y reveladora que integre los tres marcos.
+    Genera una interpretación clínica profunda y reveladora desde el marco terapéutico elegido.
+    Los marcos posibles son: Psicoanálisis Freudiano, Terapia Bioenergética, Psicología Individual de Adler, Terapia Gestalt, Sensibilización Sistemática Conductual.
     Sigue esta secuencia clínica (Fase 2 — Procesamiento Emocional):
     1. Conecta los recuerdos con los conflictos actuales desde el marco primario
-    2. Enriquece la comprensión con la perspectiva del marco secundario
-    3. Señala cómo el awareness Gestalt (cuerpo, emociones, contacto) profundiza la comprensión
+    2. Si hay un marco secundario, enriquece la comprensión con esa perspectiva complementaria
+    3. Integra el plano emocional y corporal según corresponda al marco elegido
 
     Reglas:
     - Dirígete directamente al paciente (segunda persona "tú")
-    - Conecta sus recuerdos con su conflicto actual integrando las tres perspectivas
+    - Conecta sus recuerdos con su conflicto actual desde la lente del marco terapéutico
     - Usa lenguaje accesible, no técnico
     - Mínimo 3 párrafos, máximo 5
     - Sé empático, no juzgues
@@ -242,7 +252,7 @@ export async function generateClosure(params: {
   frameworkMatches: FrameworkMatch[];
   memories: Memory[];
   interpretation: string;
-  gestaltActivity: GestaltActivity;
+  gestaltActivity: GestaltActivity | null;
   patient: Patient;
 }): Promise<Closure> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
@@ -251,7 +261,7 @@ export async function generateClosure(params: {
     Eres un psicoterapeuta magistral.
 
     El paciente tiene estos conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
-    Marcos terapéuticos:
+    Marcos terapéuticos (de entre: Psicoanálisis Freudiano, Terapia Bioenergética, Psicología Individual de Adler, Terapia Gestalt, Sensibilización Sistemática Conductual):
     ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
@@ -260,10 +270,7 @@ export async function generateClosure(params: {
     Se le ha dado esta interpretación:
     "${interpretation}"
 
-    Actividad Gestalt preparada para el paciente:
-    Tipo: ${gestaltActivity.type}
-    Título: "${gestaltActivity.title}"
-    Descripción: "${gestaltActivity.description}"
+    ${gestaltActivity ? `Actividad Gestalt preparada para el paciente:\nTipo: ${gestaltActivity.type}\nTítulo: "${gestaltActivity.title}"\nDescripción: "${gestaltActivity.description}"` : ''}
 
     Ahora genera una CARTA PERSONAL al paciente. El formato es epistolar — como una carta íntima de alguien que realmente lo escuchó.
 
@@ -355,7 +362,7 @@ export async function generateStrategies(params: {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
   interpretation: string;
-  gestaltActivity: GestaltActivity;
+  gestaltActivity: GestaltActivity | null;
   patient: Patient;
 }): Promise<{ title: string; description: string }[]> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
@@ -374,14 +381,11 @@ export async function generateStrategies(params: {
     Se le ha dado esta interpretación:
     "${interpretation}"
 
-    Actividad Gestalt del caso:
-    Tipo: ${gestaltActivity.type}
-    Título: "${gestaltActivity.title}"
-    Descripción: "${gestaltActivity.description}"
+    ${gestaltActivity ? `Actividad Gestalt del caso:\nTipo: ${gestaltActivity.type}\nTítulo: "${gestaltActivity.title}"\nDescripción: "${gestaltActivity.description}"` : ''}
 
     Genera exactamente 3 ESTRATEGIAS PRÁCTICAS que el paciente pueda aplicar en su vida diaria para confrontar su problema. Las estrategias deben:
-    - Derivar de la COMBINACIÓN de los tres marcos (primario, secundario y Gestalt)
-    - Al menos una estrategia debe estar relacionada con la actividad Gestalt o el awareness corporal/emocional
+    - Derivar del marco terapéutico principal (y secundario si hay) del caso
+    - Al menos una estrategia debe invitar al awareness emocional o corporal
     - Ser concretas, realizables y específicas (no genéricas como "medita" o "haz ejercicio")
     - Estar fundamentadas en los marcos pero explicadas en lenguaje cotidiano
     - Incluir un título corto (3-5 palabras) y una descripción práctica (2-3 oraciones max)
@@ -435,7 +439,14 @@ export async function getNextTherapistQuestion(params: {
     Para formular una buena interpretación clínica necesitas explorar la siguiente secuencia clínica:
     A) Regulación: ¿Qué siente el paciente ahora? ¿Cómo afecta su cuerpo? (sensaciones, tensión, malestar físico)
     B) Procesamiento emocional: ¿Qué emociones hay debajo? ¿Desde cuándo las siente? ¿Con quién se conectan?
-    C) Cambio cognitivo-conductual: ¿Cómo impacta su vida cotidiana? ¿Qué ha intentado hacer al respecto?
+    C) Cambio conductual: ¿Cómo impacta su vida cotidiana? ¿Qué ha intentado hacer al respecto?
+
+    Según el marco terapéutico que emerja del caso, orienta tus preguntas así:
+    - freudiano: invita a explorar recuerdos tempranos, sueños y patrones repetitivos
+    - bioenergetico: invita al paciente a notar sensaciones corporales y dónde siente las emociones físicamente
+    - adleriano: explora el contexto familiar, las relaciones fraternales y cómo la persona se compara con otros
+    - gestalt: trabaja en el momento presente — ¿qué nota ahora mismo? ¿qué necesita completarse?
+    - conductual: identifica situaciones específicas que generan ansiedad y conductas de evitación
 
     Analiza si ya tienes suficiente información sobre estos tres aspectos para poder formular una interpretación clínica profunda y personalizada.
 
