@@ -5,19 +5,21 @@ export type LivingSituation = 'Solo/a' | 'Con pareja' | 'Con familia' | 'Con com
 export type EmploymentStatus = 'Empleado/a' | 'Desempleado/a' | 'Estudiante' | 'Independiente' | 'Jubilado/a' | 'Otro';
 
 export type FrameworkKey =
-  | 'tcc'
-  | 'tg3'
-  | 'dbt'
-  | 'apego_trauma'
-  | 'psicodinamico'
-  | 'integrativo'
-  | 'gestalt';
+  | 'freudiano'
+  | 'bioenergetico'
+  | 'adleriano'
+  | 'gestalt'
+  | 'conductual';
 
-export type FrameworkRole = 'primary' | 'secondary' | 'gestalt';
+export type Stage3Type =
+  | 'memories'          // freudiano
+  | 'bodywork'          // bioenergetico
+  | 'social_context'    // adleriano
+  | 'gestalt_activity'  // gestalt
+  | 'exposure';         // conductual
 
 export type FrameworkMatch = {
   key: FrameworkKey;
-  role: FrameworkRole;
   name: string;
   focus: string;
   confidence: number;
@@ -128,6 +130,7 @@ export type PatientSession = {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
   gestaltActivity: GestaltActivity | null;
+  stage3Type?: Stage3Type;
   memories: Memory[];
   interpretation: Interpretation | null;
   closure: Closure | null;
