@@ -155,7 +155,7 @@ export async function extractMemoryKeywords(
   frameworks: string
 ): Promise<string[]> {
   const prompt = `
-    Un paciente ha descrito el siguiente recuerdo en el contexto de la siguiente combinación de marcos terapéuticos:
+    Un paciente ha descrito el siguiente recuerdo en el contexto del siguiente marco terapéutico:
 
     ${frameworks}
 
@@ -163,7 +163,7 @@ export async function extractMemoryKeywords(
     Sentimiento entonces: "${memory.feelingThen}"
     Sentimiento ahora: "${memory.feelingNow}"
 
-    Extrae 3-5 palabras clave emocionales o temáticas del recuerdo que sean relevantes para esta combinación de marcos.
+    Extrae 3-5 palabras clave emocionales o temáticas del recuerdo que sean relevantes para el marco terapéutico del caso.
 
     Responde SOLO con un objeto JSON: { "keywords": ["palabra1", "palabra2", ...] }
   `;
@@ -283,7 +283,7 @@ export async function generateClosure(params: {
     Quita el peso de la culpa. Reencuadra su sentimiento negativo como una necesidad humana comprensible. Dale una nueva perspectiva sanadora. Usa lenguaje poético y cálido.
 
     PÁRRAFO 2 (2-3 oraciones):
-    Prepáralo para la actividad Gestalt que viene. Menciónala como una invitación cálida a explorar más profundo. Conecta la actividad con lo que se ha trabajado.
+    Prepáralo para la siguiente fase de exploración que viene. Menciónala como una invitación cálida a ir más profundo. Conecta esta fase con lo que se ha trabajado.
 
     PÁRRAFO 3 (2-3 oraciones):
     Hazle saber que este es apenas el primer paso. Que cada sesión profundizará más. Que volver es parte de cuidarse.
@@ -321,7 +321,7 @@ export async function generateReflectionQuestions(params: {
   const prompt = `
     Eres un psicoterapeuta que acaba de completar una sesión con un paciente.
 
-    El paciente trabajó con esta combinación de marcos:
+    El paciente trabajó con el siguiente marco terapéutico:
     ${formatFrameworks(frameworkMatches)}
 
     Sus conflictos principales fueron: ${conflicts.map(c => c.synthesized).join(', ')}.
@@ -330,8 +330,8 @@ export async function generateReflectionQuestions(params: {
 
     Genera exactamente 3 preguntas de reflexión profunda y personalizada para que el paciente
     lleve consigo después de la sesión. Las preguntas deben:
-    - Surgir directamente de sus conflictos y la combinación de marcos
-    - Al menos una pregunta debe invitar al awareness corporal o emocional (perspectiva Gestalt)
+    - Surgir directamente de sus conflictos y el marco terapéutico del caso
+    - Al menos una pregunta debe invitar a la exploración emocional o corporal relevante para el marco terapéutico
     - Invitar a la contemplación sin requerir respuesta inmediata
     - Usar segunda persona singular ("¿Qué sientes cuando...", "¿En qué momentos...")
     - Ser abiertas, no retóricas ni con respuesta obvia

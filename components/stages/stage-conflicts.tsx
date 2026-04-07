@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Stage3Type } from '@/lib/types';
 import { synthesizeConflicts, getNextTherapistQuestion } from '@/actions/ai';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
@@ -22,7 +22,7 @@ type Message = { role: MessageRole; text: string; isReflection?: boolean };
 interface StageConflictsProps {
   session: PatientSession;
   patient: Patient;
-  onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity, unmapped: string[], narrativeSummary: string) => void;
+  onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity | null, unmappedPhrases: string[], narrativeSummary: string, stage3Type: Stage3Type) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
@@ -81,12 +81,13 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   const [result, setResult] = useState<{
     conflicts: Conflict[];
     frameworkMatches: FrameworkMatch[];
-    gestaltActivity: GestaltActivity;
-    unmapped: string[];
+    gestaltActivity: GestaltActivity | null;
+    stage3Type: Stage3Type;
+    unmappedPhrases: string[];
     narrativeSummary: string;
   } | null>(
     hasExistingData
-      ? { conflicts: session.conflicts, frameworkMatches: session.frameworkMatches, gestaltActivity: session.gestaltActivity!, unmapped: session.unmappedPhrases.map(u => u.text), narrativeSummary: session.narrativeSummary ?? '' }
+      ? { conflicts: session.conflicts, frameworkMatches: session.frameworkMatches, gestaltActivity: session.gestaltActivity ?? null, stage3Type: 'memories', unmappedPhrases: session.unmappedPhrases.map(u => u.text), narrativeSummary: session.narrativeSummary ?? '' }
       : null
   );
 
@@ -389,7 +390,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                     )}
                   </div>
                 </AICard>
-                {result.unmapped.length > 0 && <UnmappedSection unmapped={result.unmapped} />}
+                {result.unmappedPhrases.length > 0 && <UnmappedSection unmapped={result.unmappedPhrases} />}
               </>
             )}
           </motion.div>
@@ -454,7 +455,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                 Re-analizar
               </motion.button>
               <motion.button type="button"
-                onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmapped, result.narrativeSummary)}
+                onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmappedPhrases, result.narrativeSummary, result.stage3Type)}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
