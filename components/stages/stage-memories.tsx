@@ -19,13 +19,13 @@ type MemoryForm = { raw: string; feelingThen: string; feelingNow: string };
 const EMPTY_FORM: MemoryForm = { raw: '', feelingThen: '', feelingNow: '' };
 
 const FORM_QUESTIONS: { field: keyof MemoryForm; label: string; placeholder: string }[] = [
-  { field: 'raw', label: '¿Qué recuerdo te viene a la mente?', placeholder: 'Describe una situación del pasado...' },
-  { field: 'feelingThen', label: '¿Cómo te sentiste en ese momento?', placeholder: 'Describe tus emociones entonces...' },
-  { field: 'feelingNow', label: '¿Cómo te sientes ahora al recordarlo?', placeholder: 'Describe lo que sientes al contarlo hoy...' },
+  { field: 'raw', label: '¿Qué recuerdo surge cuando piensas en esto? Deja que fluya libremente, sin censura.', placeholder: 'Describe una situación del pasado...' },
+  { field: 'feelingThen', label: '¿Qué sentías entonces? ¿Qué necesitabas que no recibiste?', placeholder: 'Describe tus emociones entonces...' },
+  { field: 'feelingNow', label: '¿Cómo resuena ese recuerdo con lo que sientes hoy?', placeholder: 'Describe lo que sientes al contarlo hoy...' },
 ];
 
 function formatFrameworks(matches: FrameworkMatch[]): string {
-  return matches.map(m => `${m.role === 'primary' ? 'Marco primario' : m.role === 'secondary' ? 'Marco secundario' : 'Marco Gestalt'}: ${m.name} — ${m.focus}`).join('\n');
+  return matches.map(m => `${m.name} — ${m.focus}`).join('\n');
 }
 
 export function StageMemories({ session, patient: _patient, onAdvance, onUpdate }: StageMemoriesProps) {
@@ -87,10 +87,10 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
             color: 'var(--color-deep)',
           }}
         >
-          Un espacio seguro para recordar
+          Exploración Psicoanalítica
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Antes de explorar tus recuerdos, vamos a crear un espacio de calma. Respira, date permiso para ir a tu ritmo.
+          Mediante la libre asociación, exploraremos los recuerdos y patrones que dan forma a este conflicto.
         </p>
       </div>
 
