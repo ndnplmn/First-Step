@@ -136,8 +136,8 @@ export type PatientSession = {
   narrativeSummary?: string;
   wellbeingBefore?: number;  // 1-5 scale
   wellbeingAfter?: number;   // 1-5 scale
-  sessionIntention?: string;  // what the patient wants to work on this session
   lifeChanges?: LifeChanges;
+  sessionIntention?: string;  // what the patient wants to work on this session
   createdAt: number;
   updatedAt: number;
 };

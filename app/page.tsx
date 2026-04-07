@@ -109,6 +109,8 @@ export default function Home() {
       storage.saveSession(newSession);
       setActiveSession(newSession);
       setView('CHECK_IN');
+    } else {
+      setView('DASHBOARD');
     }
   };
 
