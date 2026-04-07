@@ -108,7 +108,7 @@ export default function Home() {
       const newSession = createNewSession(activePatient);
       storage.saveSession(newSession);
       setActiveSession(newSession);
-      setView('SESSION');
+      setView('CHECK_IN');
     }
   };
 
