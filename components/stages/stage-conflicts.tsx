@@ -122,6 +122,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         questionsAsked,
         patient,
         lifeChanges: session.lifeChanges,
+        sessionIntention: session.sessionIntention,
       });
 
       if (done || !question) {
@@ -167,6 +168,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         questionsAsked,
         patient,
         lifeChanges: session.lifeChanges,
+        sessionIntention: session.sessionIntention,
       });
       if (done || !question) {
         if (bridgeMsg) {
@@ -198,7 +200,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     setIsAnalyzing(true);
     setError('');
     try {
-      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges);
+      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention);
       setResult(data);
       onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
     } catch {

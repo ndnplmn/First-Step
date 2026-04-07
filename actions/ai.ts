@@ -8,7 +8,7 @@ import { generateId } from '@/lib/id';
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = 'llama-3.3-70b-versatile';
 
-function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges): string {
+function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges, sessionIntention?: string): string {
   const lines = [
     `Nombre: ${patient.name}, ${patient.age} años, ${patient.gender}`,
     `Estado civil: ${patient.maritalStatus}`,
@@ -29,6 +29,10 @@ function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges): strin
 
   if (lifeChanges && lifeChanges.categories.length > 0) {
     lines.push(`Cambios recientes en su vida: ${lifeChanges.categories.join(', ')}${lifeChanges.detail ? `. Detalle: ${lifeChanges.detail}` : ''}`);
+  }
+
+  if (sessionIntention) {
+    lines.push(`Intención para esta sesión: "${sessionIntention}"`);
   }
 
   return lines.join('\n');
@@ -54,7 +58,8 @@ function formatFrameworks(matches: FrameworkMatch[]): string {
 export async function synthesizeConflicts(
   rawConflicts: string[],
   patient: Patient,
-  lifeChanges?: LifeChanges
+  lifeChanges?: LifeChanges,
+  sessionIntention?: string
 ): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity; unmapped: string[]; narrativeSummary: string }> {
   const prompt = `
     Analiza los siguientes motivos de consulta de un paciente y mapéalos a una COMBINACIÓN de marcos terapéuticos.
@@ -62,7 +67,7 @@ export async function synthesizeConflicts(
     Motivos: ${rawConflicts.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
     Contexto del paciente:
-    ${buildPatientContext(patient, lifeChanges)}
+    ${buildPatientContext(patient, lifeChanges, sessionIntention)}
 
     Diccionario de Marcos Terapéuticos:
     ${FRAMEWORKS_DICTIONARY}
@@ -412,6 +417,7 @@ export async function getNextTherapistQuestion(params: {
   questionsAsked: string[];  // preguntas ya realizadas (evitar repetir)
   patient: Patient;
   lifeChanges?: LifeChanges;
+  sessionIntention?: string;
 }): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
 
@@ -424,7 +430,7 @@ export async function getNextTherapistQuestion(params: {
     ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
 
     Contexto del paciente:
-    ${buildPatientContext(params.patient, params.lifeChanges)}
+    ${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}
 
     Para formular una buena interpretación clínica necesitas explorar la siguiente secuencia clínica:
     A) Regulación: ¿Qué siente el paciente ahora? ¿Cómo afecta su cuerpo? (sensaciones, tensión, malestar físico)
