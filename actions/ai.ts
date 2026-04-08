@@ -215,18 +215,15 @@ export async function generateInterpretation(params: {
     Palabras clave: ${m.keywords.join(', ')}
     `).join('\n---\n')}
 
-    Genera una interpretación clínica profunda y reveladora desde el marco terapéutico elegido.
+    Genera una interpretación clínica breve, profunda y reveladora desde el marco terapéutico elegido.
     Los marcos posibles son: Psicoanálisis Freudiano, Terapia Bioenergética, Psicología Individual de Adler, Terapia Gestalt, Sensibilización Sistemática Conductual.
-    Sigue esta secuencia clínica (Fase 2 — Procesamiento Emocional):
-    1. Conecta los recuerdos con los conflictos actuales desde el marco primario
-    2. Si hay un marco secundario, enriquece la comprensión con esa perspectiva complementaria
-    3. Integra el plano emocional y corporal según corresponda al marco elegido
 
     Reglas:
     - Dirígete directamente al paciente (segunda persona "tú")
     - Conecta sus recuerdos con su conflicto actual desde la lente del marco terapéutico
     - Usa lenguaje accesible, no técnico
-    - Mínimo 3 párrafos, máximo 5
+    - EXACTAMENTE 1 párrafo. Solo 2 párrafos si el paciente compartió recuerdos muy ricos que lo justifiquen plenamente. Nunca más de 2.
+    - Cada párrafo: máximo 4 oraciones. Ve directo al punto — sin preámbulos ni rodeos.
     - Sé empático, no juzgues
     - NO nombres las teorías por su nombre técnico — habla desde ellas, no sobre ellas
   `;

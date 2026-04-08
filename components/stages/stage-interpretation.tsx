@@ -135,7 +135,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
                 className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
               >
-                Estoy lista
+                Quiero leerla
               </motion.button>
               <motion.button
                 type="button"

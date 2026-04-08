@@ -95,7 +95,7 @@ function getStepQuestion(step: number, values: IntakeValues): string {
     case 7: return '¿A qué te dedicas?';
     case 8: return '¿Tienes personas de confianza con quienes puedas hablar?';
     case 9: return '¿Has ido a terapia antes?';
-    case 10: return '¿Tomas algún medicamento psiquiátrico?';
+    case 10: return '¿Tomas algún medicamento, ya sea psiquiátrico o de cualquier otro tipo?';
     case 11: return values.name ? `¿Qué te trae aquí hoy, ${values.name}?` : '¿Qué te trae aquí hoy?';
     default: return '';
   }

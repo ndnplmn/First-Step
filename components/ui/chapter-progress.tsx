@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from 'motion/react';
 const STAGES = [
   { number: 1, name: 'Apertura' },
   { number: 2, name: 'Conflictos' },
-  { number: 3, name: 'Recuerdos' },
+  { number: 3, name: 'Exploración' },
   { number: 4, name: 'Comprensión' },
   { number: 5, name: 'Cierre' },
 ];
@@ -18,8 +18,32 @@ export function ChapterProgress({ currentStage }: ChapterProgressProps) {
   const shouldReduce = useReducedMotion();
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-col items-end gap-1.5">
+      {/* Stage name */}
+      <motion.span
+        key={currentStage}
+        initial={shouldReduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        style={{
+          fontSize: '10px',
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--color-muted)',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+        }}
+      >
+        {STAGES[currentStage - 1].name}
+      </motion.span>
+
+      {/* Track */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+        }}
+      >
         {STAGES.map((stage) => {
           const isDone = stage.number < currentStage;
           const isActive = stage.number === currentStage;
@@ -27,42 +51,32 @@ export function ChapterProgress({ currentStage }: ChapterProgressProps) {
           return (
             <motion.div
               key={stage.number}
-              className="rounded-full"
               style={{
-                width: isActive ? 32 : 24,
                 height: 3,
+                borderRadius: 99,
                 background: isDone
                   ? 'var(--color-deep)'
                   : isActive
                   ? 'var(--color-sage)'
-                  : 'var(--color-border-strong)',
-                transition: 'width 0.3s ease, background 0.3s ease',
+                  : 'var(--color-border)',
               }}
-              animate={
-                isActive && !shouldReduce
-                  ? { opacity: [1, 0.5, 1] }
-                  : { opacity: 1 }
-              }
+              animate={{
+                width: isActive ? 20 : 12,
+                opacity: isActive
+                  ? (shouldReduce ? 1 : [1, 0.45, 1])
+                  : isDone
+                  ? 1
+                  : 0.35,
+              }}
               transition={
-                isActive
-                  ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
-                  : { duration: 0 }
+                isActive && !shouldReduce
+                  ? { opacity: { duration: 2.2, repeat: Infinity, ease: 'easeInOut' }, width: { duration: 0.3 } }
+                  : { duration: 0.3 }
               }
-              layout
             />
           );
         })}
       </div>
-
-      <motion.span
-        key={currentStage}
-        initial={{ opacity: 0, x: 4 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="text-[11px] font-medium tracking-wide"
-        style={{ fontFamily: 'var(--font-sans)', color: 'var(--color-muted-soft)' }}
-      >
-        {STAGES[currentStage - 1].name}
-      </motion.span>
     </div>
   );
 }
