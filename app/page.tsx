@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { Welcome } from '@/components/stages/welcome';
 import { Dashboard } from '@/components/stages/dashboard';
 import { Intake } from '@/components/stages/intake';
@@ -9,28 +10,113 @@ import { PatientRecord } from '@/components/stages/patient-record';
 import { CheckIn } from '@/components/stages/check-in';
 import { Diary } from '@/components/stages/diary';
 import { Progress } from '@/components/stages/progress';
-import { storage } from '@/lib/storage';
+import { AuthForm } from '@/components/auth/auth-form';
+import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
+import { db } from '@/lib/db';
+import { createClient } from '@/lib/supabase';
 import { generateId } from '@/lib/id';
-import type { Patient, PatientSession, AppView } from '@/lib/types';
+import type { Patient, PatientSession, DiaryEntry, AppView } from '@/lib/types';
+
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: '100dvh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <motion.div
+        animate={{ opacity: [0.3, 1, 0.3] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontStyle: 'italic',
+          fontSize: '2rem',
+          color: 'var(--color-sage)',
+        }}
+      >
+        First Step
+      </motion.div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [view, setView] = useState<AppView>('WELCOME');
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
+  const [sessions, setSessions] = useState<PatientSession[]>([]);
   const [activeSession, setActiveSession] = useState<PatientSession | null>(null);
-  const [recordPatient, setRecordPatient] = useState<Patient | null>(null);
   const [recordSessions, setRecordSessions] = useState<PatientSession[]>([]);
+  const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+
+  const initApp = async () => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setView('AUTH');
+      setLoading(false);
+      return;
+    }
+
+    const profile = await db.getProfile();
+    if (!profile) {
+      const onboardingDone = await db.isOnboardingCompleted();
+      setView(onboardingDone ? 'INTAKE' : 'ONBOARDING');
+      setLoading(false);
+      return;
+    }
+
+    // Check for localStorage data to migrate
+    try {
+      const localPatients = localStorage.getItem('fs_patients');
+      if (localPatients && JSON.parse(localPatients).length > 0) {
+        setShowMigrationPrompt(true);
+      }
+    } catch {}
+
+    setActivePatient(profile);
+
+    const allSessions = await db.getSessions();
+    setSessions(allSessions);
+    const active = allSessions.find(s => s.stage < 5) ?? null;
+    if (active) setActiveSession(active);
+
+    setView('DASHBOARD');
+    setLoading(false);
+  };
 
   useEffect(() => {
-    setPatients(storage.getPatients());
+    initApp();
+
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_OUT') {
+        setView('AUTH');
+        setActivePatient(null);
+        setActiveSession(null);
+        setSessions([]);
+      }
+    });
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleAuthSuccess = async () => {
+    setLoading(true);
+    await initApp();
+  };
+
+  const handleOnboardingComplete = async () => {
+    await db.markOnboardingCompleted();
+    setView('INTAKE');
+  };
+
   const createNewSession = (patient: Patient): PatientSession => {
-    const existingSessions = storage.getSessions(patient.id);
     return {
       id: generateId(),
       patientId: patient.id,
-      sessionNumber: existingSessions.length + 1,
+      sessionNumber: sessions.length + 1,
       stage: 2,
       conflicts: [],
       frameworkMatches: [],
@@ -45,68 +131,66 @@ export default function Home() {
     };
   };
 
-  const handlePatientSelect = (patient: Patient) => {
+  const handlePatientSelect = async (patient: Patient) => {
     setActivePatient(patient);
-    const session = storage.getActiveSession(patient.id);
-    if (session) {
-      setActiveSession(session);
+    const active = sessions.find(s => s.stage < 5) ?? null;
+    if (active) {
+      setActiveSession(active);
       setView('SESSION');
     } else {
       const newSession = createNewSession(patient);
-      storage.saveSession(newSession);
+      await db.saveSession(newSession);
       setActiveSession(newSession);
       setView(newSession.sessionNumber > 1 ? 'CHECK_IN' : 'SESSION');
     }
   };
 
-  const handleViewRecord = (patient: Patient) => {
-    const sessions = storage.getSessions(patient.id);
-    setRecordPatient(patient);
+  const handleViewRecord = () => {
     setRecordSessions(sessions);
     setView('RECORD');
   };
 
-  const handleViewDiary = (patient: Patient) => {
-    setActivePatient(patient);
+  const handleViewDiary = () => {
     setView('DIARY');
   };
 
-  const handleViewProgress = (patient: Patient) => {
-    const sessions = storage.getSessions(patient.id);
-    setRecordPatient(patient);
+  const handleViewProgress = () => {
     setRecordSessions(sessions);
     setView('PROGRESS');
   };
 
-  const handleIntakeComplete = (patient: Patient, session: PatientSession) => {
-    storage.savePatient(patient);
-    storage.saveSession(session);
-    setPatients(storage.getPatients());
+  const handleIntakeComplete = async (patient: Patient, session: PatientSession) => {
+    await db.saveProfile(patient);
+    await db.saveSession(session);
+    const allSessions = await db.getSessions();
+    setSessions(allSessions);
     setActivePatient(patient);
     setActiveSession(session);
     setView('SESSION');
   };
 
-  const handleCheckInComplete = (updatedSession: PatientSession) => {
-    storage.saveSession(updatedSession);
+  const handleCheckInComplete = async (updatedSession: PatientSession) => {
+    await db.saveSession(updatedSession);
     setActiveSession(updatedSession);
     setView('SESSION');
   };
 
-  const handleSessionUpdate = (updated: PatientSession) => {
-    storage.saveSession(updated);
+  const handleSessionUpdate = async (updated: PatientSession) => {
+    await db.saveSession(updated);
     setActiveSession(updated);
   };
 
-  const handleComplete = (action: 'dashboard' | 'record' | 'new-session') => {
-    setPatients(storage.getPatients());
+  const handleComplete = async (action: 'dashboard' | 'record' | 'new-session') => {
+    const allSessions = await db.getSessions();
+    setSessions(allSessions);
     if (action === 'dashboard') {
       setView('DASHBOARD');
-    } else if (action === 'record' && activePatient) {
-      handleViewRecord(activePatient);
+    } else if (action === 'record') {
+      setRecordSessions(allSessions);
+      setView('RECORD');
     } else if (action === 'new-session' && activePatient) {
       const newSession = createNewSession(activePatient);
-      storage.saveSession(newSession);
+      await db.saveSession(newSession);
       setActiveSession(newSession);
       setView('CHECK_IN');
     } else {
@@ -114,26 +198,77 @@ export default function Home() {
     }
   };
 
+  const handleMigrate = async () => {
+    try {
+      const localPatients: Patient[] = JSON.parse(localStorage.getItem('fs_patients') || '[]');
+      const localSessions: PatientSession[] = JSON.parse(localStorage.getItem('fs_sessions') || '[]');
+      const user = await db.getUser();
+      if (!user) return;
+
+      for (const session of localSessions) {
+        await db.saveSession({ ...session, patientId: user.id });
+      }
+
+      for (const patient of localPatients) {
+        const localDiary: DiaryEntry[] = JSON.parse(
+          localStorage.getItem(`fs_diary_${patient.id}`) || '[]'
+        );
+        for (const entry of localDiary) {
+          await db.saveDiaryEntry({ ...entry, patientId: user.id });
+        }
+        localStorage.removeItem(`fs_diary_${patient.id}`);
+      }
+
+      localStorage.removeItem('fs_patients');
+      localStorage.removeItem('fs_sessions');
+
+      const allSessions = await db.getSessions();
+      setSessions(allSessions);
+      setShowMigrationPrompt(false);
+    } catch (err) {
+      console.error('Migration failed:', err);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await db.signOut();
+  };
+
+  if (loading) return <LoadingScreen />;
+
+  if (view === 'AUTH') {
+    return <AuthForm onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  if (view === 'ONBOARDING') {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
   if (view === 'WELCOME') {
     return (
       <Welcome
-        hasExistingPatients={patients.length > 0}
+        hasExistingPatients={sessions.length > 0}
         onStart={() => setView('INTAKE')}
         onContinue={() => setView('DASHBOARD')}
       />
     );
   }
 
-  if (view === 'DASHBOARD') {
+  if (view === 'DASHBOARD' && activePatient) {
     return (
       <Dashboard
-        patients={patients}
-        onSelect={handlePatientSelect}
+        patient={activePatient}
+        sessions={sessions}
+        activeSession={activeSession}
+        onStartSession={() => handlePatientSelect(activePatient)}
         onViewRecord={handleViewRecord}
         onViewDiary={handleViewDiary}
         onViewProgress={handleViewProgress}
         onNew={() => setView('INTAKE')}
-        onBack={() => setView('WELCOME')}
+        onSignOut={handleSignOut}
+        showMigrationPrompt={showMigrationPrompt}
+        onMigrate={handleMigrate}
+        onDismissMigration={() => setShowMigrationPrompt(false)}
       />
     );
   }
@@ -142,7 +277,7 @@ export default function Home() {
     return (
       <Intake
         onComplete={handleIntakeComplete}
-        onBack={() => setView('WELCOME')}
+        onBack={() => setView(activePatient ? 'DASHBOARD' : 'AUTH')}
       />
     );
   }
@@ -168,10 +303,10 @@ export default function Home() {
     );
   }
 
-  if (view === 'RECORD' && recordPatient) {
+  if (view === 'RECORD' && activePatient) {
     return (
       <PatientRecord
-        patient={recordPatient}
+        patient={activePatient}
         sessions={recordSessions}
         onBack={() => setView('DASHBOARD')}
       />
@@ -187,10 +322,10 @@ export default function Home() {
     );
   }
 
-  if (view === 'PROGRESS' && recordPatient) {
+  if (view === 'PROGRESS' && activePatient) {
     return (
       <Progress
-        patient={recordPatient}
+        patient={activePatient}
         sessions={recordSessions}
         onBack={() => setView('DASHBOARD')}
       />

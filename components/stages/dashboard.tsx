@@ -1,16 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import type { Patient } from '@/lib/types';
-import { storage } from '@/lib/storage';
-import { ArrowLeft, Plus, Eye, BookOpen, Path } from '@phosphor-icons/react';
+import { Eye, BookOpen, Path, Plus, SignOut } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
+import type { Patient, PatientSession } from '@/lib/types';
 
 const STAGE_NAMES: Record<number, string> = {
   1: 'Apertura',
   2: 'Conflictos',
-  3: 'Recuerdos',
+  3: 'Exploración',
   4: 'Comprensión',
   5: 'Cierre',
 };
@@ -27,35 +25,37 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 interface DashboardProps {
-  patients: Patient[];
-  onSelect: (patient: Patient) => void;
-  onViewRecord: (patient: Patient) => void;
-  onViewDiary: (patient: Patient) => void;
-  onViewProgress: (patient: Patient) => void;
+  patient: Patient;
+  sessions: PatientSession[];
+  activeSession: PatientSession | null;
+  onStartSession: () => void;
+  onViewRecord: () => void;
+  onViewDiary: () => void;
+  onViewProgress: () => void;
   onNew: () => void;
-  onBack: () => void;
+  onSignOut: () => void;
+  showMigrationPrompt?: boolean;
+  onMigrate?: () => void;
+  onDismissMigration?: () => void;
 }
 
-export function Dashboard({ patients, onSelect, onViewRecord, onViewDiary, onViewProgress, onNew, onBack }: DashboardProps) {
+export function Dashboard({
+  patient,
+  sessions,
+  activeSession,
+  onStartSession,
+  onViewRecord,
+  onViewDiary,
+  onViewProgress,
+  onNew,
+  onSignOut,
+  showMigrationPrompt,
+  onMigrate,
+  onDismissMigration,
+}: DashboardProps) {
   const shouldReduce = useReducedMotion();
-
-  const sessionMap = useMemo(() => {
-    const map: Record<string, { stage: 1 | 2 | 3 | 4 | 5; updatedAt: number }> = {};
-    for (const patient of patients) {
-      const session = storage.getActiveSession(patient.id);
-      if (session) {
-        map[patient.id] = { stage: session.stage, updatedAt: session.updatedAt };
-      }
-    }
-    return map;
-  }, [patients]);
-
-  const countLabel =
-    patients.length === 0
-      ? 'Aún no has iniciado ningún proceso'
-      : patients.length === 1
-      ? '1 proceso'
-      : `${patients.length} procesos`;
+  const completedSessions = sessions.filter(s => s.stage >= 5);
+  const sessionCount = sessions.length;
 
   return (
     <div className="min-h-dvh">
@@ -70,43 +70,87 @@ export function Dashboard({ patients, onSelect, onViewRecord, onViewDiary, onVie
         }}
       >
         <div className="max-w-[680px] mx-auto flex items-center justify-between px-6 py-3">
-          <motion.button
-            type="button"
-            onClick={onBack}
-            whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            className="flex items-center gap-2"
-            style={{ color: 'var(--color-muted)' }}
+          <span
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
+              fontSize: '1.125rem',
+              color: 'var(--color-deep)',
+            }}
           >
-            <ArrowLeft size={16} />
-            <span className="text-sm">Volver</span>
-          </motion.button>
+            First Step
+          </span>
 
-          <motion.button
-            type="button"
-            onClick={onNew}
-            whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
-            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
-          >
-            <Plus size={16} />
-            Nuevo proceso
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <motion.button
+              type="button"
+              onClick={onNew}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
+              style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+            >
+              <Plus size={14} />
+              Nueva sesión
+            </motion.button>
+            <motion.button
+              type="button"
+              onClick={onSignOut}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              title="Cerrar sesión"
+              style={{ color: 'var(--color-muted)', padding: '0.5rem' }}
+            >
+              <SignOut size={18} />
+            </motion.button>
+          </div>
         </div>
       </header>
 
       {/* Main content */}
       <main className="max-w-[680px] mx-auto px-6 pt-10 pb-16">
-        {/* Title */}
+        {/* Migration banner */}
+        {showMigrationPrompt && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-[var(--radius-card)] border"
+            style={{
+              background: 'rgba(107,127,110,0.07)',
+              borderColor: 'var(--color-sage)',
+            }}
+          >
+            <p className="text-sm mb-3" style={{ color: 'var(--color-deep)' }}>
+              Encontramos datos de sesiones anteriores en este dispositivo. ¿Quieres conservarlos?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={onMigrate}
+                className="text-sm font-medium px-4 py-2 rounded-lg text-white"
+                style={{ background: 'var(--color-sage)' }}
+              >
+                Migrar mis datos
+              </button>
+              <button
+                onClick={onDismissMigration}
+                className="text-sm"
+                style={{ color: 'var(--color-muted)' }}
+              >
+                Ignorar
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Greeting */}
         <div className="mb-8">
           <h1
             className="leading-tight breathe"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(40px, 7vw, 64px)',
+              fontSize: 'clamp(36px, 7vw, 56px)',
               color: 'var(--color-deep)',
             }}
           >
-            Mis sesiones
+            Hola, {patient.name.split(' ')[0]}
           </h1>
           <p
             className="mt-1"
@@ -116,144 +160,145 @@ export function Dashboard({ patients, onSelect, onViewRecord, onViewDiary, onVie
               color: 'var(--color-muted)',
             }}
           >
-            {countLabel}
+            {sessionCount === 0
+              ? 'Aún no has iniciado ninguna sesión'
+              : `${completedSessions.length} ${completedSessions.length === 1 ? 'sesión completada' : 'sesiones completadas'}`}
           </p>
         </div>
 
-        {/* Patient list */}
-        <div className="space-y-3">
-          {patients.map((patient, i) => {
-            const info = sessionMap[patient.id];
-            const stage = (info?.stage ?? 5) as 1 | 2 | 3 | 4 | 5;
-            const stageName = STAGE_NAMES[stage] ?? 'Completado';
-            const relativeTime = info ? formatRelativeTime(info.updatedAt) : '';
-
-            return (
-              <motion.div
-                key={patient.id}
-                role="button"
-                tabIndex={0}
-                aria-label={`Continuar proceso de ${patient.name}`}
-                onClick={() => onSelect(patient)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelect(patient);
-                  }
-                }}
-                initial={shouldReduce ? false : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: i * 0.06,
-                  type: 'spring',
-                  stiffness: 280,
-                  damping: 22,
-                }}
-                whileHover={shouldReduce ? {} : { y: -2 }}
-                whileTap={shouldReduce ? {} : { scale: 0.99 }}
-                className="w-full p-5 rounded-[var(--radius-card)] text-left cursor-pointer"
-                style={{
-                  background: 'var(--color-surface)',
-                  boxShadow: 'var(--shadow-card)',
-                  transition: 'box-shadow 0.2s ease',
-                }}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p
-                      className="font-medium truncate"
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '18px',
-                        color: 'var(--color-deep)',
-                      }}
-                    >
-                      {patient.name}
-                    </p>
-                    <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                      {patient.age} años · {patient.gender}
-                    </p>
-                    <p
-                      className="mt-2"
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '11px',
-                        color: 'var(--color-muted)',
-                      }}
-                    >
-                      {stageName}{relativeTime ? ` · ${relativeTime}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex-shrink-0 flex flex-col items-end gap-2 pt-1">
-                    <ChapterProgress currentStage={stage} />
-                    <motion.button
-                      type="button"
-                      aria-label={`Ver resumen del proceso de ${patient.name}`}
-                      onClick={(e) => { e.stopPropagation(); onViewRecord(patient); }}
-                      whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
-                      whileTap={shouldReduce ? {} : { scale: 0.95 }}
-                      className="flex items-center gap-1 text-xs"
-                      style={{ color: 'var(--color-muted)' }}
-                    >
-                      <Eye size={14} />
-                      <span>Mi resumen</span>
-                    </motion.button>
-                    <motion.button
-                      type="button"
-                      aria-label={`Abrir diario emocional de ${patient.name}`}
-                      onClick={(e) => { e.stopPropagation(); onViewDiary(patient); }}
-                      whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
-                      whileTap={shouldReduce ? {} : { scale: 0.95 }}
-                      className="flex items-center gap-1 text-xs"
-                      style={{ color: 'var(--color-muted)' }}
-                    >
-                      <BookOpen size={14} />
-                      <span>Mi diario</span>
-                    </motion.button>
-                    <motion.button
-                      type="button"
-                      aria-label={`Ver progreso de ${patient.name}`}
-                      onClick={(e) => { e.stopPropagation(); onViewProgress(patient); }}
-                      whileHover={shouldReduce ? {} : { color: 'var(--color-sage)' }}
-                      whileTap={shouldReduce ? {} : { scale: 0.95 }}
-                      className="flex items-center gap-1 text-xs"
-                      style={{ color: 'var(--color-muted)' }}
-                    >
-                      <Path size={14} />
-                      <span>Tu camino</span>
-                    </motion.button>
-                  </div>
+        {/* Active session card */}
+        {activeSession && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <p className="text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
+              En curso
+            </p>
+            <motion.div
+              role="button"
+              tabIndex={0}
+              onClick={onStartSession}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStartSession(); } }}
+              whileHover={shouldReduce ? {} : { y: -2 }}
+              whileTap={shouldReduce ? {} : { scale: 0.99 }}
+              className="w-full p-5 rounded-[var(--radius-card)] text-left cursor-pointer"
+              style={{
+                background: 'var(--color-surface)',
+                boxShadow: 'var(--shadow-card)',
+                borderLeft: '3px solid var(--color-sage)',
+              }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium" style={{ color: 'var(--color-deep)', fontSize: '1rem' }}>
+                    Sesión {activeSession.sessionNumber}
+                  </p>
+                  <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                    {STAGE_NAMES[activeSession.stage] ?? 'En progreso'} · {formatRelativeTime(activeSession.updatedAt)}
+                  </p>
                 </div>
-              </motion.div>
-            );
-          })}
+                <ChapterProgress currentStage={activeSession.stage as 1 | 2 | 3 | 4 | 5} />
+              </div>
+              <p className="text-sm mt-3 font-medium" style={{ color: 'var(--color-sage)' }}>
+                Continuar →
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* No active session — start new */}
+        {!activeSession && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <motion.button
+              type="button"
+              onClick={onStartSession}
+              whileHover={shouldReduce ? {} : { y: -2 }}
+              whileTap={shouldReduce ? {} : { scale: 0.99 }}
+              className="w-full p-5 rounded-[var(--radius-card)] text-left"
+              style={{
+                background: 'var(--color-surface)',
+                boxShadow: 'var(--shadow-card)',
+                border: '1.5px dashed var(--color-border)',
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    background: 'rgba(107,127,110,0.1)',
+                    color: 'var(--color-sage)',
+                  }}
+                >
+                  <Plus size={16} />
+                </div>
+                <div>
+                  <p className="font-medium" style={{ color: 'var(--color-deep)' }}>
+                    Iniciar {sessionCount > 0 ? 'nueva sesión' : 'primera sesión'}
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                    {sessionCount > 0 ? `Sesión ${sessionCount + 1}` : 'Comenzar tu proceso'}
+                  </p>
+                </div>
+              </div>
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Quick actions */}
+        <div className="grid grid-cols-3 gap-3 mt-8">
+          {[
+            { icon: <Eye size={18} />, label: 'Mi resumen', onClick: onViewRecord },
+            { icon: <BookOpen size={18} />, label: 'Mi diario', onClick: onViewDiary },
+            { icon: <Path size={18} />, label: 'Tu camino', onClick: onViewProgress },
+          ].map(({ icon, label, onClick }) => (
+            <motion.button
+              key={label}
+              type="button"
+              onClick={onClick}
+              whileHover={shouldReduce ? {} : { y: -2 }}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              className="flex flex-col items-center gap-2 p-4 rounded-[var(--radius-card)]"
+              style={{
+                background: 'var(--color-surface)',
+                boxShadow: 'var(--shadow-card)',
+                color: 'var(--color-muted)',
+              }}
+            >
+              {icon}
+              <span className="text-xs font-medium" style={{ color: 'var(--color-deep)' }}>{label}</span>
+            </motion.button>
+          ))}
         </div>
 
-        {/* Empty state */}
-        {patients.length === 0 && (
-          <div className="flex flex-col items-center pt-20 gap-6">
-            <svg width="320" height="80" viewBox="0 0 320 80" fill="none">
-              <motion.path
-                d="M 0 40 Q 80 0 160 40 Q 240 80 320 40"
-                stroke="var(--color-sage)"
-                strokeWidth="1.5"
-                fill="none"
-                initial={shouldReduce ? false : { pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.4 }}
-                transition={{ duration: 1.4, ease: 'easeInOut' }}
-              />
-            </svg>
-            <div className="text-center space-y-3">
-              <p style={{ color: 'var(--color-muted)' }}>Aún no has iniciado ningún proceso</p>
-              <motion.button
-                type="button"
-                onClick={onNew}
-                whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                className="text-sm font-medium"
-                style={{ color: 'var(--color-sage)' }}
-              >
-                Comenzar ahora →
-              </motion.button>
+        {/* Session history */}
+        {completedSessions.length > 0 && (
+          <div className="mt-10">
+            <p className="text-xs font-medium mb-3 uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
+              Historial
+            </p>
+            <div className="space-y-2">
+              {completedSessions.slice(0, 5).map(session => (
+                <div
+                  key={session.id}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl"
+                  style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+                >
+                  <p className="text-sm" style={{ color: 'var(--color-deep)' }}>
+                    Sesión {session.sessionNumber}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                    {formatRelativeTime(session.updatedAt)}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, DiaryEntry, DiaryEmotion } from '@/lib/types';
-import { storage } from '@/lib/storage';
+import { db } from '@/lib/db';
 import { generateId } from '@/lib/id';
 import { ArrowLeft, Plus, X } from '@phosphor-icons/react';
 
@@ -81,7 +81,11 @@ interface DiaryProps {
 
 export function Diary({ patient, onBack }: DiaryProps) {
   const shouldReduce = useReducedMotion();
-  const [entries, setEntries] = useState<DiaryEntry[]>(() => storage.getDiaryEntries(patient.id));
+  const [entries, setEntries] = useState<DiaryEntry[]>([]);
+
+  useEffect(() => {
+    db.getDiaryEntries().then(setEntries);
+  }, []);
   const [isAdding, setIsAdding] = useState(false);
   const [addStep, setAddStep] = useState(0);
   const [draft, setDraft] = useState<Partial<DiaryEntry>>({});
@@ -125,7 +129,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
       note: draft.note?.trim() || undefined,
       createdAt: Date.now(),
     };
-    storage.saveDiaryEntry(entry);
+    db.saveDiaryEntry(entry);
     setEntries(prev => [entry, ...prev]);
     setIsAdding(false);
   };

@@ -146,6 +146,8 @@ export type PatientSession = {
 };
 
 export type AppView =
+  | 'AUTH'
+  | 'ONBOARDING'
   | 'WELCOME'
   | 'DASHBOARD'
   | 'INTAKE'
