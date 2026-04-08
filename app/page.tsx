@@ -264,7 +264,7 @@ export default function Home() {
         onViewRecord={handleViewRecord}
         onViewDiary={handleViewDiary}
         onViewProgress={handleViewProgress}
-        onNew={() => setView('INTAKE')}
+        onNew={() => handlePatientSelect(activePatient)}
         onSignOut={handleSignOut}
         showMigrationPrompt={showMigrationPrompt}
         onMigrate={handleMigrate}

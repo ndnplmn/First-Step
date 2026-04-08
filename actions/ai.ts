@@ -417,65 +417,102 @@ export async function generateStrategies(params: {
 // Evalúa si la IA ya tiene suficiente información para formular su análisis.
 // Si no, devuelve la pregunta más importante que falta. Si sí, devuelve done: true.
 export async function getNextTherapistQuestion(params: {
-  allInputs: string[];       // todo lo que el paciente ha compartido hasta ahora
-  questionsAsked: string[];  // preguntas ya realizadas (evitar repetir)
+  allInputs: string[];
+  questionsAsked: string[];
   patient: Patient;
   lifeChanges?: LifeChanges;
   sessionIntention?: string;
+  forceClose?: boolean;
 }): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
 
   const prompt = `
-    Eres un psicoterapeuta experto realizando una primera sesión de evaluación.
+Eres un psicoterapeuta experto realizando una primera sesión de evaluación.
 
-    El paciente ha compartido lo siguiente:
-    ${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
+El paciente ha compartido lo siguiente:
+${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
 
-    ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
+${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
 
-    Contexto del paciente:
-    ${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}
+Contexto del paciente (ya conocido — NO preguntes sobre esto):
+${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}
 
-    Para formular una buena interpretación clínica necesitas explorar la siguiente secuencia clínica:
-    A) Regulación: ¿Qué siente el paciente ahora? ¿Cómo afecta su cuerpo? (sensaciones, tensión, malestar físico)
-    B) Procesamiento emocional: ¿Qué emociones hay debajo? ¿Desde cuándo las siente? ¿Con quién se conectan?
-    C) Cambio conductual: ¿Cómo impacta su vida cotidiana? ¿Qué ha intentado hacer al respecto?
+─────────────────────────────────────────────────────────────
+DIMENSIONES DEL CONFLICTO — audita cuáles están cubiertas
+─────────────────────────────────────────────────────────────
 
-    Según el marco terapéutico que emerja del caso, orienta tus preguntas así:
-    - freudiano: invita a explorar recuerdos tempranos, sueños y patrones repetitivos
-    - bioenergetico: invita al paciente a notar sensaciones corporales y dónde siente las emociones físicamente
-    - adleriano: explora el contexto familiar, las relaciones fraternales y cómo la persona se compara con otros
-    - gestalt: trabaja en el momento presente — ¿qué nota ahora mismo? ¿qué necesita completarse?
-    - conductual: identifica situaciones específicas que generan ansiedad y conductas de evitación
+Para cada dimensión decide: CUBIERTA | PARCIAL | AUSENTE.
 
-    Analiza si ya tienes suficiente información sobre estos tres aspectos para poder formular una interpretación clínica profunda y personalizada.
+1. TEMA — El problema central que trajo al paciente.
+   → Normalmente presente desde el primer mensaje. Relevante: todos los marcos.
 
-    CASO 1 — Ya tienes suficiente información:
-    Responde: done: true, question: null, reflection: null
-    Y genera un "bridgeMessage" personalizado que:
-    1. Reconozca en 1 oración cálida lo que el paciente compartió (menciona 1-2 temas concretos que emergieron, sin lenguaje clínico)
-    2. Pregunte si hay algo más que quiera compartir o algún tema que no hayan tenido espacio de tocar
-    - Máximo 3 oraciones en total
-    - Tono íntimo, segunda persona
-    - NO uses frases genéricas como "has compartido mucho" — sé específico con lo que el paciente realmente mencionó
-    - Ejemplo: "Lo que describes sobre tu trabajo y la sensación de distancia en casa forma un cuadro muy claro. Antes de que lo destilemos juntos: ¿hay algo más que quieras contarme, o algún tema que sientas que no tuvimos espacio de tocar?"
+2. EMOCIÓN — La emoción subyacente dominante (miedo, tristeza, rabia, vergüenza, culpa).
+   → Busca la emoción nombrada o implícita, no solo la descripción del evento. Relevante: todos.
 
-    CASO 2 — Aún te falta información importante:
-    Responde: done: false, bridgeMessage: null
-    Y genera:
-    - "question": la UNA pregunta más importante que necesitas hacer. Debe:
-      - Centrarse en el aspecto que más te falta (A, B o C)
-      - Ser empática, directa, en segunda persona
-      - Tener máximo 15 palabras
-      - NO repetir lo que ya preguntaste
-      - NO ser respondible con sí/no
-    - "reflection": un micro-reflejo empático de 1-2 oraciones que valide lo que el paciente acaba de compartir ANTES de la pregunta. El reflejo debe:
-      - Reconocer la emoción o el esfuerzo del paciente
-      - Ser cálido y breve (máximo 2 oraciones)
-      - NO repetir lo que el paciente dijo literalmente
-      - Ejemplo: "Lo que describes suena realmente pesado. Gracias por confiarme algo así."
+3. CUERPO — Manifestación física (dónde lo siente, tensión, síntomas somáticos).
+   → Especialmente relevante para: bioenergetico, gestalt, conductual.
 
-    Responde SOLO con un JSON: { "done": true/false, "question": "..." o null, "reflection": "..." o null, "bridgeMessage": "..." o null }
+4. TIEMPO — Dimensión temporal (cuándo empezó, si es patrón, si ha ocurrido antes).
+   → Especialmente relevante para: freudiano, adleriano, conductual.
+
+5. RELACIÓN — Dimensión relacional (quién más está involucrado, dinámicas familiares/sociales).
+   → NOTA: ya se conoce estado civil "${params.patient.maritalStatus}", convivencia "${params.patient.livingSituation}", red de apoyo: ${params.patient.hasSupportNetwork ? 'sí' : 'no'}. Considera PARCIAL salvo que el conflicto requiera exploración relacional específica.
+   → Especialmente relevante para: freudiano, adleriano, gestalt.
+
+6. CONDUCTA — Impacto conductual (qué evita, qué ha intentado, efecto en vida cotidiana).
+   → NOTA: intención de sesión "${params.sessionIntention ?? ''}" y ocupación "${params.patient.employment}" ya aportan contexto. Considera PARCIAL si la intención menciona conductas.
+   → Especialmente relevante para: conductual, adleriano.
+
+─────────────────────────────────────────────────────────────
+REGLA DE CIERRE
+─────────────────────────────────────────────────────────────
+
+${params.forceClose
+  ? `IMPORTANTE: Límite de preguntas alcanzado. Procede directamente al CASO 1 (done: true) independientemente de la cobertura.`
+  : `Marca done: true si se cumplen AMBAS condiciones:
+  a) TEMA y EMOCIÓN están CUBIERTOS (no solo PARCIALES).
+  b) Al menos 2 dimensiones adicionales están CUBIERTOS o PARCIALES.`}
+
+─────────────────────────────────────────────────────────────
+CASO 1 — Información suficiente (done: true):
+─────────────────────────────────────────────────────────────
+
+Genera "bridgeMessage":
+1. En 1 oración cálida reconoce 1-2 temas concretos que emergieron (sin lenguaje clínico, sin nombrar las dimensiones).
+2. Pregunta si hay algo más que quiera compartir o algún tema que no hayan tocado.
+- Máximo 3 oraciones. Tono íntimo, segunda persona.
+- Sé específico con lo que el paciente mencionó — NO uses frases genéricas como "has compartido mucho".
+- Ejemplo: "Lo que describes sobre la tensión en el trabajo y la sensación de distancia en casa forma un cuadro muy claro. Antes de que lo destilemos juntos: ¿hay algo más que quieras contarme, o algún tema que sientas que no tuvimos espacio de tocar?"
+
+Responde: { "done": true, "question": null, "reflection": null, "bridgeMessage": "..." }
+
+─────────────────────────────────────────────────────────────
+CASO 2 — Falta información importante (done: false):
+─────────────────────────────────────────────────────────────
+
+Identifica la dimensión AUSENTE más importante para este caso y genera UNA pregunta sobre ella.
+
+"question":
+  - Centrada en la dimensión AUSENTE prioritaria.
+  - Empática, directa, segunda persona. Máximo 15 palabras.
+  - NO repetir lo ya preguntado. NO respondible con sí/no.
+  - Ejemplos por dimensión:
+    EMOCIÓN: "¿Qué sientes por dentro cuando eso ocurre — miedo, rabia, tristeza...?"
+    CUERPO: "¿Dónde lo notas en el cuerpo cuando piensas en eso?"
+    TIEMPO: "¿Cuándo empezaste a sentirte así — fue gradual o hubo un momento específico?"
+    RELACIÓN: "¿Hay alguien en tu vida que esté en el centro de todo esto?"
+    CONDUCTA: "¿Qué has intentado hacer para salir de esto, aunque sea algo pequeño?"
+
+"reflection": micro-reflejo empático ANTES de la pregunta (1-2 oraciones):
+  - Reconoce la emoción o esfuerzo del paciente. Cálido y breve.
+  - NO repetir literalmente lo que el paciente dijo.
+  - Ejemplo: "Lo que describes suena realmente agotador. Gracias por confiarme algo así."
+
+Responde: { "done": false, "question": "...", "reflection": "...", "bridgeMessage": null }
+
+─────────────────────────────────────────────────────────────
+Responde SOLO con un objeto JSON con esa estructura exacta.
+─────────────────────────────────────────────────────────────
   `;
 
   let content: string;

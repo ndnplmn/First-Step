@@ -15,6 +15,8 @@ const STARTER_PROMPTS = [
   'No sé qué hacer con mi vida',
 ];
 
+const SOFT_CAP = 5;
+
 
 type MessageRole = 'patient' | 'therapist';
 type Message = { role: MessageRole; text: string; isReflection?: boolean };
@@ -74,6 +76,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   const [skipsInARow, setSkipsInARow] = useState(0);
   const [showBridge, setShowBridge] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(!!hasExistingData);
+  const [showValidation, setShowValidation] = useState(false);
 
   // Análisis final
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -115,7 +118,6 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
 
     const patientInputs = getPatientInputs(newMessages);
 
-    // Evaluar si la IA necesita más info
     setIsEvaluating(true);
     try {
       const { done, question, reflection, bridgeMessage: bridgeMsg } = await getNextTherapistQuestion({
@@ -124,6 +126,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         patient,
         lifeChanges: session.lifeChanges,
         sessionIntention: session.sessionIntention,
+        forceClose: questionsAsked.length >= SOFT_CAP - 1,
       });
 
       if (done || !question) {
@@ -146,7 +149,6 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
       goToAnalysis(patientInputs);
     } finally {
       setIsEvaluating(false);
-      // Refocus the textarea after evaluation
       setTimeout(() => textareaRef.current?.focus(), 100);
     }
   };
@@ -155,12 +157,12 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     const newSkips = skipsInARow + 1;
     setSkipsInARow(newSkips);
 
-    if (newSkips >= 3) {
-      goToAnalysis(getPatientInputs(messages));
+    const patientInputs = getPatientInputs(messages);
+
+    if (newSkips >= 2) {
+      goToAnalysis(patientInputs);
       return;
     }
-
-    const patientInputs = getPatientInputs(messages);
 
     setIsEvaluating(true);
     try {
@@ -170,6 +172,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         patient,
         lifeChanges: session.lifeChanges,
         sessionIntention: session.sessionIntention,
+        forceClose: questionsAsked.length >= SOFT_CAP - 1,
       });
       if (done || !question) {
         if (bridgeMsg) {
@@ -198,17 +201,25 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   const goToAnalysis = async (inputs: string[]) => {
     setShowBridge(false);
     setShowAnalysis(true);
+    setShowValidation(false);
     setIsAnalyzing(true);
     setError('');
     try {
       const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention);
       setResult(data);
       onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
+      setShowValidation(true);
     } catch {
       setError('Hubo un problema al analizar. Intenta de nuevo.');
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleWantsToAdd = () => {
+    setShowAnalysis(false);
+    setShowValidation(false);
+    setShowBridge(false);
   };
 
   const reanalyze = () => goToAnalysis(getPatientInputs(messages));
@@ -255,7 +266,9 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                 Lo que escuché
               </h2>
               <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                Esto es lo que percibo en todo lo que compartiste.
+                {showValidation
+                  ? '¿Reconoces esto en lo que compartiste?'
+                  : 'Esto es lo que percibo en todo lo que compartiste.'}
               </p>
             </motion.div>
           )}
@@ -391,6 +404,33 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                   </div>
                 </AICard>
                 {result.unmappedPhrases.length > 0 && <UnmappedSection unmapped={result.unmappedPhrases} />}
+                {showValidation && (
+                  <motion.div
+                    key="validation-card"
+                    initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 26, delay: 0.2 }}
+                    className="rounded-[20px] p-6 space-y-3"
+                    style={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      boxShadow: 'var(--shadow-card)',
+                    }}
+                  >
+                    <p
+                      className="text-xs font-medium tracking-wide uppercase"
+                      style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+                    >
+                      ¿Lo reconoces?
+                    </p>
+                    <p
+                      className="text-base leading-relaxed"
+                      style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
+                    >
+                      ¿Es así como lo sientes, o hay algo que quieras matizar o agregar?
+                    </p>
+                  </motion.div>
+                )}
               </>
             )}
           </motion.div>
@@ -445,23 +485,40 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
             </>
           )}
 
-          {/* Análisis listo */}
-          {showAnalysis && result && !isAnalyzing && (
+          {/* Validación — confirmar o agregar */}
+          {showAnalysis && showValidation && result && !isAnalyzing && (
             <>
-              <motion.button type="button" onClick={reanalyze}
-                whileTap={shouldReduce ? {} : { scale: 0.98 }}
-                className="w-full py-2.5 rounded-xl text-sm font-medium"
-                style={{ color: 'var(--color-sage)', border: '1px solid var(--color-sage)' }}>
-                Re-analizar
-              </motion.button>
-              <motion.button type="button"
+              <motion.button
+                type="button"
                 onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmappedPhrases, result.narrativeSummary, result.stage3Type)}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
-                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
-                Continuar a recuerdos →
+                className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide flex items-center justify-center gap-2"
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+              >
+                Sí, eso es lo que siento <ArrowRight size={16} />
               </motion.button>
+              <button
+                type="button"
+                onClick={handleWantsToAdd}
+                className="w-full py-2 text-sm text-center hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--color-muted)' }}
+              >
+                → Quiero agregar algo
+              </button>
             </>
+          )}
+
+          {/* Re-analizar — solo en caso de error o sesión restaurada */}
+          {showAnalysis && !showValidation && result && !isAnalyzing && (
+            <motion.button
+              type="button"
+              onClick={reanalyze}
+              whileTap={shouldReduce ? {} : { scale: 0.98 }}
+              className="w-full py-2.5 rounded-xl text-sm font-medium"
+              style={{ color: 'var(--color-sage)', border: '1px solid var(--color-sage)' }}
+            >
+              Re-analizar
+            </motion.button>
           )}
         </div>
       </FloatingBar>

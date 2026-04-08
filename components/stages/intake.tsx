@@ -10,7 +10,8 @@ import type {
   LivingSituation,
   EmploymentStatus,
 } from '@/lib/types';
-import { generatePatientId, generateId } from '@/lib/id';
+import { generateId } from '@/lib/id';
+import { db } from '@/lib/db';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { ArrowLeft } from '@phosphor-icons/react';
@@ -323,9 +324,10 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    const user = await db.getUser();
     const patient: Patient = {
-      id: generatePatientId(),
+      id: user?.id ?? generateId(),
       name: values.name,
       age: parseInt(values.age),
       gender: values.gender,
