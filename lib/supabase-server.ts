@@ -3,9 +3,23 @@ import { cookies } from 'next/headers';
 
 export async function createServerActionClient() {
   const cookieStore = await cookies();
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Return a dummy client or handle the error gracefully to avoid crashing the server
+    return createServerClient('', '', {
+      cookies: {
+        getAll() { return []; },
+        setAll() {},
+      },
+    });
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() { return cookieStore.getAll(); },
@@ -20,3 +34,4 @@ export async function createServerActionClient() {
     }
   );
 }
+
