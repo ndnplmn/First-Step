@@ -8,13 +8,10 @@ export async function createServerActionClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    // Return a dummy client or handle the error gracefully to avoid crashing the server
-    return createServerClient('', '', {
-      cookies: {
-        getAll() { return []; },
-        setAll() {},
-      },
-    });
+    return {
+      auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+      from: () => ({ select: () => ({ data: [], error: null }) }),
+    } as any;
   }
 
   return createServerClient(
