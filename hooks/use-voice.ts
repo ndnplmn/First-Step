@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { transcribeAudio, speakText } from '@/actions/voice';
 
 export interface VoiceState {
   isVoiceMode: boolean;
@@ -25,14 +24,31 @@ export function useVoice(): VoiceState {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcribedText, setTranscribedText] = useState('');
   const [voiceError, setVoiceError] = useState<string | null>(null);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // AudioContext is created on user gesture (voice toggle) to bypass autoplay policy
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  const toggleVoiceMode = useCallback(() => {
-    setIsVoiceMode(v => !v);
-    setVoiceError(null);
+  const getAudioContext = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
   }, []);
+
+  // Toggle must be called via user gesture — that's when AudioContext is unlocked
+  const toggleVoiceMode = useCallback(() => {
+    setIsVoiceMode(v => {
+      if (!v) getAudioContext(); // unlock on activation
+      return !v;
+    });
+    setVoiceError(null);
+  }, [getAudioContext]);
 
   const startRecording = useCallback(async () => {
     setVoiceError(null);
@@ -66,7 +82,9 @@ export function useVoice(): VoiceState {
         setIsRecording(false);
         setIsTranscribing(true);
         try {
-          const text = await transcribeAudio(formData);
+          const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+          if (!res.ok) throw new Error('Transcription failed');
+          const { text } = await res.json() as { text: string };
           setTranscribedText(text);
           resolve(text);
         } catch {
@@ -81,26 +99,45 @@ export function useVoice(): VoiceState {
     });
   }, []);
 
+  // Uses AudioContext instead of HTMLAudioElement — no autoplay restrictions
   const speak = useCallback(async (text: string) => {
     setVoiceError(null);
     setIsSpeaking(true);
+    // Stop any current playback
+    if (sourceRef.current) {
+      try { sourceRef.current.stop(); } catch { /* already stopped */ }
+      sourceRef.current = null;
+    }
     try {
-      const dataUrl = await speakText(text);
-      const audio = new Audio(dataUrl);
-      audioRef.current = audio;
-      audio.onended = () => setIsSpeaking(false);
-      audio.onerror = () => { setIsSpeaking(false); setVoiceError('Error al reproducir audio.'); };
-      await audio.play();
+      const res = await fetch('/api/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error(`Speak error: ${res.status}`);
+
+      const arrayBuffer = await res.arrayBuffer();
+      const ctx = getAudioContext();
+      const decoded = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = decoded;
+      source.connect(ctx.destination);
+      sourceRef.current = source;
+      source.onended = () => {
+        sourceRef.current = null;
+        setIsSpeaking(false);
+      };
+      source.start();
     } catch {
       setIsSpeaking(false);
       setVoiceError('Error al generar voz.');
     }
-  }, []);
+  }, [getAudioContext]);
 
   const cancelSpeech = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    if (sourceRef.current) {
+      try { sourceRef.current.stop(); } catch { /* already stopped */ }
+      sourceRef.current = null;
     }
     setIsSpeaking(false);
   }, []);
