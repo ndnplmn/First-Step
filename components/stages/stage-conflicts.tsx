@@ -7,7 +7,8 @@ import { synthesizeConflicts, getNextTherapistQuestion } from '@/actions/ai';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
-import { ArrowRight } from '@phosphor-icons/react';
+import { ArrowRight, Microphone, SpeakerHigh, SpeakerSlash, Stop } from '@phosphor-icons/react';
+import { useVoice } from '@/hooks/use-voice';
 
 const STARTER_PROMPTS = [
   'Algo con mi familia me preocupa',
@@ -64,9 +65,63 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
   );
 }
 
+function VoiceMicButton({
+  isRecording, isTranscribing, pendingText,
+  onStart, onStop, shouldReduce,
+}: {
+  isRecording: boolean; isTranscribing: boolean; pendingText: string;
+  onStart: () => void; onStop: () => void; shouldReduce: boolean | null;
+}) {
+  const label = isTranscribing ? 'Transcribiendo...' : isRecording ? 'Escuchando...' : pendingText ? 'Enviando...' : 'Habla';
+
+  return (
+    <motion.button
+      type="button"
+      onPointerDown={onStart}
+      onPointerUp={onStop}
+      onPointerLeave={isRecording ? onStop : undefined}
+      whileTap={shouldReduce ? {} : { scale: 0.95 }}
+      className="flex flex-col items-center justify-center gap-2 w-full py-6 rounded-2xl"
+      style={{
+        background: isRecording ? 'var(--color-terracotta)' : 'var(--color-surface)',
+        boxShadow: 'var(--shadow-card)',
+        color: isRecording ? 'white' : 'var(--color-deep)',
+        border: isRecording ? 'none' : '1px solid var(--color-border)',
+      }}
+      disabled={isTranscribing}
+    >
+      {isTranscribing ? (
+        <div className="flex gap-1 items-end h-6">
+          {[0, 1, 2].map(i => (
+            <motion.span
+              key={i}
+              animate={shouldReduce ? {} : { scaleY: [1, 2.5, 1] }}
+              transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+              style={{ display: 'block', width: 3, height: 12, borderRadius: 99, background: 'var(--color-sage)' }}
+            />
+          ))}
+        </div>
+      ) : (
+        <motion.div
+          animate={isRecording && !shouldReduce ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+          transition={{ duration: 1.2, repeat: Infinity }}
+        >
+          {isRecording ? <Stop size={28} weight="fill" /> : <Microphone size={28} />}
+        </motion.div>
+      )}
+      <span className="text-sm font-medium">{label}</span>
+    </motion.button>
+  );
+}
+
 export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
   const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
+
+  const {
+    isVoiceMode, isRecording, isTranscribing, isSpeaking, transcribedText, voiceError,
+    toggleVoiceMode, startRecording, stopRecording, speak, cancelSpeech, clearTranscribedText,
+  } = useVoice();
 
   // ─── Estado conversacional ────────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>([]);
@@ -101,6 +156,27 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isEvaluating]);
+
+  // Último mensaje del terapeuta (para TTS y speaking indicator)
+  const lastTherapistMsg = [...messages].reverse().find(m => m.role === 'therapist');
+
+  // Auto-play TTS cuando llega un mensaje del terapeuta en modo voz
+  useEffect(() => {
+    if (!isVoiceMode || !lastTherapistMsg?.text) return;
+    speak(lastTherapistMsg.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastTherapistMsg?.text, isVoiceMode]);
+
+  // Auto-submit tras transcripción con delay de 1.2s
+  useEffect(() => {
+    if (!transcribedText || !isVoiceMode) return;
+    const t = setTimeout(() => {
+      handleSend(transcribedText);
+      clearTranscribedText();
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcribedText]);
 
   // Extraer todos los inputs del paciente del historial
   const getPatientInputs = (msgs: Message[]) =>
@@ -324,6 +400,18 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                     }}>
                     {msg.text}
                   </p>
+                  {isSpeaking && msg === lastTherapistMsg && (
+                    <div className="flex gap-1 items-end mt-2">
+                      {[0, 1, 2].map(i => (
+                        <motion.span
+                          key={i}
+                          animate={shouldReduce ? {} : { scaleY: [1, 2.5, 1] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                          style={{ display: 'block', width: 2, height: 10, borderRadius: 99, background: 'var(--color-sage)' }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -337,7 +425,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         <AIThinking phrases={['Procesando lo que compartiste...', 'Decidiendo si necesito saber más...', 'Un momento...']} />
       )}
 
-      {/* ─── Textarea (siempre visible mientras no estamos en análisis) ─── */}
+      {/* ─── Input: texto o voz (siempre visible mientras no estamos en análisis) ─── */}
       <AnimatePresence>
         {!showAnalysis && !isEvaluating && !showBridge && (
           <motion.div key="textarea-area"
@@ -345,24 +433,38 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
             className="space-y-2">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey && input.trim().length >= 5) {
-                  e.preventDefault();
-                  handleSend(input);
-                }
-              }}
-              placeholder={hasStarted ? 'Escribe tu respuesta aquí…' : 'Escribe lo que sientes, lo que te pasa…'}
-              rows={hasStarted ? 3 : 4}
-              autoFocus
-              className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
-              onFocus={e => (e.target.style.borderColor = isConversing ? 'var(--color-terracotta)' : 'var(--color-sage)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-            />
+            {isVoiceMode ? (
+              <VoiceMicButton
+                isRecording={isRecording}
+                isTranscribing={isTranscribing}
+                pendingText={transcribedText}
+                onStart={startRecording}
+                onStop={stopRecording}
+                shouldReduce={shouldReduce}
+              />
+            ) : (
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey && input.trim().length >= 5) {
+                    e.preventDefault();
+                    handleSend(input);
+                  }
+                }}
+                placeholder={hasStarted ? 'Escribe tu respuesta aquí…' : 'Escribe lo que sientes, lo que te pasa…'}
+                rows={hasStarted ? 3 : 4}
+                autoFocus
+                className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
+                onFocus={e => (e.target.style.borderColor = isConversing ? 'var(--color-terracotta)' : 'var(--color-sage)')}
+                onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+              />
+            )}
+            {voiceError && (
+              <p className="text-xs text-center" style={{ color: 'var(--color-terracotta)' }}>{voiceError}</p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -444,15 +546,36 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
           {/* Enviar mensaje */}
           {!showAnalysis && !isEvaluating && !showBridge && (
             <>
-              <motion.button type="button"
-                onClick={() => handleSend(input)}
-                disabled={input.trim().length < 5}
-                whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 tracking-wide"
-                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
-                {hasStarted ? <>Responder <ArrowRight size={16} /></> : 'Compartir →'}
-              </motion.button>
-              {lastMessageIsTherapist && (
+              <div className="flex gap-2">
+                {!isVoiceMode && (
+                  <motion.button type="button"
+                    onClick={() => handleSend(input)}
+                    disabled={input.trim().length < 5}
+                    whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                    className="flex-1 py-4 rounded-2xl font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 tracking-wide"
+                    style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
+                    {hasStarted ? <>Responder <ArrowRight size={16} /></> : 'Compartir →'}
+                  </motion.button>
+                )}
+                {isVoiceMode && (
+                  <div className="flex-1" />
+                )}
+                <motion.button
+                  type="button"
+                  onClick={() => { toggleVoiceMode(); if (isSpeaking) cancelSpeech(); }}
+                  whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                  className="p-2.5 rounded-xl flex-shrink-0"
+                  style={{
+                    background: isVoiceMode ? 'var(--color-sage)' : 'var(--color-surface)',
+                    color: isVoiceMode ? 'white' : 'var(--color-muted)',
+                    boxShadow: 'var(--shadow-card)',
+                  }}
+                  title={isVoiceMode ? 'Desactivar voz' : 'Activar voz'}
+                >
+                  {isVoiceMode ? <SpeakerHigh size={18} /> : <SpeakerSlash size={18} />}
+                </motion.button>
+              </div>
+              {lastMessageIsTherapist && !isVoiceMode && (
                 <button type="button" onClick={handleSkip}
                   className="w-full py-2 text-sm text-center hover:opacity-70 transition-opacity"
                   style={{ color: 'var(--color-muted)' }}>
