@@ -1,6 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export function createClient() {
+export function createClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -10,9 +11,13 @@ export function createClient() {
     }
     // Return a dummy object to avoid constructor crash
     return {
-      auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+      auth: {
+        getUser: async () => ({ data: { user: null }, error: null }),
+        getSession: async () => ({ data: { session: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      },
       from: () => ({ select: () => ({ data: [], error: null }) }),
-    } as any;
+    } as any as SupabaseClient;
   }
 
   return createBrowserClient(

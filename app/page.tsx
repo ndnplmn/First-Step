@@ -90,7 +90,7 @@ export default function Home() {
     initApp();
 
     const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string) => {
       if (event === 'SIGNED_OUT') {
         setView('AUTH');
         setActivePatient(null);

@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function createServerActionClient() {
+export async function createServerActionClient(): Promise<SupabaseClient> {
   const cookieStore = await cookies();
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,9 +10,12 @@ export async function createServerActionClient() {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return {
-      auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+      auth: { 
+        getUser: async () => ({ data: { user: null }, error: null }),
+        getSession: async () => ({ data: { session: null }, error: null }),
+      },
       from: () => ({ select: () => ({ data: [], error: null }) }),
-    } as any;
+    } as any as SupabaseClient;
   }
 
   return createServerClient(
