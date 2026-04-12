@@ -17,6 +17,25 @@ export interface VoiceState {
   clearTranscribedText: () => void;
 }
 
+// Fallback: Web Speech API (browser-native, no API key needed)
+function speakNative(text: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!window.speechSynthesis) { reject(new Error('No TTS support')); return; }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'es-ES';
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    // Prefer a Spanish voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const spanish = voices.find(v => v.lang.startsWith('es') && v.localService);
+    if (spanish) utterance.voice = spanish;
+    utterance.onend = () => resolve();
+    utterance.onerror = () => reject(new Error('SpeechSynthesis error'));
+    window.speechSynthesis.speak(utterance);
+  });
+}
+
 export function useVoice(): VoiceState {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -27,7 +46,6 @@ export function useVoice(): VoiceState {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  // AudioContext is created on user gesture (voice toggle) to bypass autoplay policy
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
@@ -41,10 +59,9 @@ export function useVoice(): VoiceState {
     return audioCtxRef.current;
   }, []);
 
-  // Toggle must be called via user gesture — that's when AudioContext is unlocked
   const toggleVoiceMode = useCallback(() => {
     setIsVoiceMode(v => {
-      if (!v) getAudioContext(); // unlock on activation
+      if (!v) getAudioContext(); // unlock AudioContext on user gesture
       return !v;
     });
     setVoiceError(null);
@@ -83,7 +100,7 @@ export function useVoice(): VoiceState {
         setIsTranscribing(true);
         try {
           const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
-          if (!res.ok) throw new Error('Transcription failed');
+          if (!res.ok) throw new Error(`Transcribe ${res.status}`);
           const { text } = await res.json() as { text: string };
           setTranscribedText(text);
           resolve(text);
@@ -99,38 +116,51 @@ export function useVoice(): VoiceState {
     });
   }, []);
 
-  // Uses AudioContext instead of HTMLAudioElement — no autoplay restrictions
+  // Try ElevenLabs first via API route, fall back to native Web Speech API
   const speak = useCallback(async (text: string) => {
     setVoiceError(null);
     setIsSpeaking(true);
+
     // Stop any current playback
     if (sourceRef.current) {
       try { sourceRef.current.stop(); } catch { /* already stopped */ }
       sourceRef.current = null;
     }
+    window.speechSynthesis?.cancel();
+
     try {
       const res = await fetch('/api/speak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error(`Speak error: ${res.status}`);
 
-      const arrayBuffer = await res.arrayBuffer();
-      const ctx = getAudioContext();
-      const decoded = await ctx.decodeAudioData(arrayBuffer);
-      const source = ctx.createBufferSource();
-      source.buffer = decoded;
-      source.connect(ctx.destination);
-      sourceRef.current = source;
-      source.onended = () => {
-        sourceRef.current = null;
+      if (res.ok) {
+        // ElevenLabs worked — play via AudioContext
+        const arrayBuffer = await res.arrayBuffer();
+        const ctx = getAudioContext();
+        const decoded = await ctx.decodeAudioData(arrayBuffer);
+        const source = ctx.createBufferSource();
+        source.buffer = decoded;
+        source.connect(ctx.destination);
+        sourceRef.current = source;
+        source.onended = () => { sourceRef.current = null; setIsSpeaking(false); };
+        source.start();
+      } else {
+        // ElevenLabs unavailable (402, 500…) — fall back to browser TTS
+        console.warn('[voice] ElevenLabs unavailable, using native TTS');
+        await speakNative(text);
         setIsSpeaking(false);
-      };
-      source.start();
+      }
     } catch {
-      setIsSpeaking(false);
-      setVoiceError('Error al generar voz.');
+      // Network error — try native TTS before giving up
+      try {
+        await speakNative(text);
+      } catch {
+        setVoiceError('Error al generar voz.');
+      } finally {
+        setIsSpeaking(false);
+      }
     }
   }, [getAudioContext]);
 
@@ -139,6 +169,7 @@ export function useVoice(): VoiceState {
       try { sourceRef.current.stop(); } catch { /* already stopped */ }
       sourceRef.current = null;
     }
+    window.speechSynthesis?.cancel();
     setIsSpeaking(false);
   }, []);
 

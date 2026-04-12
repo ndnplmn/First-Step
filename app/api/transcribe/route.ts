@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import Groq from 'groq-sdk';
+
+export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,9 +14,10 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get('audio') as File | null;
-    if (!file) return NextResponse.json({ error: 'No audio file' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'No audio file' }, { status: 400 });
+    }
 
-    const { Groq } = await import('groq-sdk');
     const groq = new Groq({ apiKey });
 
     const transcription = await groq.audio.transcriptions.create({
@@ -28,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ text });
   } catch (err) {
-    console.error('[transcribe] Unexpected error:', err);
+    console.error('[transcribe] Error:', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
