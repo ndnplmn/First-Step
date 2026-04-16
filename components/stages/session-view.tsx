@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase, Stage3Type } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase, Stage3Type, DeepWorkSession } from '@/lib/types';
 import { SessionHeader } from '@/components/ui/session-header';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { StageConflicts } from './stage-conflicts';
@@ -12,6 +12,7 @@ import { StageSocialContext } from '@/components/stages/stage-social-context';
 import { StageGestaltActivity } from '@/components/stages/stage-gestalt-activity';
 import { StageExposure } from '@/components/stages/stage-exposure';
 import { StageInterpretation } from './stage-interpretation';
+import { StageDeepWork } from './stage-deep-work';
 import { StageClosure } from './stage-closure';
 
 const STAGE_GRADIENTS: Record<number, string> = {
@@ -19,6 +20,7 @@ const STAGE_GRADIENTS: Record<number, string> = {
   3: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(107,94,158,0.06), transparent)',
   4: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(61,107,71,0.06), transparent)',
   5: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(180,110,69,0.06), transparent)',
+  6: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(61,107,71,0.06), transparent)',
 };
 
 interface SessionViewProps {
@@ -34,7 +36,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
   const [targetStage, setTargetStage] = useState<number>(session.stage);
 
   const advanceStage = (updates: Partial<PatientSession>) => {
-    const nextStage = Math.min(session.stage + 1, 5);
+    const nextStage = Math.min(session.stage + 1, 6);
     setPendingUpdates(updates);
     setTargetStage(nextStage);
     setShowTransition(true);
@@ -45,7 +47,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
     const updated: PatientSession = {
       ...session,
       ...(pendingUpdates ?? {}),
-      stage: targetStage as 1 | 2 | 3 | 4 | 5,
+      stage: targetStage as 1 | 2 | 3 | 4 | 5 | 6,
       updatedAt: Date.now(),
     };
     setPendingUpdates(null);
@@ -111,6 +113,10 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
     advanceStage({ stage: 4 });
   };
 
+  const handleStage4Advance = (deepWork: DeepWorkSession) => {
+    advanceStage({ deepWork });
+  };
+
   return (
     <div
       className="min-h-dvh flex flex-col"
@@ -166,6 +172,15 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
         )}
 
         {session.stage === 5 && (
+          <StageDeepWork
+            session={session}
+            patient={patient}
+            onAdvance={handleStage4Advance}
+            onUpdate={updateSession}
+          />
+        )}
+
+        {session.stage === 6 && (
           <StageClosure
             session={session}
             patient={patient}

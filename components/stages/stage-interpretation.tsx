@@ -297,7 +297,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
           className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
           style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
         >
-          Continuar al cierre →
+          Continuar →
         </motion.button>
       </FloatingBar>
     </div>

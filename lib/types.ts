@@ -96,6 +96,19 @@ export type Closure = {
   strategies?: Strategy[];
 };
 
+export type WorkCard = {
+  id: string;
+  title: string;       // action-oriented: "Explorar por qué evitas el conflicto"
+  subtitle: string;    // original reflection question shown in italics
+  openingLine: string; // first therapist message when this card is selected
+};
+
+export type DeepWorkSession = {
+  selectedCard: WorkCard;
+  messages: { role: 'patient' | 'therapist'; text: string }[];
+  synthesis: string;
+};
+
 export type UnmappedPhrase = {
   text: string;
   sessionNumber: number;
@@ -126,7 +139,7 @@ export type PatientSession = {
   id: string;
   patientId: string;
   sessionNumber: number;
-  stage: 1 | 2 | 3 | 4 | 5;
+  stage: 1 | 2 | 3 | 4 | 5 | 6;
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
   gestaltActivity: GestaltActivity | null;
@@ -136,6 +149,7 @@ export type PatientSession = {
   closure: Closure | null;
   unmappedPhrases: UnmappedPhrase[];
   reflectionQuestions?: string[];
+  deepWork?: DeepWorkSession;
   narrativeSummary?: string;
   wellbeingBefore?: number;  // 1-5 scale
   wellbeingAfter?: number;   // 1-5 scale

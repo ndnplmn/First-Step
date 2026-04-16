@@ -7,11 +7,12 @@ const STAGES = [
   { number: 2, name: 'Conflictos' },
   { number: 3, name: 'Exploración' },
   { number: 4, name: 'Comprensión' },
-  { number: 5, name: 'Cierre' },
+  { number: 5, name: 'Integración' },
+  { number: 6, name: 'Cierre' },
 ];
 
 interface ChapterProgressProps {
-  currentStage: 1 | 2 | 3 | 4 | 5;
+  currentStage: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 export function ChapterProgress({ currentStage }: ChapterProgressProps) {

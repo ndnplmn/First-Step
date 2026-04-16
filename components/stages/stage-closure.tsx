@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession, Closure, Strategy } from '@/lib/types';
-import { generateClosure, generateReflectionQuestions, generateStrategies } from '@/actions/ai';
+import { generateClosure, generateStrategies } from '@/actions/ai';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
@@ -37,9 +37,6 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
   const [fullClosure, setFullClosure] = useState<Closure | null>(session.closure ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [reflectionQuestions, setReflectionQuestions] = useState<string[]>(
-    session.reflectionQuestions ?? []
-  );
   const [strategies, setStrategies] = useState<Strategy[]>(
     session.closure?.strategies ?? []
   );
@@ -53,9 +50,6 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
   useEffect(() => {
     if (session.closure) {
       startStream(session.closure.text);
-      if (session.reflectionQuestions?.length) {
-        setReflectionQuestions(session.reflectionQuestions);
-      }
     } else {
       generate();
     }
@@ -64,17 +58,16 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
 
   // Las acciones solo aparecen cuando el wellbeing check-out está completo
   useEffect(() => {
-    if (isDone && reflectionQuestions.length > 0 && strategies.length > 0 && wellbeingAfter !== null) {
+    if (isDone && strategies.length > 0 && wellbeingAfter !== null) {
       const timer = setTimeout(() => setShowActions(true), shouldReduce ? 0 : 800);
       return () => clearTimeout(timer);
     }
-  }, [isDone, reflectionQuestions.length, strategies.length, wellbeingAfter, shouldReduce]);
+  }, [isDone, strategies.length, wellbeingAfter, shouldReduce]);
 
   const generate = async () => {
     setIsGenerating(true);
     setIsError(false);
     setFullClosure(null);
-    setReflectionQuestions([]);
     setStrategies([]);
     setShowActions(false);
     try {
@@ -85,30 +78,23 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
         interpretation: session.interpretation!.text,
         gestaltActivity: session.gestaltActivity!,
         patient,
+        deepWorkSynthesis: session.deepWork?.synthesis,
       });
       setFullClosure(result);
       onUpdate({ closure: result });
       startStream(result.text);
 
-      const [questions, strats] = await Promise.all([
-        generateReflectionQuestions({
-          conflicts: session.conflicts,
-          frameworkMatches: session.frameworkMatches,
-          closure: result.text,
-        }),
-        generateStrategies({
-          conflicts: session.conflicts,
-          frameworkMatches: session.frameworkMatches,
-          interpretation: session.interpretation!.text,
-          gestaltActivity: session.gestaltActivity!,
-          patient,
-        }),
-      ]);
-      setReflectionQuestions(questions);
+      const strats = await generateStrategies({
+        conflicts: session.conflicts,
+        frameworkMatches: session.frameworkMatches,
+        interpretation: session.interpretation!.text,
+        gestaltActivity: session.gestaltActivity!,
+        patient,
+      });
       setStrategies(strats);
       const closureWithStrategies = { ...result, strategies: strats };
       setFullClosure(closureWithStrategies);
-      onUpdate({ closure: closureWithStrategies, reflectionQuestions: questions });
+      onUpdate({ closure: closureWithStrategies });
     } catch (e) {
       console.error(e);
       setIsError(true);
@@ -181,43 +167,6 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
           </p>
         </AICard>
       )}
-
-      {/* Preguntas de reflexión — con pausa después del cierre */}
-      <AnimatePresence>
-        {showReady && reflectionQuestions.length > 0 && (
-          <motion.div
-            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.8 }}
-            className="rounded-[var(--radius-card)] p-6 space-y-4"
-            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-          >
-            <p
-              className="text-xs font-medium uppercase tracking-widest"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
-            >
-              Antes de irte, tres preguntas para el camino
-            </p>
-            <div className="space-y-3">
-              {reflectionQuestions.map((q, i) => (
-                <motion.p
-                  key={i}
-                  initial={shouldReduce ? false : { opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (shouldReduce ? 0 : 0.9) + i * 0.12, duration: 0.4 }}
-                  className="text-sm leading-relaxed pl-3"
-                  style={{
-                    color: 'var(--color-deep)',
-                    borderLeft: '2px solid var(--color-sage)',
-                  }}
-                >
-                  {q}
-                </motion.p>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Actividad Gestalt experiencial */}
       <AnimatePresence>

@@ -2,7 +2,7 @@
 
 import Groq from 'groq-sdk';
 import { FRAMEWORKS_DICTIONARY, GESTALT_ACTIVITIES } from '@/lib/theories';
-import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type } from '@/lib/types';
+import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type, WorkCard } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -251,6 +251,7 @@ export async function generateClosure(params: {
   interpretation: string;
   gestaltActivity: GestaltActivity | null;
   patient: Patient;
+  deepWorkSynthesis?: string;
 }): Promise<Closure> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
 
@@ -268,6 +269,9 @@ export async function generateClosure(params: {
     "${interpretation}"
 
     ${gestaltActivity ? `Actividad Gestalt preparada para el paciente:\nTipo: ${gestaltActivity.type}\nTítulo: "${gestaltActivity.title}"\nDescripción: "${gestaltActivity.description}"` : ''}
+${params.deepWorkSynthesis
+  ? `\nEl paciente también trabajó activamente durante la sesión y llegó a esto:\n"${params.deepWorkSynthesis}"\nReconoce este trabajo activo en la carta — menciónalo como un logro concreto de esta sesión.`
+  : ''}
 
     Ahora genera una CARTA PERSONAL al paciente. El formato es epistolar — como una carta íntima de alguien que realmente lo escuchó.
 
@@ -352,6 +356,117 @@ export async function generateReflectionQuestions(params: {
 
   const parsed = JSON.parse(content);
   return Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : [];
+}
+
+// --- ACTION 5b: Generar tarjetas de trabajo activo ---
+export async function generateWorkCards(params: {
+  conflicts: Conflict[];
+  frameworkMatches: FrameworkMatch[];
+  reflectionQuestions: string[];
+  interpretation: string;
+}): Promise<WorkCard[]> {
+  const { conflicts, frameworkMatches, reflectionQuestions, interpretation } = params;
+
+  const prompt = `
+Eres un psicoterapeuta que acaba de entregar una interpretación a su paciente y ahora propone tres líneas de trabajo activo para la sesión.
+
+Interpretación dada al paciente:
+"${interpretation}"
+
+Conflictos del paciente: ${conflicts.map(c => c.synthesized).join(', ')}
+
+Marco terapéutico: ${formatFrameworks(frameworkMatches)}
+
+Preguntas de reflexión base (una por tarjeta):
+${reflectionQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+Para cada pregunta de reflexión, genera una tarjeta de trabajo activo con:
+- "title": frase de acción en infinitivo, 4-8 palabras, específica al conflicto (ej: "Explorar la culpa hacia tu madre", "Entender por qué evitas el conflicto")
+- "subtitle": la pregunta de reflexión original, sin modificar
+- "openingLine": primera frase del terapeuta al abrir este hilo de trabajo. Cálida, directa, invita a hablar. Máximo 20 palabras. Segunda persona singular. NO empieces con "¡"
+
+Responde SOLO con JSON: { "cards": [ { "id": "1", "title": "...", "subtitle": "...", "openingLine": "..." }, ... ] }
+  `;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.6,
+    });
+    content = response.choices[0]?.message?.content || '{"cards":[]}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  const cards: WorkCard[] = Array.isArray(parsed.cards) ? parsed.cards.slice(0, 3) : [];
+  return cards;
+}
+
+// --- ACTION 5c: Respuesta terapéutica en modo resolutivo ---
+export async function getDeepWorkResponse(params: {
+  selectedCard: WorkCard;
+  messages: { role: 'patient' | 'therapist'; text: string }[];
+  conflicts: Conflict[];
+  frameworkMatches: FrameworkMatch[];
+  interpretation: string;
+  patient: Patient;
+}): Promise<{ done: boolean; response: string; synthesis?: string }> {
+  const { selectedCard, messages, conflicts, frameworkMatches, interpretation, patient } = params;
+
+  const patientTurns = messages.filter(m => m.role === 'patient').length;
+  const forceClose = patientTurns >= 2;
+
+  const history = messages.map(m =>
+    `${m.role === 'therapist' ? 'Terapeuta' : 'Paciente'}: ${m.text}`
+  ).join('\n');
+
+  const prompt = `
+Eres un psicoterapeuta en una sesión activa. Ya conoces al paciente a fondo y acabas de darle una interpretación. Ahora estás trabajando un punto específico con él/ella.
+
+Paciente: ${buildPatientContext(patient)}
+Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
+Marco: ${formatFrameworks(frameworkMatches)}
+Interpretación dada: "${interpretation}"
+
+Línea de trabajo elegida por el paciente: "${selectedCard.title}"
+Pregunta base: "${selectedCard.subtitle}"
+
+Conversación hasta ahora:
+${history || '(El paciente aún no ha respondido)'}
+
+${forceClose
+  ? `INSTRUCCIÓN: Han tenido suficientes intercambios. Genera la síntesis final ahora.
+     Responde con: { "done": true, "response": "[síntesis de 2-3 oraciones: lo que el paciente llegó a ver o sentir en este trabajo, en segunda persona, sin lenguaje técnico, cálido]", "synthesis": "[mismo texto]" }`
+  : `INSTRUCCIÓN: Estás en modo resolutivo — no exploración abierta. Haz UNA pregunta que lleve al paciente hacia un insight concreto sobre "${selectedCard.title}". Máximo 20 palabras. Segunda persona. No uses "¿Podrías...?" ni "¿Me puedes decir...?".
+     Responde con: { "done": false, "response": "[tu pregunta]", "synthesis": null }`
+}
+
+Responde SOLO con JSON con esa estructura exacta.
+  `;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.65,
+    });
+    content = response.choices[0]?.message?.content || '{"done":true,"response":"","synthesis":""}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  return {
+    done: !!parsed.done,
+    response: parsed.response ?? '',
+    synthesis: parsed.synthesis ?? undefined,
+  };
 }
 
 // --- ACTION 6: Generar estrategias practicas para el dia a dia ---
