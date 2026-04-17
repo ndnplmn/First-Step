@@ -35,8 +35,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Tend',
   description: 'A space to tend to yourself — guided, intimate, yours.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/favicon.svg',
+    apple: '/favicon.svg',
   },
   appleWebApp: {
     capable: true,
@@ -54,6 +56,17 @@ export default function RootLayout({
     <html lang="es" className={`${instrumentSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-[var(--color-base)] min-h-dvh">
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   )

@@ -94,23 +94,19 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
   };
 
   const handleStage3BodyworkAdvance = (bodyworkNotes: string) => {
-    void bodyworkNotes;
-    advanceStage({ stage: 4 });
+    advanceStage({ stage3Notes: bodyworkNotes });
   };
 
   const handleStage3SocialAdvance = (socialHistory: string) => {
-    void socialHistory;
-    advanceStage({ stage: 4 });
+    advanceStage({ stage3Notes: socialHistory });
   };
 
   const handleStage3GestaltAdvance = (gestaltLog: string) => {
-    void gestaltLog;
-    advanceStage({ stage: 4 });
+    advanceStage({ stage3Notes: gestaltLog });
   };
 
   const handleStage3ExposureAdvance = (exposureLog: string) => {
-    void exposureLog;
-    advanceStage({ stage: 4 });
+    advanceStage({ stage3Notes: exposureLog });
   };
 
   const handleStage4Advance = (deepWork: DeepWorkSession) => {

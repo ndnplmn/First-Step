@@ -63,6 +63,7 @@ function rowToSession(row: Record<string, unknown>): PatientSession {
     closure: row.closure as PatientSession['closure'],
     unmappedPhrases: (row.unmapped_phrases as PatientSession['unmappedPhrases']) ?? [],
     reflectionQuestions: (row.reflection_questions as string[]) ?? [],
+    stage3Notes: row.stage3_notes as string | undefined,
     narrativeSummary: row.narrative_summary as string | undefined,
     wellbeingBefore: row.wellbeing_before as number | undefined,
     wellbeingAfter: row.wellbeing_after as number | undefined,
@@ -138,6 +139,7 @@ export const db = {
       closure: session.closure,
       unmapped_phrases: session.unmappedPhrases,
       reflection_questions: session.reflectionQuestions ?? [],
+      stage3_notes: session.stage3Notes,
       narrative_summary: session.narrativeSummary,
       wellbeing_before: session.wellbeingBefore,
       wellbeing_after: session.wellbeingAfter,
@@ -218,5 +220,23 @@ export const db = {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     return user;
+  },
+
+  async getEmail(): Promise<string | null> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.email ?? null;
+  },
+
+  async deleteAccount(): Promise<{ error: Error | null }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: new Error('No user') };
+    // Delete user data
+    await supabase.from('sessions').delete().eq('user_id', user.id);
+    await supabase.from('diary_entries').delete().eq('user_id', user.id);
+    await supabase.from('profiles').delete().eq('id', user.id);
+    await supabase.auth.signOut();
+    return { error: null };
   },
 };

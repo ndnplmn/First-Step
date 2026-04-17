@@ -10,6 +10,7 @@ import { PatientRecord } from '@/components/stages/patient-record';
 import { CheckIn } from '@/components/stages/check-in';
 import { Diary } from '@/components/stages/diary';
 import { Progress } from '@/components/stages/progress';
+import { Settings } from '@/components/stages/settings';
 import { AuthForm } from '@/components/auth/auth-form';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { db } from '@/lib/db';
@@ -159,6 +160,10 @@ export default function Home() {
     setView('PROGRESS');
   };
 
+  const handleViewSettings = () => {
+    setView('SETTINGS');
+  };
+
   const handleIntakeComplete = async (patient: Patient, session: PatientSession) => {
     await db.saveProfile(patient);
     await db.saveSession(session);
@@ -264,6 +269,7 @@ export default function Home() {
         onViewRecord={handleViewRecord}
         onViewDiary={handleViewDiary}
         onViewProgress={handleViewProgress}
+        onViewSettings={handleViewSettings}
         onNew={() => handlePatientSelect(activePatient)}
         onSignOut={handleSignOut}
         showMigrationPrompt={showMigrationPrompt}
@@ -328,6 +334,15 @@ export default function Home() {
         patient={activePatient}
         sessions={recordSessions}
         onBack={() => setView('DASHBOARD')}
+      />
+    );
+  }
+
+  if (view === 'SETTINGS') {
+    return (
+      <Settings
+        onBack={() => setView('DASHBOARD')}
+        onSignOut={handleSignOut}
       />
     );
   }

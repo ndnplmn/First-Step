@@ -192,8 +192,13 @@ export async function generateInterpretation(params: {
   memories: Memory[];
   patient: Patient;
   lifeChanges?: LifeChanges;
+  stage3Notes?: string;
 }): Promise<Interpretation> {
   const { conflicts, frameworkMatches, memories } = params;
+
+  const stage3Section = params.stage3Notes
+    ? `\n    Notas de exploración del paciente (sesión experiencial):\n    ${params.stage3Notes}\n`
+    : '';
 
   const prompt = `
     Eres un psicoterapeuta magistral que integra múltiples marcos terapéuticos.
@@ -208,21 +213,22 @@ export async function generateInterpretation(params: {
     ${conflicts.map(c => `- ${c.synthesized} (${c.frameworkKey}: ${c.subCategory})`).join('\n')}
 
     Recuerdos del paciente:
-    ${memories.map(m => `
+    ${memories.length > 0 ? memories.map(m => `
     Suceso: "${m.raw}"
     Sentimiento entonces: "${m.feelingThen}"
     Sentimiento ahora: "${m.feelingNow}"
     Palabras clave: ${m.keywords.join(', ')}
-    `).join('\n---\n')}
-
+    `).join('\n---\n') : '(Sin recuerdos trabajados en esta sesión)'}
+${stage3Section}
     Genera una interpretación clínica breve, profunda y reveladora desde el marco terapéutico elegido.
     Los marcos posibles son: Psicoanálisis Freudiano, Terapia Bioenergética, Psicología Individual de Adler, Terapia Gestalt, Sensibilización Sistemática Conductual.
 
     Reglas:
     - Dirígete directamente al paciente (segunda persona "tú")
-    - Conecta sus recuerdos con su conflicto actual desde la lente del marco terapéutico
+    - Conecta lo trabajado en sesión con su conflicto actual desde la lente del marco terapéutico
+    - Si hay notas de exploración, integra los insights concretos que el paciente compartió
     - Usa lenguaje accesible, no técnico
-    - EXACTAMENTE 1 párrafo. Solo 2 párrafos si el paciente compartió recuerdos muy ricos que lo justifiquen plenamente. Nunca más de 2.
+    - EXACTAMENTE 1 párrafo. Solo 2 párrafos si el material trabajado lo justifica plenamente. Nunca más de 2.
     - Cada párrafo: máximo 4 oraciones. Ve directo al punto — sin preámbulos ni rodeos.
     - Sé empático, no juzgues
     - NO nombres las teorías por su nombre técnico — habla desde ellas, no sobre ellas

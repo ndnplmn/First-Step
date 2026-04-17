@@ -150,6 +150,7 @@ export type PatientSession = {
   unmappedPhrases: UnmappedPhrase[];
   reflectionQuestions?: string[];
   deepWork?: DeepWorkSession;
+  stage3Notes?: string;
   narrativeSummary?: string;
   wellbeingBefore?: number;  // 1-5 scale
   wellbeingAfter?: number;   // 1-5 scale
@@ -169,4 +170,5 @@ export type AppView =
   | 'SESSION'
   | 'RECORD'
   | 'DIARY'
-  | 'PROGRESS';
+  | 'PROGRESS'
+  | 'SETTINGS';

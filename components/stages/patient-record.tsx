@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
-import { ArrowLeft, Clock, User } from '@phosphor-icons/react';
+import { ArrowLeft, Clock, User, Export, Check, Printer } from '@phosphor-icons/react';
 
 const WELLBEING_LABELS: Record<number, string> = {
   1: 'Muy mal',
@@ -52,12 +52,152 @@ interface PatientRecordProps {
   onBack: () => void;
 }
 
+const WELLBEING_EXPORT_LABELS: Record<number, string> = {
+  1: 'Muy mal', 2: 'Mal', 3: 'Regular', 4: 'Bien', 5: 'Muy bien',
+};
+
+function buildExportText(patient: Patient, session: PatientSession): string {
+  const lines: string[] = [];
+  lines.push(`Tend — Mi resumen de sesión`);
+  lines.push(`${patient.name} · ${new Date(session.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`);
+  lines.push('');
+
+  if (session.narrativeSummary) {
+    lines.push('ENFOQUE');
+    lines.push(session.narrativeSummary);
+    lines.push('');
+  }
+  if (session.wellbeingBefore || session.wellbeingAfter) {
+    lines.push('BIENESTAR');
+    if (session.wellbeingBefore) lines.push(`Al inicio: ${WELLBEING_EXPORT_LABELS[session.wellbeingBefore]}`);
+    if (session.wellbeingAfter) lines.push(`Al final: ${WELLBEING_EXPORT_LABELS[session.wellbeingAfter]}`);
+    lines.push('');
+  }
+  if (session.conflicts.length > 0) {
+    lines.push('LO QUE TRAJE A SESIÓN');
+    session.conflicts.forEach(c => lines.push(`· ${c.synthesized}`));
+    lines.push('');
+  }
+  if (session.interpretation?.text) {
+    lines.push('INTERPRETACIÓN');
+    lines.push(session.interpretation.text);
+    lines.push('');
+  }
+  if (session.closure?.text) {
+    lines.push('CARTA DE CIERRE');
+    lines.push(session.closure.text);
+    lines.push('');
+  }
+  if (session.reflectionQuestions && session.reflectionQuestions.length > 0) {
+    lines.push('PARA LLEVAR CONMIGO');
+    session.reflectionQuestions.forEach(q => lines.push(`· ${q}`));
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function buildTherapistReport(patient: Patient, sessions: PatientSession[]): string {
+  const completed = sessions.filter(s => s.stage >= 6).sort((a, b) => a.createdAt - b.createdAt);
+  const frameworks = Array.from(new Set(
+    sessions.flatMap(s => s.frameworkMatches.map(f => f.name))
+  )).join(', ');
+
+  const wellbeingTrend = completed
+    .filter(s => s.wellbeingAfter)
+    .map(s => s.wellbeingAfter ?? 0);
+  const avgWellbeing = wellbeingTrend.length
+    ? (wellbeingTrend.reduce((a, b) => a + b, 0) / wellbeingTrend.length).toFixed(1)
+    : null;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Informe — ${patient.name} — Tend</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, serif; font-size: 11pt; color: #19160F; padding: 48px; max-width: 700px; margin: 0 auto; }
+  h1 { font-size: 22pt; font-style: italic; margin-bottom: 4px; }
+  .subtitle { font-size: 9pt; color: #888; font-family: monospace; margin-bottom: 32px; }
+  h2 { font-size: 8pt; font-family: monospace; text-transform: uppercase; letter-spacing: 0.1em; color: #999; margin-bottom: 8px; margin-top: 28px; }
+  p { line-height: 1.65; margin-bottom: 8px; }
+  .chip { display: inline-block; background: #f0ede9; padding: 2px 10px; border-radius: 99px; font-size: 9pt; margin: 2px; }
+  .session-block { border-left: 2px solid #3D6B47; padding: 8px 16px; margin-bottom: 16px; }
+  .wellbeing { font-size: 9pt; color: #666; font-family: monospace; margin-top: 4px; }
+  .footer { margin-top: 48px; font-size: 8pt; color: #bbb; font-family: monospace; border-top: 1px solid #eee; padding-top: 12px; }
+  @media print { body { padding: 24px; } }
+</style>
+</head>
+<body>
+  <h1>Informe de proceso — ${patient.name}</h1>
+  <p class="subtitle">Generado con Tend · ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+
+  <h2>Datos del paciente</h2>
+  <p><strong>Nombre:</strong> ${patient.name} · <strong>Edad:</strong> ${patient.age} años · <strong>Género:</strong> ${patient.gender}</p>
+  <p><strong>Estado civil:</strong> ${patient.maritalStatus} · <strong>Situación:</strong> ${patient.livingSituation}</p>
+  <p><strong>Terapia previa:</strong> ${patient.previousTherapy ? `Sí${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}` : 'No'}</p>
+  <p><strong>Medicación:</strong> ${patient.takingMedication ? `Sí${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}` : 'No'}</p>
+
+  <h2>Motivo de consulta</h2>
+  <p>${patient.consultationReason}</p>
+
+  ${frameworks ? `<h2>Enfoques terapéuticos utilizados</h2><p>${frameworks}</p>` : ''}
+  ${avgWellbeing ? `<h2>Bienestar promedio (escala 1-5)</h2><p>${avgWellbeing} / 5 — basado en ${wellbeingTrend.length} sesión${wellbeingTrend.length !== 1 ? 'es' : ''}</p>` : ''}
+
+  <h2>Sesiones completadas (${completed.length})</h2>
+  ${completed.map(s => `
+  <div class="session-block">
+    <p><strong>Sesión ${s.sessionNumber}</strong> · ${new Date(s.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+    ${s.wellbeingBefore || s.wellbeingAfter
+      ? `<p class="wellbeing">Bienestar: ${s.wellbeingBefore ?? '—'} → ${s.wellbeingAfter ?? '—'}</p>`
+      : ''}
+    ${s.conflicts.length > 0
+      ? `<p style="margin-top:6px"><strong>Conflictos:</strong> ${s.conflicts.map(c => c.synthesized).join(' · ')}</p>`
+      : ''}
+    ${s.interpretation?.text
+      ? `<p style="margin-top:6px;font-style:italic;color:#555">${s.interpretation.text.slice(0, 300)}${s.interpretation.text.length > 300 ? '…' : ''}</p>`
+      : ''}
+  </div>
+  `).join('')}
+
+  <p class="footer">Este informe fue generado automáticamente por Tend. No constituye un diagnóstico clínico. La información aquí contenida es de uso exclusivo del profesional de salud mental designado por el paciente.</p>
+</body>
+</html>`;
+}
+
 export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps) {
   const [activeSessionIdx, setActiveSessionIdx] = useState(sessions.length > 0 ? sessions.length - 1 : 0);
+  const [copied, setCopied] = useState(false);
   const session = sessions[activeSessionIdx];
 
   const primaryFramework = session?.frameworkMatches?.[0];
   const primaryColor = primaryFramework ? FRAMEWORK_COLORS[primaryFramework.key] : null;
+
+  const handleTherapistHandoff = () => {
+    const html = buildTherapistReport(patient, sessions);
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+  };
+
+  const handleExport = async () => {
+    if (!session) return;
+    const text = buildExportText(patient, session);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Mi resumen — Tend', text });
+        return;
+      } catch {
+        // fall through to clipboard
+      }
+    }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="min-h-dvh" style={{ background: 'var(--color-base)' }}>
@@ -94,6 +234,44 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
             {patient.name}
           </h1>
         </div>
+
+        {sessions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <motion.button
+              type="button"
+              onClick={handleTherapistHandoff}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-inner)] text-xs font-medium"
+              style={{
+                background: 'var(--color-surface)',
+                color: 'var(--color-muted)',
+                boxShadow: 'var(--shadow-card)',
+                border: '1px solid var(--color-border)',
+              }}
+              title="Informe para terapeuta"
+            >
+              <Printer size={14} />
+              Terapeuta
+            </motion.button>
+            {session && (
+              <motion.button
+                type="button"
+                onClick={handleExport}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-inner)] text-xs font-medium"
+                style={{
+                  background: copied ? 'rgba(61,107,71,0.1)' : 'var(--color-surface)',
+                  color: copied ? 'var(--color-sage)' : 'var(--color-muted)',
+                  boxShadow: 'var(--shadow-card)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                {copied ? <Check size={14} weight="bold" /> : <Export size={14} />}
+                {copied ? 'Copiado' : 'Compartir'}
+              </motion.button>
+            )}
+          </div>
+        )}
       </header>
 
       <main className="max-w-[680px] mx-auto px-6 py-8 space-y-8">

@@ -65,6 +65,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
         memories: session.memories,
         patient,
         lifeChanges: session.lifeChanges,
+        stage3Notes: session.stage3Notes,
       });
       setFullInterpretation(result);
       onUpdate({ interpretation: result });

@@ -34,6 +34,7 @@ const INTENSITY_LABELS = ['Muy leve', 'Leve', 'Moderada', 'Intensa', 'Muy intens
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
+
 /* ── helpers ───────────────────────────────────────────── */
 
 function formatRelativeTime(timestamp: number): string {
@@ -104,6 +105,25 @@ export function Diary({ patient, onBack }: DiaryProps) {
     }
     return set;
   }, [entries]);
+
+  // Last 30 days emotion frequency
+  const emotionFrequency = useMemo(() => {
+    const cutoff = Date.now() - 30 * 86_400_000;
+    const counts: Partial<Record<DiaryEmotion, number>> = {};
+    for (const e of entries) {
+      if (e.createdAt < cutoff) continue;
+      counts[e.emotion] = (counts[e.emotion] ?? 0) + 1;
+    }
+    return counts;
+  }, [entries]);
+
+  const topEmotions = useMemo(() => {
+    return Object.entries(emotionFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5) as [DiaryEmotion, number][];
+  }, [emotionFrequency]);
+
+  const maxCount = topEmotions[0]?.[1] ?? 1;
 
   const hasEntryOnDay = (d: Date) => entryDatesSet.has(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
 
@@ -305,6 +325,49 @@ export function Diary({ patient, onBack }: DiaryProps) {
               : `${entries.length} ${entries.length === 1 ? 'registro' : 'registros'}`}
           </p>
         </div>
+
+        {/* Emotion trend (last 30 days) */}
+        {topEmotions.length > 0 && (
+          <div
+            className="rounded-[var(--radius-card)] p-4 mb-6"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-widest mb-3"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
+            >
+              Últimos 30 días
+            </p>
+            <div className="space-y-2.5">
+              {topEmotions.map(([emotion, count]) => (
+                <div key={emotion} className="flex items-center gap-3">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ background: EMOTION_COLORS[emotion] }}
+                  />
+                  <span className="text-xs w-20 flex-shrink-0" style={{ color: 'var(--color-deep)' }}>
+                    {emotion}
+                  </span>
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
+                    <motion.div
+                      initial={shouldReduce ? false : { width: 0 }}
+                      animate={{ width: `${(count / maxCount) * 100}%` }}
+                      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                      className="h-full rounded-full"
+                      style={{ background: EMOTION_COLORS[emotion] }}
+                    />
+                  </div>
+                  <span
+                    className="text-xs w-4 text-right flex-shrink-0"
+                    style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+                  >
+                    {count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Calendar strip */}
         <div

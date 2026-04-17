@@ -35,9 +35,24 @@ const screens = [
 ];
 
 const steps = [
-  { icon: '💬', title: 'Cuéntanos tu conflicto', desc: 'Describe lo que estás viviendo en tus propias palabras, sin filtros.' },
-  { icon: '🧭', title: 'La IA elige el mejor enfoque', desc: 'Identificamos el marco terapéutico más adecuado entre 5 enfoques clásicos.' },
-  { icon: '🌀', title: 'Exploramos juntos', desc: 'La sesión se adapta a tu situación — memorias, trabajo corporal, ejercicios Gestalt y más.' },
+  {
+    icon: '💬',
+    title: 'Cuéntanos lo que sientes',
+    desc: 'Describe tu conflicto en tus propias palabras. La IA escucha sin juzgar.',
+    preview: { role: 'ai', text: '¿Cuándo empezaste a sentirte así?' },
+  },
+  {
+    icon: '🧭',
+    title: 'Elegimos el enfoque',
+    desc: 'Mapeamos tu situación entre 5 enfoques terapéuticos clásicos.',
+    chips: ['Gestalt', 'Freudiano', 'Adleriano', 'Bioenergético', 'Conductual'],
+  },
+  {
+    icon: '✦',
+    title: 'Trabajo profundo + cierre',
+    desc: 'Una sesión completa: exploración, interpretación personalizada y carta de cierre.',
+    preview: { role: 'letter', text: 'Querida Carmen,\nLo que describes no es debilidad...' },
+  },
 ];
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
@@ -132,31 +147,66 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             {/* Screen 1 — How it works */}
             {index === 1 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
                 {steps.map((step, i) => (
                   <div key={i} style={{
-                    display: 'flex',
-                    gap: '1rem',
-                    alignItems: 'flex-start',
                     padding: '1rem',
-                    background: 'rgba(107,127,110,0.05)',
-                    borderRadius: 12,
+                    background: 'var(--color-surface)',
+                    borderRadius: 14,
                     border: '1px solid var(--color-border)',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
                   }}>
-                    <div style={{ fontSize: '1.375rem', lineHeight: 1, marginTop: 2 }}>{step.icon}</div>
-                    <div>
-                      <div style={{
-                        fontWeight: 600,
-                        color: 'var(--color-deep)',
-                        fontSize: '0.9375rem',
-                        marginBottom: '0.25rem',
-                      }}>{step.title}</div>
-                      <div style={{
-                        color: 'var(--color-muted)',
-                        fontSize: '0.875rem',
-                        lineHeight: 1.5,
-                      }}>{step.desc}</div>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                      <div style={{ fontSize: '1.25rem', lineHeight: 1, marginTop: 1 }}>{step.icon}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontWeight: 600,
+                          color: 'var(--color-deep)',
+                          fontSize: '0.9rem',
+                          marginBottom: '0.2rem',
+                        }}>{step.title}</div>
+                        <div style={{
+                          color: 'var(--color-muted)',
+                          fontSize: '0.8125rem',
+                          lineHeight: 1.5,
+                        }}>{step.desc}</div>
+                      </div>
                     </div>
+                    {'preview' in step && step.preview && (
+                      <div style={{
+                        marginTop: '0.75rem',
+                        padding: '0.625rem 0.875rem',
+                        background: step.preview.role === 'ai'
+                          ? 'rgba(61,107,71,0.07)'
+                          : 'rgba(25,22,15,0.04)',
+                        borderRadius: 10,
+                        borderLeft: step.preview.role === 'letter' ? '2px solid var(--color-sage)' : 'none',
+                      }}>
+                        <p style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--color-deep)',
+                          fontStyle: step.preview.role === 'letter' ? 'italic' : 'normal',
+                          lineHeight: 1.5,
+                          whiteSpace: 'pre-line',
+                        }}>
+                          {step.preview.text}
+                        </p>
+                      </div>
+                    )}
+                    {'chips' in step && step.chips && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginTop: '0.625rem' }}>
+                        {step.chips.map(c => (
+                          <span key={c} style={{
+                            fontSize: '0.7rem',
+                            padding: '0.2rem 0.625rem',
+                            borderRadius: 99,
+                            background: 'rgba(61,107,71,0.08)',
+                            color: 'var(--color-sage)',
+                            fontFamily: 'var(--font-mono)',
+                          }}>{c}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

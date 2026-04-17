@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { Eye, BookOpen, Path, Plus, SignOut } from '@phosphor-icons/react';
+import { Eye, BookOpen, Path, Plus, SignOut, Gear } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
 import { TendLogo } from '@/components/ui/logo';
 import type { Patient, PatientSession } from '@/lib/types';
@@ -14,6 +14,40 @@ const STAGE_NAMES: Record<number, string> = {
   5: 'Integración',
   6: 'Cierre',
 };
+
+function getGreeting(name: string): string {
+  const hour = new Date().getHours();
+  const firstName = name.split(' ')[0];
+  if (hour >= 5 && hour < 12) return `Buenos días, ${firstName}`;
+  if (hour >= 12 && hour < 20) return `Buenas tardes, ${firstName}`;
+  return `Buenas noches, ${firstName}`;
+}
+
+function getDailyInsight(sessions: PatientSession[], activeSession: PatientSession | null): { text: string; accent: string } | null {
+  if (activeSession) return null;
+  const completed = sessions.filter(s => s.stage >= 6);
+
+  if (completed.length === 0) return null;
+
+  const last = [...completed].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  const wbBefore = last.wellbeingBefore ?? 0;
+  const wbAfter = last.wellbeingAfter ?? 0;
+
+  if (wbAfter > wbBefore) {
+    return { text: 'Tu bienestar mejoró en tu última sesión. Eso importa.', accent: 'var(--color-sage)' };
+  }
+
+  const daysSince = Math.floor((Date.now() - last.updatedAt) / 86_400_000);
+  if (daysSince >= 14) {
+    return { text: 'Ha pasado un tiempo. Volver también es cuidarse.', accent: 'var(--color-terracotta)' };
+  }
+
+  if (completed.length >= 3) {
+    return { text: `${completed.length} sesiones. Tu constancia construye algo real.`, accent: 'var(--color-sage)' };
+  }
+
+  return null;
+}
 
 function formatRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
@@ -36,6 +70,7 @@ interface DashboardProps {
   onViewProgress: () => void;
   onNew: () => void;
   onSignOut: () => void;
+  onViewSettings: () => void;
   showMigrationPrompt?: boolean;
   onMigrate?: () => void;
   onDismissMigration?: () => void;
@@ -51,6 +86,7 @@ export function Dashboard({
   onViewProgress,
   onNew,
   onSignOut,
+  onViewSettings,
   showMigrationPrompt,
   onMigrate,
   onDismissMigration,
@@ -58,6 +94,7 @@ export function Dashboard({
   const shouldReduce = useReducedMotion();
   const completedSessions = sessions.filter(s => s.stage >= 6);
   const sessionCount = sessions.length;
+  const dailyInsight = getDailyInsight(sessions, activeSession);
 
   return (
     <div className="min-h-dvh">
@@ -84,6 +121,15 @@ export function Dashboard({
             >
               <Plus size={14} />
               Nueva sesión
+            </motion.button>
+            <motion.button
+              type="button"
+              onClick={onViewSettings}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              title="Ajustes"
+              style={{ color: 'var(--color-muted)', padding: '0.5rem' }}
+            >
+              <Gear size={18} />
             </motion.button>
             <motion.button
               type="button"
@@ -135,16 +181,19 @@ export function Dashboard({
 
         {/* Greeting */}
         <div className="mb-8">
-          <h1
+          <motion.h1
+            initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="leading-tight breathe"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(36px, 7vw, 56px)',
+              fontSize: 'clamp(32px, 6.5vw, 52px)',
               color: 'var(--color-deep)',
             }}
           >
-            Hola, {patient.name.split(' ')[0]}
-          </h1>
+            {getGreeting(patient.name)}
+          </motion.h1>
           <p
             className="mt-1"
             style={{
@@ -157,6 +206,25 @@ export function Dashboard({
               ? 'Aún no has iniciado ninguna sesión'
               : `${completedSessions.length} ${completedSessions.length === 1 ? 'sesión completada' : 'sesiones completadas'}`}
           </p>
+
+          {/* Daily insight card */}
+          {dailyInsight && (
+            <motion.div
+              initial={shouldReduce ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.25 }}
+              className="mt-4 px-4 py-3 rounded-[var(--radius-inner)]"
+              style={{
+                background: 'var(--color-surface)',
+                boxShadow: 'var(--shadow-card)',
+                borderLeft: `3px solid ${dailyInsight.accent}`,
+              }}
+            >
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+                {dailyInsight.text}
+              </p>
+            </motion.div>
+          )}
         </div>
 
         {/* Active session card */}
