@@ -3,7 +3,6 @@
 import { motion, useReducedMotion } from 'motion/react';
 
 const STAGES = [
-  { number: 1, name: 'Apertura' },
   { number: 2, name: 'Conflictos' },
   { number: 3, name: 'Exploración' },
   { number: 4, name: 'Comprensión' },
@@ -34,7 +33,7 @@ export function ChapterProgress({ currentStage }: ChapterProgressProps) {
           textTransform: 'uppercase',
         }}
       >
-        {STAGES[currentStage - 1].name}
+        {STAGES.find(s => s.number === currentStage)?.name ?? ''}
       </motion.span>
 
       {/* Track */}

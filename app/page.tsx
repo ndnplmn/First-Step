@@ -79,7 +79,7 @@ export default function Home() {
 
     const allSessions = await db.getSessions();
     setSessions(allSessions);
-    const active = allSessions.find(s => s.stage < 5) ?? null;
+    const active = allSessions.find(s => s.stage < 6) ?? null;
     if (active) setActiveSession(active);
 
     setView('DASHBOARD');
@@ -133,7 +133,7 @@ export default function Home() {
 
   const handlePatientSelect = async (patient: Patient) => {
     setActivePatient(patient);
-    const active = sessions.find(s => s.stage < 5) ?? null;
+    const active = sessions.find(s => s.stage < 6) ?? null;
     if (active) {
       setActiveSession(active);
       setView('SESSION');

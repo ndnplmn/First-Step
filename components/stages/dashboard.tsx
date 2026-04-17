@@ -56,7 +56,7 @@ export function Dashboard({
   onDismissMigration,
 }: DashboardProps) {
   const shouldReduce = useReducedMotion();
-  const completedSessions = sessions.filter(s => s.stage >= 5);
+  const completedSessions = sessions.filter(s => s.stage >= 6);
   const sessionCount = sessions.length;
 
   return (

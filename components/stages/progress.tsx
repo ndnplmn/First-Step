@@ -43,7 +43,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
   const sorted = [...sessions].sort((a, b) => b.createdAt - a.createdAt);
 
   // Stats
-  const completedSessions = sorted.filter(s => s.stage === 5);
+  const completedSessions = sorted.filter(s => s.stage === 6);
   const avgWellbeing = completedSessions.length > 0
     ? completedSessions.reduce((sum, s) => sum + (s.wellbeingAfter ?? 0), 0) /
       completedSessions.filter(s => s.wellbeingAfter).length

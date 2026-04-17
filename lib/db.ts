@@ -149,7 +149,7 @@ export const db = {
 
   async getActiveSession(): Promise<PatientSession | null> {
     const sessions = await this.getSessions();
-    return sessions.find(s => s.stage < 5) ?? null;
+    return sessions.find(s => s.stage < 6) ?? null;
   },
 
   async getDiaryEntries(): Promise<DiaryEntry[]> {
@@ -206,6 +206,12 @@ export const db = {
   async signOut() {
     const supabase = createClient();
     return supabase.auth.signOut();
+  },
+
+  async resetPassword(email: string) {
+    const supabase = createClient();
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    return supabase.auth.resetPasswordForEmail(email, { redirectTo });
   },
 
   async getUser() {

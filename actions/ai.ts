@@ -291,7 +291,7 @@ ${params.deepWorkSynthesis
 
     - Cierra con una línea en blanco y luego exactamente:
     Con cariño,
-    Tu primer paso
+    Tend
 
     NO expliques teorías. Habla al corazón.
   `;

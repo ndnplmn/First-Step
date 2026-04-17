@@ -54,6 +54,21 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
         Un espacio íntimo para cuidarte. Guiado, profundo y tuyo.
       </motion.p>
 
+      {/* Crisis resources */}
+      <motion.p
+        initial={shouldReduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={shouldReduce ? { duration: 0 } : { duration: 0.6, delay: 0.8, ease: 'easeOut' }}
+        className="mt-16 text-xs leading-relaxed"
+        style={{ color: 'var(--color-muted-soft)', maxWidth: 340 }}
+      >
+        Tend no es un servicio de emergencias.
+        Si estás en crisis, llama a una línea de ayuda:{' '}
+        <span style={{ color: 'var(--color-muted)' }}>
+          España 024 · México 800 290 0024 · Argentina 135
+        </span>
+      </motion.p>
+
       <FloatingBar visible>
         <motion.button
           type="button"
