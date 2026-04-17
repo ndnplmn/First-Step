@@ -18,20 +18,12 @@ export function SessionHeader({ patient, session }: SessionHeaderProps) {
       }}
     >
       <div className="max-w-[680px] mx-auto flex items-center justify-between px-6 py-3.5">
-        <div className="space-y-0.5">
-          <p
-            className="text-[11px] tracking-wide"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted-soft)' }}
-          >
-            {patient.id}
-          </p>
-          <p
-            className="text-sm font-semibold"
-            style={{ color: 'var(--color-deep)' }}
-          >
-            {patient.name}
-          </p>
-        </div>
+        <p
+          className="text-sm font-semibold"
+          style={{ color: 'var(--color-deep)' }}
+        >
+          {patient.name}
+        </p>
         <ChapterProgress currentStage={session.stage} />
       </div>
     </header>
