@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { Eye, BookOpen, Path, Plus, SignOut } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
+import { TendLogo } from '@/components/ui/logo';
 import type { Patient, PatientSession } from '@/lib/types';
 
 const STAGE_NAMES: Record<number, string> = {
@@ -10,7 +11,8 @@ const STAGE_NAMES: Record<number, string> = {
   2: 'Conflictos',
   3: 'Exploración',
   4: 'Comprensión',
-  5: 'Cierre',
+  5: 'Integración',
+  6: 'Cierre',
 };
 
 function formatRelativeTime(timestamp: number): string {
@@ -70,16 +72,7 @@ export function Dashboard({
         }}
       >
         <div className="max-w-[680px] mx-auto flex items-center justify-between px-6 py-3">
-          <span
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontSize: '1.125rem',
-              color: 'var(--color-deep)',
-            }}
-          >
-            First Step
-          </span>
+          <TendLogo size={26} />
 
           <div className="flex items-center gap-3">
             <motion.button

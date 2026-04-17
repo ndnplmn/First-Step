@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import { FloatingBar } from '@/components/ui/floating-bar';
+import { TendMark } from '@/components/ui/logo';
 
 interface WelcomeProps {
   hasExistingPatients: boolean;
@@ -23,19 +24,20 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
         initial={shouldReduce ? false : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={shouldReduce ? { duration: 0 } : { duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="flex flex-col items-start gap-5"
       >
+        <TendMark size={56} />
         <h1
-          className="leading-[0.9] breathe"
+          className="leading-[0.88] breathe"
           style={{
             fontFamily: 'var(--font-display)',
             fontSize: 'var(--text-display)',
             fontStyle: 'italic',
-            letterSpacing: '-0.02em',
+            letterSpacing: '-0.03em',
           }}
         >
-          <span style={{ color: 'var(--color-deep)' }}>First</span>
-          <br />
-          <span style={{ color: 'var(--color-terracotta)' }}>Step</span>
+          <span style={{ color: 'var(--color-sage)' }}>t</span>
+          <span style={{ color: 'var(--color-deep)' }}>end</span>
         </h1>
       </motion.div>
 
@@ -49,7 +51,7 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
           fontSize: 'var(--text-body)',
         }}
       >
-        Tu primer paso hacia el autoconocimiento. Un espacio íntimo, guiado y tuyo.
+        Un espacio íntimo para cuidarte. Guiado, profundo y tuyo.
       </motion.p>
 
       <FloatingBar visible>

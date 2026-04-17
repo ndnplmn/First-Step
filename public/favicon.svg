@@ -1,0 +1,7 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="14" fill="#F6F1EC"/>
+  <!-- Vertical stroke -->
+  <line x1="32" y1="9" x2="32" y2="57" stroke="#3D6B47" stroke-width="3.6" stroke-linecap="round"/>
+  <!-- Curved crossbar — concave upward -->
+  <path d="M 11 28 Q 32 16 53 28" stroke="#3D6B47" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+</svg>

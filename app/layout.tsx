@@ -33,12 +33,15 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'First Step',
-  description: 'Tu primer paso hacia el autoconocimiento',
+  title: 'Tend',
+  description: 'A space to tend to yourself — guided, intimate, yours.',
+  icons: {
+    icon: '/favicon.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'First Step',
+    title: 'Tend',
   },
 }
 

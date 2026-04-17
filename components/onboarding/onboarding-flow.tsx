@@ -9,7 +9,7 @@ interface OnboardingFlowProps {
 
 const screens = [
   {
-    title: '¿Qué es First Step?',
+    title: '¿Qué es Tend?',
     icon: '🌿',
     body: 'Un espacio terapéutico guiado por IA, diseñado para ayudarte a explorar y entender lo que sientes. No es un diagnóstico — es un proceso de autoconocimiento.',
     cta: 'Siguiente',

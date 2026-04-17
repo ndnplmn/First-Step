@@ -35,7 +35,7 @@ function LoadingScreen() {
           color: 'var(--color-sage)',
         }}
       >
-        First Step
+        tend
       </motion.div>
     </div>
   );
