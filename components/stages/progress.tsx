@@ -54,6 +54,10 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
     : 0;
   const avgLabel = avgWellbeing > 0 ? WELLBEING_LABELS[Math.round(avgWellbeing)] ?? '' : '';
 
+  // Latest clinical scores (most recent session that has each)
+  const latestPHQ9 = sorted.find(s => s.phq9)?.phq9 ?? null;
+  const latestGAD7 = sorted.find(s => s.gad7)?.gad7 ?? null;
+
   return (
     <div className="min-h-dvh" style={{ background: 'var(--color-base)' }}>
       {/* Header */}
@@ -107,6 +111,64 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
             {avgLabel ? ` · Promedio: ${avgLabel}` : ''}
           </p>
         </div>
+
+        {/* Latest clinical scores */}
+        {(latestPHQ9 || latestGAD7) && (
+          <div className="mb-8 grid grid-cols-2 gap-3">
+            {latestPHQ9 && (() => {
+              const c = PHQ9_SEVERITY_COLORS[latestPHQ9.severity];
+              return (
+                <motion.div
+                  initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="p-4 rounded-[var(--radius-card)] space-y-1"
+                  style={{ background: c.bg, boxShadow: 'var(--shadow-card)' }}
+                >
+                  <p
+                    className="text-[10px] font-medium uppercase tracking-wider"
+                    style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
+                  >
+                    PHQ-9 · Depresión
+                  </p>
+                  <p className="text-3xl font-semibold leading-none" style={{ color: c.text }}>
+                    {latestPHQ9.score}
+                    <span className="text-xs font-normal ml-1" style={{ opacity: 0.7 }}>/ 27</span>
+                  </p>
+                  <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
+                    {PHQ9_SEVERITY_LABELS[latestPHQ9.severity]}
+                  </p>
+                </motion.div>
+              );
+            })()}
+            {latestGAD7 && (() => {
+              const c = GAD7_SEVERITY_COLORS[latestGAD7.severity];
+              return (
+                <motion.div
+                  initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.05 }}
+                  className="p-4 rounded-[var(--radius-card)] space-y-1"
+                  style={{ background: c.bg, boxShadow: 'var(--shadow-card)' }}
+                >
+                  <p
+                    className="text-[10px] font-medium uppercase tracking-wider"
+                    style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
+                  >
+                    GAD-7 · Ansiedad
+                  </p>
+                  <p className="text-3xl font-semibold leading-none" style={{ color: c.text }}>
+                    {latestGAD7.score}
+                    <span className="text-xs font-normal ml-1" style={{ opacity: 0.7 }}>/ 21</span>
+                  </p>
+                  <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
+                    {GAD7_SEVERITY_LABELS[latestGAD7.severity]}
+                  </p>
+                </motion.div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Timeline */}
         {sorted.length === 0 ? (

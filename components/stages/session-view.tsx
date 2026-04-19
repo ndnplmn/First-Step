@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase, Stage3Type, DeepWorkSession } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase, Stage3Type, DeepWorkSession, ExplorationRecord } from '@/lib/types';
 import { SessionHeader } from '@/components/ui/session-header';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { StageConflicts } from './stage-conflicts';
@@ -81,9 +81,10 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
     });
   };
 
-  const handleStage3MemoriesAdvance = (memories: Memory[], newUnmapped: string[]) => {
+  const handleStage3MemoriesAdvance = (memories: Memory[], newUnmapped: string[], record: ExplorationRecord) => {
     advanceStage({
       memories,
+      explorationRecord: record,
       unmappedPhrases: [
         ...session.unmappedPhrases,
         ...newUnmapped.map((text: string): UnmappedPhrase => ({
@@ -94,20 +95,20 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
     });
   };
 
-  const handleStage3BodyworkAdvance = (bodyworkNotes: string) => {
-    advanceStage({ stage3Notes: bodyworkNotes });
+  const handleStage3BodyworkAdvance = (record: ExplorationRecord) => {
+    advanceStage({ explorationRecord: record });
   };
 
-  const handleStage3SocialAdvance = (socialHistory: string) => {
-    advanceStage({ stage3Notes: socialHistory });
+  const handleStage3SocialAdvance = (record: ExplorationRecord) => {
+    advanceStage({ explorationRecord: record });
   };
 
-  const handleStage3GestaltAdvance = (gestaltLog: string) => {
-    advanceStage({ stage3Notes: gestaltLog });
+  const handleStage3GestaltAdvance = (record: ExplorationRecord) => {
+    advanceStage({ explorationRecord: record });
   };
 
-  const handleStage3ExposureAdvance = (exposureLog: string) => {
-    advanceStage({ stage3Notes: exposureLog });
+  const handleStage3ExposureAdvance = (record: ExplorationRecord) => {
+    advanceStage({ explorationRecord: record });
   };
 
   const handleStage4Advance = (deepWork: DeepWorkSession) => {
@@ -143,19 +144,19 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
             onUpdate: updateSession,
           };
           if (s3type === 'memories') {
-            return <StageMemories {...stage3CommonProps} onAdvance={handleStage3MemoriesAdvance} />;
+            return <StageMemories {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3MemoriesAdvance} />;
           }
           if (s3type === 'bodywork') {
-            return <StageBodywork {...stage3CommonProps} onAdvance={handleStage3BodyworkAdvance} />;
+            return <StageBodywork {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3BodyworkAdvance} />;
           }
           if (s3type === 'social_context') {
-            return <StageSocialContext {...stage3CommonProps} onAdvance={handleStage3SocialAdvance} />;
+            return <StageSocialContext {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3SocialAdvance} />;
           }
           if (s3type === 'gestalt_activity') {
-            return <StageGestaltActivity {...stage3CommonProps} onAdvance={handleStage3GestaltAdvance} />;
+            return <StageGestaltActivity {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3GestaltAdvance} />;
           }
           if (s3type === 'exposure') {
-            return <StageExposure {...stage3CommonProps} onAdvance={handleStage3ExposureAdvance} />;
+            return <StageExposure {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3ExposureAdvance} />;
           }
           return null;
         })()}

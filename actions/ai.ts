@@ -2,7 +2,7 @@
 
 import Groq from 'groq-sdk';
 import { FRAMEWORKS_DICTIONARY, GESTALT_ACTIVITIES } from '@/lib/theories';
-import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type, WorkCard, PatientSession } from '@/lib/types';
+import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type, WorkCard, PatientSession, ExplorationRecord, ExplorationInsight, FrameworkKey } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -75,10 +75,15 @@ function buildSessionHistory(priorSessions: PatientSession[]): string {
     const interpretacion = s.interpretation?.text
       ? s.interpretation.text.slice(0, 180).replace(/\n/g, ' ') + (s.interpretation.text.length > 180 ? '…' : '')
       : null;
+    const exploration = s.explorationRecord;
+    const explorationLine = exploration?.insights?.length
+      ? `  Exploración (${exploration.frameworkName}): ${exploration.insights.map(i => i.theme).join(' · ')}`
+      : null;
     return [
       `Sesión ${s.sessionNumber} (${date}):`,
       `  Conflictos trabajados: ${conflictos}`,
       `  Marco terapéutico: ${marco}`,
+      explorationLine,
       interpretacion ? `  Interpretación (extracto): "${interpretacion}"` : null,
     ].filter(Boolean).join('\n');
   });
@@ -228,11 +233,14 @@ export async function generateInterpretation(params: {
   patient: Patient;
   lifeChanges?: LifeChanges;
   stage3Notes?: string;
+  explorationRecord?: ExplorationRecord;
   priorSessions?: PatientSession[];
 }): Promise<Interpretation> {
   const { conflicts, frameworkMatches, memories } = params;
 
-  const stage3Section = params.stage3Notes
+  const stage3Section = params.explorationRecord?.insights?.length
+    ? `\n    Registro de exploración profunda (${params.explorationRecord.frameworkName}):\n    ${params.explorationRecord.insights.map(i => `- ${i.theme}: ${i.observation}`).join('\n    ')}\n    Reflexión IA: ${params.explorationRecord.aiReflection}\n`
+    : params.stage3Notes
     ? `\n    Notas de exploración del paciente (sesión experiencial):\n    ${params.stage3Notes}\n`
     : '';
 
@@ -286,6 +294,86 @@ ${stage3Section}${sessionHistory}
   }
 
   return { text, groundingSources: [] };
+}
+
+// --- ACTION 3b: Sintetizar exploración profunda (Etapa 3) ---
+export async function synthesizeExploration(params: {
+  rawData: string;
+  patient: Patient;
+  conflicts: Conflict[];
+  frameworkKey: FrameworkKey;
+  frameworkName: string;
+  stage3Type: Stage3Type;
+  sessionNumber: number;
+  priorExplorations: ExplorationRecord[];
+}): Promise<ExplorationRecord> {
+  const { rawData, patient, conflicts, frameworkKey, frameworkName, stage3Type, sessionNumber, priorExplorations } = params;
+
+  const priorContext = priorExplorations.length > 0
+    ? `\nExploraciones previas del paciente (para mantener continuidad):\n${priorExplorations.map(e =>
+        `Sesión ${e.sessionNumber} (${e.frameworkName}):\n${e.insights.map(i => `  - ${i.theme}: ${i.observation}`).join('\n')}`
+      ).join('\n\n')}\n`
+    : '';
+
+  const prompt = `
+Eres un psicoterapeuta magistral. Un paciente acaba de completar una actividad de exploración profunda.
+
+Marco terapéutico: ${frameworkName}
+Conflictos del paciente: ${conflicts.map(c => c.synthesized).join(', ')}
+Contexto del paciente: ${buildPatientContext(patient)}
+${priorContext}
+Material explorado en esta sesión:
+${rawData}
+
+Tu tarea:
+1. Extrae 3-5 insights clave de lo que el paciente exploró. Cada insight es una pieza del rompecabezas que la IA acumula para entender mejor a este paciente.
+2. Escribe una reflexión cálida (aiReflection) en voz de terapeuta (segunda persona "tú"), 2-3 oraciones:
+   - Reconoce qué emergió en esta exploración
+   - Si hay exploraciones previas, nombra brevemente la continuidad ("Lo que exploramosen la sesión X se conecta con...")
+   - Invita a profundizar en la siguiente fase
+
+Reglas para los insights:
+- "theme": etiqueta descriptiva de 2-4 palabras en español (ej: "Vínculo paterno ambivalente", "Ansiedad social compensada")
+- "observation": 1-2 oraciones factuales sobre lo que el paciente reveló, sin lenguaje técnico
+- No repitas insights de sesiones previas a menos que hayan tomado nueva dimensión
+
+Reglas para aiReflection:
+- Tono íntimo y empático, no clínico
+- Menciona 1-2 elementos concretos de lo que el paciente compartió
+- Máximo 3 oraciones
+
+Responde SOLO con JSON:
+{
+  "insights": [{"theme": "...", "observation": "..."}],
+  "aiReflection": "..."
+}
+  `;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.5,
+    });
+    content = response.choices[0]?.message?.content || '{"insights":[],"aiReflection":""}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  const insights: ExplorationInsight[] = Array.isArray(parsed.insights) ? parsed.insights.slice(0, 5) : [];
+
+  return {
+    sessionNumber,
+    framework: frameworkKey,
+    frameworkName,
+    stage3Type,
+    insights,
+    aiReflection: typeof parsed.aiReflection === 'string' ? parsed.aiReflection : '',
+    completedAt: Date.now(),
+  };
 }
 
 // --- ACTION 4: Generar cierre simbolico ---

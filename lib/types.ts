@@ -135,6 +135,21 @@ export type LifeChanges = {
   detail?: string;
 };
 
+export type ExplorationInsight = {
+  theme: string;        // 2-4 word label, e.g. "Vínculo paterno ambivalente"
+  observation: string;  // 1-2 sentence factual observation
+};
+
+export type ExplorationRecord = {
+  sessionNumber: number;
+  framework: FrameworkKey;
+  frameworkName: string;
+  stage3Type: Stage3Type;
+  insights: ExplorationInsight[];  // 3-5 key observations extracted by AI
+  aiReflection: string;            // Warm therapist-voice paragraph shown to user
+  completedAt: number;
+};
+
 export type PHQ9Response = {
   answers: number[];  // 9 items, 0–3 each
   score: number;      // 0–27
@@ -172,6 +187,7 @@ export type PatientSession = {
   sessionIntention?: string;  // what the patient wants to work on this session
   phq9?: PHQ9Response;
   gad7?: GAD7Response;
+  explorationRecord?: ExplorationRecord;
   createdAt: number;
   updatedAt: number;
 };

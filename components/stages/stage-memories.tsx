@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { Patient, PatientSession, Memory, FrameworkMatch } from '@/lib/types';
-import { extractMemoryKeywords } from '@/actions/ai';
+import type { Patient, PatientSession, Memory, FrameworkMatch, ExplorationRecord } from '@/lib/types';
+import { extractMemoryKeywords, synthesizeExploration } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { generateId } from '@/lib/id';
@@ -11,7 +11,8 @@ import { generateId } from '@/lib/id';
 interface StageMemoriesProps {
   session: PatientSession;
   patient: Patient;
-  onAdvance: (memories: Memory[], unmapped: string[]) => void;
+  priorSessions?: PatientSession[];
+  onAdvance: (memories: Memory[], unmapped: string[], record: ExplorationRecord) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
@@ -28,7 +29,7 @@ function formatFrameworks(matches: FrameworkMatch[]): string {
   return matches.map(m => `${m.name} — ${m.focus}`).join('\n');
 }
 
-export function StageMemories({ session, patient: _patient, onAdvance, onUpdate }: StageMemoriesProps) {
+export function StageMemories({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageMemoriesProps) {
   const shouldReduce = useReducedMotion();
   const [memories, setMemories] = useState<Memory[]>(session.memories);
   const [form, setForm] = useState<MemoryForm>(EMPTY_FORM);
@@ -36,8 +37,16 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
   const [isExtracting, setIsExtracting] = useState(false);
   const [isFormActive, setIsFormActive] = useState(session.memories.length === 0);
   const [showBreathing, setShowBreathing] = useState(false);
+  const [synthesisState, setSynthesisState] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [explorationRecord, setExplorationRecord] = useState<ExplorationRecord | null>(null);
 
   const currentQ = FORM_QUESTIONS[formStep];
+
+  // Most recent prior session with an exploration record (same framework if possible)
+  const lastExploration = [...priorSessions]
+    .reverse()
+    .find(s => s.explorationRecord?.framework === 'freudiano')?.explorationRecord
+    ?? [...priorSessions].reverse().find(s => s.explorationRecord)?.explorationRecord;
 
   const handleFormNext = async () => {
     if (formStep < 2) {
@@ -70,11 +79,54 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
     }
   };
 
+  const handleSynthesize = async (mems: Memory[]) => {
+    setSynthesisState('loading');
+    const rawData = mems.map((m, i) => [
+      `Recuerdo ${i + 1}:`,
+      `- Suceso: "${m.raw}"`,
+      `- Sentimiento entonces: "${m.feelingThen}"`,
+      `- Sentimiento ahora: "${m.feelingNow}"`,
+      m.keywords.length ? `- Palabras clave: ${m.keywords.join(', ')}` : '',
+    ].filter(Boolean).join('\n')).join('\n\n');
+
+    try {
+      const priorExplorations = priorSessions
+        .filter(s => s.explorationRecord)
+        .map(s => s.explorationRecord!);
+
+      const record = await synthesizeExploration({
+        rawData,
+        patient,
+        conflicts: session.conflicts,
+        frameworkKey: 'freudiano',
+        frameworkName: session.frameworkMatches[0]?.name ?? 'Exploración Psicoanalítica',
+        stage3Type: 'memories',
+        sessionNumber: session.sessionNumber,
+        priorExplorations,
+      });
+      setExplorationRecord(record);
+      setSynthesisState('done');
+    } catch (e) {
+      console.error(e);
+      // Fallback: advance without synthesis record
+      setSynthesisState('idle');
+      onAdvance(mems, [], {
+        sessionNumber: session.sessionNumber,
+        framework: 'freudiano',
+        frameworkName: session.frameworkMatches[0]?.name ?? 'Exploración Psicoanalítica',
+        stage3Type: 'memories',
+        insights: [],
+        aiReflection: '',
+        completedAt: Date.now(),
+      });
+    }
+  };
+
   const canProceed = form[currentQ.field].trim().length > 10;
 
   return (
     <div className="space-y-8 pb-48">
-      {/* Header — Fase 1: Regulación y seguridad */}
+      {/* Header */}
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
           Fase 1 — Regulación y seguridad
@@ -94,8 +146,36 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
         </p>
       </div>
 
+      {/* Continuity banner — show prior exploration insights if they exist */}
+      {lastExploration && lastExploration.insights.length > 0 && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[var(--radius-card)] p-4 space-y-2"
+          style={{ background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
+        >
+          <p className="text-xs font-medium" style={{ color: 'var(--color-violet)', fontFamily: 'var(--font-mono)' }}>
+            Lo que exploramos en la sesión {lastExploration.sessionNumber}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {lastExploration.insights.map(i => (
+              <span
+                key={i.theme}
+                className="px-2.5 py-1 rounded-full text-xs"
+                style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}
+              >
+                {i.theme}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs leading-relaxed italic" style={{ color: 'var(--color-muted)' }}>
+            {lastExploration.aiReflection}
+          </p>
+        </motion.div>
+      )}
+
       {/* Intro con ejercicio de respiración opcional */}
-      {memories.length === 0 && !isFormActive && (
+      {memories.length === 0 && !isFormActive && synthesisState === 'idle' && (
         <motion.div
           initial={shouldReduce ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -158,7 +238,7 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
       )}
 
       {/* Puente: chips de conflictos de la etapa anterior */}
-      {session.conflicts.length > 0 && (
+      {session.conflicts.length > 0 && synthesisState === 'idle' && (
         <motion.div
           initial={shouldReduce ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -181,48 +261,50 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
       )}
 
       {/* Recuerdos guardados */}
-      <AnimatePresence>
-        {memories.map(m => (
-          <motion.div
-            key={m.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-[var(--radius-card)] p-5 space-y-3"
-            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-          >
-            <p className="italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>&ldquo;{m.raw}&rdquo;</p>
-            {m.keywords.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-1.5">
-                  {m.keywords.map(kw => (
-                    <motion.span
-                      key={kw}
-                      className="px-2.5 py-1 rounded-full text-xs"
-                      style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}
-                      initial={shouldReduce ? {} : { scale: 0.8, opacity: 0 }}
-                      animate={shouldReduce ? {} : { scale: 1, opacity: 1 }}
-                      whileHover={shouldReduce ? {} : { scale: 1.04 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    >
-                      {kw}
-                    </motion.span>
-                  ))}
+      {synthesisState === 'idle' && (
+        <AnimatePresence>
+          {memories.map(m => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[var(--radius-card)] p-5 space-y-3"
+              style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+            >
+              <p className="italic leading-relaxed" style={{ color: 'var(--color-deep)' }}>&ldquo;{m.raw}&rdquo;</p>
+              {m.keywords.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.keywords.map(kw => (
+                      <motion.span
+                        key={kw}
+                        className="px-2.5 py-1 rounded-full text-xs"
+                        style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}
+                        initial={shouldReduce ? {} : { scale: 0.8, opacity: 0 }}
+                        animate={shouldReduce ? {} : { scale: 1, opacity: 1 }}
+                        whileHover={shouldReduce ? {} : { scale: 1.04 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                      >
+                        {kw}
+                      </motion.span>
+                    ))}
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+                    Palabras clave que la IA identificó en tu recuerdo
+                  </p>
                 </div>
-                <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                  Palabras clave que la IA identificó en tu recuerdo
-                </p>
+              )}
+              <div className="text-sm space-y-1 pt-1 border-t" style={{ color: 'var(--color-muted)', borderColor: 'var(--color-border)' }}>
+                <p>Entonces: <span style={{ color: 'var(--color-deep)' }}>{m.feelingThen}</span></p>
+                <p>Ahora: <span style={{ color: 'var(--color-deep)' }}>{m.feelingNow}</span></p>
               </div>
-            )}
-            <div className="text-sm space-y-1 pt-1 border-t" style={{ color: 'var(--color-muted)', borderColor: 'var(--color-border)' }}>
-              <p>Entonces: <span style={{ color: 'var(--color-deep)' }}>{m.feelingThen}</span></p>
-              <p>Ahora: <span style={{ color: 'var(--color-deep)' }}>{m.feelingNow}</span></p>
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      )}
 
-      {/* Botón para añadir otro recuerdo si ya hay alguno */}
-      {memories.length > 0 && !isFormActive && (
+      {/* Botón para añadir otro recuerdo */}
+      {memories.length > 0 && !isFormActive && synthesisState === 'idle' && (
         <motion.button
           type="button"
           initial={shouldReduce ? false : { opacity: 0 }}
@@ -237,14 +319,13 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
 
       {/* Formulario de recuerdo */}
       <AnimatePresence>
-        {isFormActive && (
+        {isFormActive && synthesisState === 'idle' && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
             className="space-y-5"
           >
-            {/* Indicador de paso */}
             <div className="flex gap-1.5">
               {FORM_QUESTIONS.map((_, i) => (
                 <div key={i} className="h-0.5 flex-1 rounded-full transition-all duration-300"
@@ -283,9 +364,68 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
         )}
       </AnimatePresence>
 
+      {/* Synthesis loading */}
+      {synthesisState === 'loading' && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <AIThinking phrases={['Integrando lo explorado...', 'Encontrando los hilos...', 'Construyendo el mapa...']} />
+        </motion.div>
+      )}
+
+      {/* Synthesis result */}
+      {synthesisState === 'done' && explorationRecord && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-5"
+        >
+          <div
+            className="rounded-[var(--radius-card)] p-5 space-y-4"
+            style={{ background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
+          >
+            <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--color-violet)', fontFamily: 'var(--font-mono)' }}>
+              Lo que emergió en esta exploración
+            </p>
+            <p className="leading-relaxed" style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.05rem' }}>
+              {explorationRecord.aiReflection}
+            </p>
+            {explorationRecord.insights.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {explorationRecord.insights.map((insight, i) => (
+                    <motion.div
+                      key={insight.theme}
+                      initial={shouldReduce ? {} : { opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.08 }}
+                      className="group relative"
+                    >
+                      <span
+                        className="px-3 py-1.5 rounded-full text-xs font-medium cursor-default block"
+                        style={{ background: 'var(--color-violet-light)', color: 'var(--color-violet)' }}
+                        title={insight.observation}
+                      >
+                        {insight.theme}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+                <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Estas piezas se acumulan sesión a sesión para que la IA te entienda mejor
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
       <FloatingBar visible>
         <div className="space-y-3">
-          {isFormActive && (
+          {isFormActive && synthesisState === 'idle' && (
             <motion.button
               type="button"
               onClick={handleFormNext}
@@ -297,11 +437,11 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
               {formStep < 2 ? 'Siguiente' : isExtracting ? 'Guardando...' : 'Guardar recuerdo'}
             </motion.button>
           )}
-          {memories.length >= 1 && (
+          {memories.length >= 1 && synthesisState === 'idle' && (
             <>
               <motion.button
                 type="button"
-                onClick={() => onAdvance(memories, [])}
+                onClick={() => handleSynthesize(memories)}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 className="w-full py-4 rounded-2xl font-semibold tracking-wide"
                 style={{ background: isFormActive ? 'transparent' : 'var(--color-sage)', color: isFormActive ? 'var(--color-sage)' : 'white', border: isFormActive ? '1px solid var(--color-sage)' : 'none', boxShadow: isFormActive ? 'none' : 'var(--shadow-glow-sage)' }}
@@ -314,6 +454,17 @@ export function StageMemories({ session, patient: _patient, onAdvance, onUpdate 
                 </p>
               )}
             </>
+          )}
+          {synthesisState === 'done' && explorationRecord && (
+            <motion.button
+              type="button"
+              onClick={() => onAdvance(memories, [], explorationRecord)}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
+              style={{ background: 'var(--color-violet)', boxShadow: 'var(--shadow-card)' }}
+            >
+              Continuar a la interpretación →
+            </motion.button>
           )}
         </div>
       </FloatingBar>

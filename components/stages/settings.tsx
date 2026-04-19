@@ -134,25 +134,27 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
         </div>
 
         {/* Feedback banner */}
-        <AnimatePresence>
-          {feedback && (
-            <motion.div
-              initial={shouldReduce ? false : { opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="flex items-start gap-3 p-4 rounded-[var(--radius-inner)]"
-              style={{
-                background: feedback.type === 'success' ? 'rgba(61,107,71,0.08)' : 'rgba(180,110,69,0.08)',
-                border: `1px solid ${feedback.type === 'success' ? 'var(--color-sage)' : 'var(--color-terracotta)'}`,
-              }}
-            >
-              {feedback.type === 'success' && <CheckCircle size={18} style={{ color: 'var(--color-sage)', flexShrink: 0, marginTop: 1 }} />}
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
-                {feedback.message}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div aria-live="polite" aria-atomic="true">
+          <AnimatePresence>
+            {feedback && (
+              <motion.div
+                initial={shouldReduce ? false : { opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="flex items-start gap-3 p-4 rounded-[var(--radius-inner)]"
+                style={{
+                  background: feedback.type === 'success' ? 'rgba(61,107,71,0.08)' : 'rgba(180,110,69,0.08)',
+                  border: `1px solid ${feedback.type === 'success' ? 'var(--color-sage)' : 'var(--color-terracotta)'}`,
+                }}
+              >
+                {feedback.type === 'success' && <CheckCircle size={18} style={{ color: 'var(--color-sage)', flexShrink: 0, marginTop: 1 }} />}
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+                  {feedback.message}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Account section */}
         <div

@@ -168,7 +168,8 @@ export default function Home() {
     setSessions(allSessions);
     setActivePatient(patient);
     setActiveSession(session);
-    setView('SESSION');
+    // Session 1 always triggers the clinical baseline assessment
+    setView(shouldShowAssessment(session.sessionNumber) ? 'ASSESSMENT' : 'SESSION');
   };
 
   const handleCheckInComplete = async (updatedSession: PatientSession) => {

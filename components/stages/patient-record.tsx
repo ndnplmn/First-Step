@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { ArrowLeft, Clock, User, Export, Check, Printer } from '@phosphor-icons/react';
+import {
+  PHQ9_SEVERITY_LABELS, PHQ9_SEVERITY_COLORS,
+  GAD7_SEVERITY_LABELS, GAD7_SEVERITY_COLORS,
+} from '@/lib/clinical';
 
 const WELLBEING_LABELS: Record<number, string> = {
   1: 'Muy mal',
@@ -93,6 +97,16 @@ function buildExportText(patient: Patient, session: PatientSession): string {
     session.reflectionQuestions.forEach(q => lines.push(`· ${q}`));
     lines.push('');
   }
+  if (session.phq9 || session.gad7) {
+    lines.push('EVALUACIÓN CLÍNICA');
+    if (session.phq9) {
+      lines.push(`PHQ-9 (depresión): ${session.phq9.score}/27 — ${PHQ9_SEVERITY_LABELS[session.phq9.severity]}`);
+    }
+    if (session.gad7) {
+      lines.push(`GAD-7 (ansiedad): ${session.gad7.score}/21 — ${GAD7_SEVERITY_LABELS[session.gad7.severity]}`);
+    }
+    lines.push('');
+  }
   return lines.join('\n');
 }
 
@@ -151,6 +165,8 @@ function buildTherapistReport(patient: Patient, sessions: PatientSession[]): str
     ${s.wellbeingBefore || s.wellbeingAfter
       ? `<p class="wellbeing">Bienestar: ${s.wellbeingBefore ?? '—'} → ${s.wellbeingAfter ?? '—'}</p>`
       : ''}
+    ${s.phq9 ? `<p class="wellbeing">PHQ-9: ${s.phq9.score}/27 (${s.phq9.severity})</p>` : ''}
+    ${s.gad7 ? `<p class="wellbeing">GAD-7: ${s.gad7.score}/21 (${s.gad7.severity})</p>` : ''}
     ${s.conflicts.length > 0
       ? `<p style="margin-top:6px"><strong>Conflictos:</strong> ${s.conflicts.map(c => c.synthesized).join(' · ')}</p>`
       : ''}
@@ -521,6 +537,60 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                       {q}
                     </p>
                   ))}
+                </div>
+              </Section>
+            )}
+
+            {/* Evaluación clínica */}
+            {(session.phq9 || session.gad7) && (
+              <Section label="Evaluación clínica">
+                <div className="grid grid-cols-2 gap-3">
+                  {session.phq9 && (() => {
+                    const c = PHQ9_SEVERITY_COLORS[session.phq9!.severity];
+                    return (
+                      <div
+                        className="p-4 rounded-[var(--radius-inner)] space-y-1"
+                        style={{ background: c.bg }}
+                      >
+                        <p
+                          className="text-[10px] font-medium uppercase tracking-wider"
+                          style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
+                        >
+                          PHQ-9 · Depresión
+                        </p>
+                        <p className="text-2xl font-semibold leading-none" style={{ color: c.text }}>
+                          {session.phq9!.score}
+                          <span className="text-xs font-normal ml-1" style={{ opacity: 0.7 }}>/ 27</span>
+                        </p>
+                        <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
+                          {PHQ9_SEVERITY_LABELS[session.phq9!.severity]}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                  {session.gad7 && (() => {
+                    const c = GAD7_SEVERITY_COLORS[session.gad7!.severity];
+                    return (
+                      <div
+                        className="p-4 rounded-[var(--radius-inner)] space-y-1"
+                        style={{ background: c.bg }}
+                      >
+                        <p
+                          className="text-[10px] font-medium uppercase tracking-wider"
+                          style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
+                        >
+                          GAD-7 · Ansiedad
+                        </p>
+                        <p className="text-2xl font-semibold leading-none" style={{ color: c.text }}>
+                          {session.gad7!.score}
+                          <span className="text-xs font-normal ml-1" style={{ opacity: 0.7 }}>/ 21</span>
+                        </p>
+                        <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
+                          {GAD7_SEVERITY_LABELS[session.gad7!.severity]}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </Section>
             )}
