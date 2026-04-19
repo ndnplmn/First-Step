@@ -6,6 +6,8 @@ import type { Patient, DiaryEntry, DiaryEmotion } from '@/lib/types';
 import { db } from '@/lib/db';
 import { generateId } from '@/lib/id';
 import { ArrowLeft, Plus, X } from '@phosphor-icons/react';
+import { detectCrisis } from '@/lib/crisis';
+import { CrisisScreen } from '@/components/ui/crisis-screen';
 
 /* ── constants ─────────────────────────────────────────── */
 
@@ -91,6 +93,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
   const [addStep, setAddStep] = useState(0);
   const [draft, setDraft] = useState<Partial<DiaryEntry>>({});
   const [weekOffset, setWeekOffset] = useState(0);
+  const [showCrisis, setShowCrisis] = useState(false);
 
   const today = new Date();
   const refDate = new Date(today);
@@ -137,7 +140,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
 
   const cancelAdding = () => setIsAdding(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!draft.emotion || !draft.intensity) return;
     const entry: DiaryEntry = {
       id: generateId(),
@@ -149,7 +152,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
       note: draft.note?.trim() || undefined,
       createdAt: Date.now(),
     };
-    db.saveDiaryEntry(entry);
+    await db.saveDiaryEntry(entry);
     setEntries(prev => [entry, ...prev]);
     setIsAdding(false);
   };
@@ -161,6 +164,12 @@ export function Diary({ patient, onBack }: DiaryProps) {
   };
 
   const handleNext = () => {
+    // Crisis check on text fields before advancing
+    const textToCheck = [draft.triggers, draft.note].filter(Boolean).join(' ');
+    if (textToCheck && detectCrisis(textToCheck)) {
+      setShowCrisis(true);
+      return;
+    }
     if (addStep === 3) { handleSubmit(); return; }
     setAddStep(s => s + 1);
   };
@@ -275,6 +284,10 @@ export function Diary({ patient, onBack }: DiaryProps) {
   /* ── main render ── */
 
   return (
+    <>
+    <AnimatePresence>
+      {showCrisis && <CrisisScreen onDismiss={() => setShowCrisis(false)} />}
+    </AnimatePresence>
     <div className="min-h-dvh" style={{ background: 'var(--color-base)' }}>
       {/* Header */}
       <header
@@ -381,12 +394,15 @@ export function Diary({ patient, onBack }: DiaryProps) {
               whileTap={shouldReduce ? {} : { scale: 0.95 }}
               className="text-sm px-2 py-1"
               style={{ color: 'var(--color-muted)' }}
+              aria-label="Semana anterior"
             >
-              ←
+              <span aria-hidden="true">←</span>
             </motion.button>
             <p
               className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
+              aria-live="polite"
+              aria-atomic="true"
             >
               {formatMonthYear(weekDays[0])}
             </p>
@@ -397,8 +413,10 @@ export function Diary({ patient, onBack }: DiaryProps) {
               className="text-sm px-2 py-1"
               style={{ color: weekOffset >= 0 ? 'var(--color-border)' : 'var(--color-muted)' }}
               disabled={weekOffset >= 0}
+              aria-label="Semana siguiente"
+              aria-disabled={weekOffset >= 0}
             >
-              →
+              <span aria-hidden="true">→</span>
             </motion.button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center">
@@ -592,5 +610,6 @@ export function Diary({ patient, onBack }: DiaryProps) {
         </motion.button>
       )}
     </div>
+    </>
   );
 }

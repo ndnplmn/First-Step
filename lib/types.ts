@@ -135,6 +135,20 @@ export type LifeChanges = {
   detail?: string;
 };
 
+export type PHQ9Response = {
+  answers: number[];  // 9 items, 0–3 each
+  score: number;      // 0–27
+  severity: 'minimal' | 'mild' | 'moderate' | 'moderately-severe' | 'severe';
+  completedAt: number;
+};
+
+export type GAD7Response = {
+  answers: number[];  // 7 items, 0–3 each
+  score: number;      // 0–21
+  severity: 'minimal' | 'mild' | 'moderate' | 'severe';
+  completedAt: number;
+};
+
 export type PatientSession = {
   id: string;
   patientId: string;
@@ -156,6 +170,8 @@ export type PatientSession = {
   wellbeingAfter?: number;   // 1-5 scale
   lifeChanges?: LifeChanges;
   sessionIntention?: string;  // what the patient wants to work on this session
+  phq9?: PHQ9Response;
+  gad7?: GAD7Response;
   createdAt: number;
   updatedAt: number;
 };
@@ -167,6 +183,7 @@ export type AppView =
   | 'DASHBOARD'
   | 'INTAKE'
   | 'CHECK_IN'
+  | 'ASSESSMENT'
   | 'SESSION'
   | 'RECORD'
   | 'DIARY'

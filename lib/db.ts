@@ -69,6 +69,8 @@ function rowToSession(row: Record<string, unknown>): PatientSession {
     wellbeingAfter: row.wellbeing_after as number | undefined,
     lifeChanges: row.life_changes as PatientSession['lifeChanges'],
     sessionIntention: row.session_intention as string | undefined,
+    phq9: row.phq9 as PatientSession['phq9'],
+    gad7: row.gad7 as PatientSession['gad7'],
     createdAt: new Date(row.created_at as string).getTime(),
     updatedAt: new Date(row.updated_at as string).getTime(),
   };
@@ -145,6 +147,8 @@ export const db = {
       wellbeing_after: session.wellbeingAfter,
       life_changes: session.lifeChanges,
       session_intention: session.sessionIntention,
+      phq9: session.phq9 ?? null,
+      gad7: session.gad7 ?? null,
       updated_at: new Date().toISOString(),
     });
   },
@@ -203,6 +207,16 @@ export const db = {
   async signUp(email: string, password: string) {
     const supabase = createClient();
     return supabase.auth.signUp({ email, password });
+  },
+
+  async signInWithOAuth(provider: 'google' | 'apple') {
+    const supabase = createClient();
+    return supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/` : undefined,
+      },
+    });
   },
 
   async signOut() {

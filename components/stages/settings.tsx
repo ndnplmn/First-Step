@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ArrowLeft, SignOut, Trash, Lock, EnvelopeSimple, CheckCircle, Bell, BellSlash } from '@phosphor-icons/react';
 import { db } from '@/lib/db';
@@ -29,6 +29,18 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
       setNotifPermission('unsupported');
     }
   }, []);
+
+  // Escape key closes delete modal
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && showDeleteConfirm && !deleteLoading) {
+      setShowDeleteConfirm(false);
+    }
+  }, [showDeleteConfirm, deleteLoading]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [handleEscape]);
 
   const handlePasswordReset = async () => {
     if (!email) return;
@@ -322,6 +334,9 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               onClick={() => !deleteLoading && setShowDeleteConfirm(false)}
             />
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-modal-title"
               initial={shouldReduce ? false : { opacity: 0, scale: 0.96, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 16 }}
@@ -330,6 +345,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               style={{ background: 'var(--color-base)', boxShadow: '0 -8px 40px rgba(0,0,0,0.12)' }}
             >
               <p
+                id="delete-modal-title"
                 className="text-lg font-semibold mb-2"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
               >

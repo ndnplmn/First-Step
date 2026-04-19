@@ -26,11 +26,12 @@ const STAGE_GRADIENTS: Record<number, string> = {
 interface SessionViewProps {
   patient: Patient;
   session: PatientSession;
+  priorSessions?: PatientSession[];
   onSessionUpdate: (session: PatientSession) => void;
   onComplete: (action: 'dashboard' | 'record' | 'new-session') => void;
 }
 
-export function SessionView({ patient, session, onSessionUpdate, onComplete }: SessionViewProps) {
+export function SessionView({ patient, session, priorSessions = [], onSessionUpdate, onComplete }: SessionViewProps) {
   const [pendingUpdates, setPendingUpdates] = useState<Partial<PatientSession> | null>(null);
   const [showTransition, setShowTransition] = useState(false);
   const [targetStage, setTargetStage] = useState<number>(session.stage);
@@ -128,6 +129,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
           <StageConflicts
             session={session}
             patient={patient}
+            priorSessions={priorSessions}
             onAdvance={handleStage2Advance}
             onUpdate={updateSession}
           />
@@ -162,6 +164,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
           <StageInterpretation
             session={session}
             patient={patient}
+            priorSessions={priorSessions}
             onAdvance={(interpretation: Interpretation) => advanceStage({ interpretation })}
             onUpdate={updateSession}
           />
@@ -180,6 +183,7 @@ export function SessionView({ patient, session, onSessionUpdate, onComplete }: S
           <StageClosure
             session={session}
             patient={patient}
+            priorSessions={priorSessions}
             onComplete={onComplete}
             onUpdate={updateSession}
           />

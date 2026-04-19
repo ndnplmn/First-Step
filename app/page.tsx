@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Welcome } from '@/components/stages/welcome';
+import { TendLogo } from '@/components/ui/logo';
 import { Dashboard } from '@/components/stages/dashboard';
 import { Intake } from '@/components/stages/intake';
 import { SessionView } from '@/components/stages/session-view';
@@ -13,9 +14,11 @@ import { Progress } from '@/components/stages/progress';
 import { Settings } from '@/components/stages/settings';
 import { AuthForm } from '@/components/auth/auth-form';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
+import { ClinicalAssessment } from '@/components/stages/clinical-assessment';
 import { db } from '@/lib/db';
 import { createClient } from '@/lib/supabase';
 import { generateId } from '@/lib/id';
+import { shouldShowAssessment } from '@/lib/clinical';
 import type { Patient, PatientSession, DiaryEntry, AppView } from '@/lib/types';
 
 function LoadingScreen() {
@@ -27,16 +30,10 @@ function LoadingScreen() {
       justifyContent: 'center',
     }}>
       <motion.div
-        animate={{ opacity: [0.3, 1, 0.3] }}
+        animate={{ opacity: [0.4, 1, 0.4] }}
         transition={{ duration: 2, repeat: Infinity }}
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontStyle: 'italic',
-          fontSize: '2rem',
-          color: 'var(--color-sage)',
-        }}
       >
-        tend
+        <TendLogo size={36} />
       </motion.div>
     </div>
   );
@@ -177,6 +174,16 @@ export default function Home() {
   const handleCheckInComplete = async (updatedSession: PatientSession) => {
     await db.saveSession(updatedSession);
     setActiveSession(updatedSession);
+    if (shouldShowAssessment(updatedSession.sessionNumber)) {
+      setView('ASSESSMENT');
+    } else {
+      setView('SESSION');
+    }
+  };
+
+  const handleAssessmentComplete = async (updatedSession: PatientSession) => {
+    await db.saveSession(updatedSession);
+    setActiveSession(updatedSession);
     setView('SESSION');
   };
 
@@ -298,11 +305,24 @@ export default function Home() {
     );
   }
 
+  if (view === 'ASSESSMENT' && activeSession) {
+    return (
+      <ClinicalAssessment
+        session={activeSession}
+        onComplete={handleAssessmentComplete}
+      />
+    );
+  }
+
   if (view === 'SESSION' && activePatient && activeSession) {
+    const priorSessions = sessions.filter(
+      s => s.stage === 6 && s.sessionNumber < activeSession.sessionNumber
+    );
     return (
       <SessionView
         patient={activePatient}
         session={activeSession}
+        priorSessions={priorSessions}
         onSessionUpdate={handleSessionUpdate}
         onComplete={handleComplete}
       />

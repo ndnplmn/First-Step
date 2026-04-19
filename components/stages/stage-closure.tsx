@@ -29,11 +29,12 @@ type ClosureAction = 'dashboard' | 'record' | 'new-session';
 interface StageClosureProps {
   session: PatientSession;
   patient: Patient;
+  priorSessions?: PatientSession[];
   onComplete: (action: ClosureAction) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
-export function StageClosure({ session, patient, onComplete, onUpdate }: StageClosureProps) {
+export function StageClosure({ session, patient, priorSessions = [], onComplete, onUpdate }: StageClosureProps) {
   const [fullClosure, setFullClosure] = useState<Closure | null>(session.closure ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -79,6 +80,7 @@ export function StageClosure({ session, patient, onComplete, onUpdate }: StageCl
         gestaltActivity: session.gestaltActivity!,
         patient,
         deepWorkSynthesis: session.deepWork?.synthesis,
+        priorSessions,
       });
       setFullClosure(result);
       onUpdate({ closure: result });

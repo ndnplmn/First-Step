@@ -248,9 +248,9 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                 boxShadow: 'var(--shadow-card)',
                 border: '1px solid var(--color-border)',
               }}
-              title="Informe para terapeuta"
+              aria-label="Generar informe para terapeuta"
             >
-              <Printer size={14} />
+              <Printer size={14} aria-hidden="true" />
               Terapeuta
             </motion.button>
             {session && (
@@ -265,8 +265,10 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   boxShadow: 'var(--shadow-card)',
                   border: '1px solid var(--color-border)',
                 }}
+                aria-label={copied ? 'Sesión copiada al portapapeles' : 'Compartir resumen de sesión'}
+                aria-live="polite"
               >
-                {copied ? <Check size={14} weight="bold" /> : <Export size={14} />}
+                {copied ? <Check size={14} weight="bold" aria-hidden="true" /> : <Export size={14} aria-hidden="true" />}
                 {copied ? 'Copiado' : 'Compartir'}
               </motion.button>
             )}

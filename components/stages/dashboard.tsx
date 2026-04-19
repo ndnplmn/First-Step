@@ -1,9 +1,10 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { Eye, BookOpen, Path, Plus, SignOut, Gear } from '@phosphor-icons/react';
+import { Eye, BookOpen, Path, Plus, SignOut, Gear, Flame } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
 import { TendLogo } from '@/components/ui/logo';
+import { computeStreak, streakLabel } from '@/lib/streak';
 import type { Patient, PatientSession } from '@/lib/types';
 
 const STAGE_NAMES: Record<number, string> = {
@@ -95,6 +96,7 @@ export function Dashboard({
   const completedSessions = sessions.filter(s => s.stage >= 6);
   const sessionCount = sessions.length;
   const dailyInsight = getDailyInsight(sessions, activeSession);
+  const streak = computeStreak(sessions);
 
   return (
     <div className="min-h-dvh">
@@ -126,19 +128,19 @@ export function Dashboard({
               type="button"
               onClick={onViewSettings}
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              title="Ajustes"
+              aria-label="Ajustes"
               style={{ color: 'var(--color-muted)', padding: '0.5rem' }}
             >
-              <Gear size={18} />
+              <Gear size={18} aria-hidden="true" />
             </motion.button>
             <motion.button
               type="button"
               onClick={onSignOut}
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
               style={{ color: 'var(--color-muted)', padding: '0.5rem' }}
             >
-              <SignOut size={18} />
+              <SignOut size={18} aria-hidden="true" />
             </motion.button>
           </div>
         </div>
@@ -194,18 +196,44 @@ export function Dashboard({
           >
             {getGreeting(patient.name)}
           </motion.h1>
-          <p
-            className="mt-1"
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
-              color: 'var(--color-muted)',
-            }}
-          >
-            {sessionCount === 0
-              ? 'Aún no has iniciado ninguna sesión'
-              : `${completedSessions.length} ${completedSessions.length === 1 ? 'sesión completada' : 'sesiones completadas'}`}
-          </p>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <p
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--color-muted)',
+              }}
+            >
+              {sessionCount === 0
+                ? 'Aún no has iniciado ninguna sesión'
+                : `${completedSessions.length} ${completedSessions.length === 1 ? 'sesión completada' : 'sesiones completadas'}`}
+            </p>
+            {streak >= 2 && (
+              <motion.div
+                initial={shouldReduce ? false : { opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, delay: 0.3 }}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'rgba(180,110,69,0.1)',
+                  border: '1px solid rgba(180,110,69,0.2)',
+                }}
+                title={`Racha activa: ${streakLabel(streak)}`}
+              >
+                <Flame size={11} weight="fill" style={{ color: 'var(--color-terracotta)' }} />
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '10px',
+                    color: 'var(--color-terracotta)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {streakLabel(streak)}
+                </span>
+              </motion.div>
+            )}
+          </div>
 
           {/* Daily insight card */}
           {dailyInsight && (
@@ -260,7 +288,7 @@ export function Dashboard({
                     {STAGE_NAMES[activeSession.stage] ?? 'En progreso'} · {formatRelativeTime(activeSession.updatedAt)}
                   </p>
                 </div>
-                <ChapterProgress currentStage={activeSession.stage as 1 | 2 | 3 | 4 | 5} />
+                <ChapterProgress currentStage={activeSession.stage} />
               </div>
               <p className="text-sm mt-3 font-medium" style={{ color: 'var(--color-sage)' }}>
                 Continuar →

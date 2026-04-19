@@ -5,9 +5,10 @@ import { motion, useReducedMotion } from 'motion/react';
 
 const STAGE_META: Record<number, { roman: string; name: string; bg: string }> = {
   2: { roman: 'II',  name: 'CONFLICTOS',  bg: 'rgba(44, 39, 30, 0.97)'  },
-  3: { roman: 'III', name: 'RECUERDOS',   bg: 'rgba(60, 52, 82, 0.97)'  },
+  3: { roman: 'III', name: 'EXPLORACIÓN', bg: 'rgba(60, 52, 82, 0.97)'  },
   4: { roman: 'IV',  name: 'COMPRENSIÓN', bg: 'rgba(38, 62, 36, 0.97)'  },
-  5: { roman: 'V',   name: 'CIERRE',      bg: 'rgba(110, 85, 42, 0.97)' },
+  5: { roman: 'V',   name: 'INTEGRACIÓN', bg: 'rgba(110, 85, 42, 0.97)' },
+  6: { roman: 'VI',  name: 'CIERRE',      bg: 'rgba(38, 62, 36, 0.97)'  },
 };
 
 interface ChapterTransitionProps {

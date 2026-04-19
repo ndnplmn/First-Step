@@ -14,6 +14,7 @@ import { generateId } from '@/lib/id';
 import { db } from '@/lib/db';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
+import { ConsentScreen } from '@/components/ui/consent-screen';
 import { ArrowLeft } from '@phosphor-icons/react';
 
 /* ------------------------------------------------------------------ */
@@ -148,7 +149,7 @@ function canProceed(step: number, values: IntakeValues, wellbeing: number | null
   switch (step) {
     case 0: return wellbeing !== null;
     case 1: return values.name.trim().length > 0;
-    case 2: { const n = parseInt(values.age); return n > 0 && n < 120; }
+    case 2: { const n = parseInt(values.age); return n >= 18 && n < 120; }
     case 3: return true; // always has a default
     case 4: return true; // always has a default
     case 5: return values.hasChildren !== null;
@@ -286,6 +287,7 @@ function TextArea({
 
 export function Intake({ onComplete, onBack }: IntakeProps) {
   const shouldReduce = useReducedMotion();
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<IntakeValues>(INITIAL_VALUES);
   const [wellbeing, setWellbeing] = useState<number | null>(null);
@@ -394,6 +396,15 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
   /* ---------------------------------------------------------------- */
+
+  if (!consentAccepted) {
+    return (
+      <ConsentScreen
+        onAccept={() => setConsentAccepted(true)}
+        onDecline={onBack}
+      />
+    );
+  }
 
   return (
     <div className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-6 pb-48">
@@ -551,18 +562,34 @@ function StepInput({
         />
       );
 
-    case 2:
+    case 2: {
+      const ageNum = parseInt(values.age);
+      const isTooYoung = values.age.length > 0 && !isNaN(ageNum) && ageNum < 18;
       return (
-        <TextInput
-          value={values.age}
-          onChange={v => set('age', v)}
-          placeholder="Tu edad"
-          type="number"
-          min={1}
-          max={120}
-          autoFocus
-        />
+        <div className="space-y-3">
+          <TextInput
+            value={values.age}
+            onChange={v => set('age', v)}
+            placeholder="Tu edad"
+            type="number"
+            min={18}
+            max={120}
+            autoFocus
+          />
+          {isTooYoung && (
+            <motion.p
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm leading-relaxed px-1"
+              style={{ color: 'var(--color-terracotta)' }}
+            >
+              Tend está diseñado para personas de 18 años o más. Si eres menor, te recomendamos
+              buscar apoyo a través de tu centro educativo o familiar.
+            </motion.p>
+          )}
+        </div>
       );
+    }
 
     case 3:
       return (

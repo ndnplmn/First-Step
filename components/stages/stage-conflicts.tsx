@@ -9,6 +9,8 @@ import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowRight, Microphone, SpeakerHigh, SpeakerSlash, Stop } from '@phosphor-icons/react';
 import { useVoice } from '@/hooks/use-voice';
+import { detectCrisis } from '@/lib/crisis';
+import { CrisisScreen } from '@/components/ui/crisis-screen';
 
 const STARTER_PROMPTS = [
   'Algo con mi familia me preocupa',
@@ -25,6 +27,7 @@ type Message = { role: MessageRole; text: string; isReflection?: boolean };
 interface StageConflictsProps {
   session: PatientSession;
   patient: Patient;
+  priorSessions?: PatientSession[];
   onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity | null, unmappedPhrases: string[], narrativeSummary: string, stage3Type: Stage3Type) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
@@ -89,6 +92,8 @@ function VoiceMicButton({
         border: isRecording ? 'none' : '1px solid var(--color-border)',
       }}
       disabled={isTranscribing}
+      aria-label={isTranscribing ? 'Transcribiendo tu mensaje' : isRecording ? 'Grabando — suelta para enviar' : 'Mantén pulsado para hablar'}
+      aria-pressed={isRecording}
     >
       {isTranscribing ? (
         <div className="flex gap-1 items-end h-6">
@@ -114,7 +119,7 @@ function VoiceMicButton({
   );
 }
 
-export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageConflictsProps) {
+export function StageConflicts({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
   const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
 
@@ -122,6 +127,9 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     isVoiceMode, isRecording, isTranscribing, isSpeaking, transcribedText, voiceError,
     toggleVoiceMode, startRecording, stopRecording, speak, cancelSpeech, clearTranscribedText,
   } = useVoice();
+
+  // ─── Crisis detection ─────────────────────────────────────────────
+  const [showCrisis, setShowCrisis] = useState(false);
 
   // ─── Estado conversacional ────────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>([]);
@@ -187,6 +195,11 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     const trimmed = text.trim();
     if (trimmed.length < 5) return;
 
+    if (detectCrisis(trimmed)) {
+      setShowCrisis(true);
+      return;
+    }
+
     const newMessages: Message[] = [...messages, { role: 'patient', text: trimmed }];
     setMessages(newMessages);
     setInput('');
@@ -203,6 +216,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         lifeChanges: session.lifeChanges,
         sessionIntention: session.sessionIntention,
         forceClose: questionsAsked.length >= SOFT_CAP - 1,
+        priorSessions,
       });
 
       if (done || !question) {
@@ -249,6 +263,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         lifeChanges: session.lifeChanges,
         sessionIntention: session.sessionIntention,
         forceClose: questionsAsked.length >= SOFT_CAP - 1,
+        priorSessions,
       });
       if (done || !question) {
         if (bridgeMsg) {
@@ -281,7 +296,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
     setIsAnalyzing(true);
     setError('');
     try {
-      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention);
+      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention, priorSessions);
       setResult(data);
       onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
       setShowValidation(true);
@@ -310,8 +325,19 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
   const lastMessageIsTherapist = messages.length > 0 && messages[messages.length - 1].role === 'therapist';
   const hasStarted = messages.length > 0;
 
+  // FloatingBar should only be visible when there's actionable content inside
+  const floatingBarVisible =
+    (!showAnalysis && !isEvaluating && !showBridge) ||
+    (showBridge && !isEvaluating) ||
+    (showAnalysis && showValidation && !!result && !isAnalyzing) ||
+    (showAnalysis && !showValidation && !!result && !isAnalyzing);
+
   // ─── Render ───────────────────────────────────────────────────────
   return (
+    <>
+    <AnimatePresence>
+      {showCrisis && <CrisisScreen onDismiss={() => setShowCrisis(false)} />}
+    </AnimatePresence>
     <div className="space-y-8 pb-48">
 
       {/* Header */}
@@ -421,6 +447,10 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
       )}
 
       {/* ─── Evaluando ─── */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {isEvaluating ? 'El terapeuta está procesando tu respuesta' : ''}
+        {isAnalyzing ? 'Analizando todo lo que compartiste' : ''}
+      </div>
       {isEvaluating && (
         <AIThinking phrases={['Procesando lo que compartiste...', 'Decidiendo si necesito saber más...', 'Un momento...']} />
       )}
@@ -540,7 +570,7 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
       </AnimatePresence>
 
       {/* ─── FloatingBar ─── */}
-      <FloatingBar visible={true}>
+      <FloatingBar visible={floatingBarVisible}>
         <div className="space-y-3">
 
           {/* Enviar mensaje */}
@@ -570,9 +600,10 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
                     color: isVoiceMode ? 'white' : 'var(--color-muted)',
                     boxShadow: 'var(--shadow-card)',
                   }}
-                  title={isVoiceMode ? 'Desactivar voz' : 'Activar voz'}
+                  aria-label={isVoiceMode ? 'Desactivar modo de voz' : 'Activar modo de voz'}
+                  aria-pressed={isVoiceMode}
                 >
-                  {isVoiceMode ? <SpeakerHigh size={18} /> : <SpeakerSlash size={18} />}
+                  {isVoiceMode ? <SpeakerHigh size={18} aria-hidden="true" /> : <SpeakerSlash size={18} aria-hidden="true" />}
                 </motion.button>
               </div>
               {lastMessageIsTherapist && !isVoiceMode && (
@@ -646,5 +677,6 @@ export function StageConflicts({ session, patient, onAdvance, onUpdate }: StageC
         </div>
       </FloatingBar>
     </div>
+    </>
   );
 }

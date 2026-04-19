@@ -19,11 +19,12 @@ const THINKING_PHRASES = [
 interface StageInterpretationProps {
   session: PatientSession;
   patient: Patient;
+  priorSessions?: PatientSession[];
   onAdvance: (interpretation: Interpretation) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
-export function StageInterpretation({ session, patient, onAdvance, onUpdate }: StageInterpretationProps) {
+export function StageInterpretation({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageInterpretationProps) {
   const [fullInterpretation, setFullInterpretation] = useState<Interpretation | null>(
     session.interpretation ?? null
   );
@@ -66,6 +67,7 @@ export function StageInterpretation({ session, patient, onAdvance, onUpdate }: S
         patient,
         lifeChanges: session.lifeChanges,
         stage3Notes: session.stage3Notes,
+        priorSessions,
       });
       setFullInterpretation(result);
       onUpdate({ interpretation: result });

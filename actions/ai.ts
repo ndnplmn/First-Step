@@ -2,7 +2,7 @@
 
 import Groq from 'groq-sdk';
 import { FRAMEWORKS_DICTIONARY, GESTALT_ACTIVITIES } from '@/lib/theories';
-import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type, WorkCard } from '@/lib/types';
+import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type, WorkCard, PatientSession } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -54,12 +54,45 @@ function formatFrameworks(matches: FrameworkMatch[]): string {
   return matches.map((m, i) => `${i === 0 ? 'Marco primario' : 'Marco secundario'}: ${m.name} — ${m.focus}`).join('\n');
 }
 
+/**
+ * Builds a compact, readable summary of prior completed sessions for AI context.
+ * Only includes the last 3 sessions to keep prompt size bounded.
+ */
+function buildSessionHistory(priorSessions: PatientSession[]): string {
+  if (!priorSessions.length) return '';
+
+  const completed = priorSessions
+    .filter(s => s.stage === 6 && s.conflicts.length > 0)
+    .sort((a, b) => a.sessionNumber - b.sessionNumber)
+    .slice(-3); // last 3 completed sessions
+
+  if (!completed.length) return '';
+
+  const lines = completed.map(s => {
+    const date = new Date(s.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    const conflictos = s.conflicts.map(c => c.synthesized).join(', ');
+    const marco = s.frameworkMatches[0]?.name ?? 'No definido';
+    const interpretacion = s.interpretation?.text
+      ? s.interpretation.text.slice(0, 180).replace(/\n/g, ' ') + (s.interpretation.text.length > 180 ? '…' : '')
+      : null;
+    return [
+      `Sesión ${s.sessionNumber} (${date}):`,
+      `  Conflictos trabajados: ${conflictos}`,
+      `  Marco terapéutico: ${marco}`,
+      interpretacion ? `  Interpretación (extracto): "${interpretacion}"` : null,
+    ].filter(Boolean).join('\n');
+  });
+
+  return `\nHistorial de sesiones anteriores (${completed.length} sesión/es completada/s):\n${lines.join('\n\n')}\n`;
+}
+
 // --- ACTION 1: Sintetizar conflictos y mapear a marco terapeutico clasico ---
 export async function synthesizeConflicts(
   rawConflicts: string[],
   patient: Patient,
   lifeChanges?: LifeChanges,
-  sessionIntention?: string
+  sessionIntention?: string,
+  priorSessions?: PatientSession[]
 ): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity | null; stage3Type: Stage3Type; unmappedPhrases: string[]; narrativeSummary: string }> {
   const frameworksDesc = Object.entries(FRAMEWORKS_DICTIONARY)
     .map(([key, fw]) => `- ${key}: ${fw.name} — ${fw.description}`)
@@ -69,6 +102,8 @@ export async function synthesizeConflicts(
     .map(([key, act]) => `- ${key}: ${act.title} — ${act.description}`)
     .join('\n');
 
+  const sessionHistory = buildSessionHistory(priorSessions ?? []);
+
   const prompt = `
     Analiza los siguientes motivos de consulta de un paciente y mápalos al marco terapéutico clásico más adecuado.
 
@@ -76,7 +111,7 @@ export async function synthesizeConflicts(
 
     Contexto del paciente:
     ${buildPatientContext(patient, lifeChanges, sessionIntention)}
-
+${sessionHistory ? `${sessionHistory}\n    Nota: Si algún conflicto actual es recurrente (aparece en sesiones anteriores), refleja esa continuidad en el narrativeSummary.\n` : ''}
     Marcos Terapéuticos Disponibles:
     ${frameworksDesc}
 
@@ -193,12 +228,15 @@ export async function generateInterpretation(params: {
   patient: Patient;
   lifeChanges?: LifeChanges;
   stage3Notes?: string;
+  priorSessions?: PatientSession[];
 }): Promise<Interpretation> {
   const { conflicts, frameworkMatches, memories } = params;
 
   const stage3Section = params.stage3Notes
     ? `\n    Notas de exploración del paciente (sesión experiencial):\n    ${params.stage3Notes}\n`
     : '';
+
+  const sessionHistory = buildSessionHistory(params.priorSessions ?? []);
 
   const prompt = `
     Eres un psicoterapeuta magistral que integra múltiples marcos terapéuticos.
@@ -219,7 +257,7 @@ export async function generateInterpretation(params: {
     Sentimiento ahora: "${m.feelingNow}"
     Palabras clave: ${m.keywords.join(', ')}
     `).join('\n---\n') : '(Sin recuerdos trabajados en esta sesión)'}
-${stage3Section}
+${stage3Section}${sessionHistory}
     Genera una interpretación clínica breve, profunda y reveladora desde el marco terapéutico elegido.
     Los marcos posibles son: Psicoanálisis Freudiano, Terapia Bioenergética, Psicología Individual de Adler, Terapia Gestalt, Sensibilización Sistemática Conductual.
 
@@ -227,6 +265,7 @@ ${stage3Section}
     - Dirígete directamente al paciente (segunda persona "tú")
     - Conecta lo trabajado en sesión con su conflicto actual desde la lente del marco terapéutico
     - Si hay notas de exploración, integra los insights concretos que el paciente compartió
+    - Si hay historial de sesiones anteriores y existe un patrón recurrente, menciónalo brevemente para reforzar la continuidad del proceso
     - Usa lenguaje accesible, no técnico
     - EXACTAMENTE 1 párrafo. Solo 2 párrafos si el material trabajado lo justifica plenamente. Nunca más de 2.
     - Cada párrafo: máximo 4 oraciones. Ve directo al punto — sin preámbulos ni rodeos.
@@ -258,8 +297,10 @@ export async function generateClosure(params: {
   gestaltActivity: GestaltActivity | null;
   patient: Patient;
   deepWorkSynthesis?: string;
+  priorSessions?: PatientSession[];
 }): Promise<Closure> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
+  const closureHistory = buildSessionHistory(params.priorSessions ?? []);
 
   const prompt = `
     Eres un psicoterapeuta magistral.
@@ -270,6 +311,7 @@ export async function generateClosure(params: {
 
     Contexto del paciente:
     ${buildPatientContext(params.patient)}
+${closureHistory}
 
     Se le ha dado esta interpretación:
     "${interpretation}"
@@ -293,7 +335,9 @@ ${params.deepWorkSynthesis
     Prepáralo para la siguiente fase de exploración que viene. Menciónala como una invitación cálida a ir más profundo. Conecta esta fase con lo que se ha trabajado.
 
     PÁRRAFO 3 (2-3 oraciones):
-    Hazle saber que este es apenas el primer paso. Que cada sesión profundizará más. Que volver es parte de cuidarse.
+    ${closureHistory
+      ? 'El paciente ya lleva varias sesiones. Reconoce ese compromiso con su proceso. Que cada regreso muestra valentía y que lo trabajado se acumula.'
+      : 'Hazle saber que este es apenas el primer paso. Que cada sesión profundizará más. Que volver es parte de cuidarse.'}
 
     - Cierra con una línea en blanco y luego exactamente:
     Con cariño,
@@ -541,11 +585,13 @@ export async function getNextTherapistQuestion(params: {
   lifeChanges?: LifeChanges;
   sessionIntention?: string;
   forceClose?: boolean;
+  priorSessions?: PatientSession[];
 }): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
+  const questionHistory = buildSessionHistory(params.priorSessions ?? []);
 
   const prompt = `
-Eres un psicoterapeuta experto realizando una primera sesión de evaluación.
+Eres un psicoterapeuta experto${questionHistory ? ' con historial de sesiones previas con este paciente' : ' realizando una primera sesión de evaluación'}.
 
 El paciente ha compartido lo siguiente:
 ${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
@@ -554,6 +600,7 @@ ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) =
 
 Contexto del paciente (ya conocido — NO preguntes sobre esto):
 ${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}
+${questionHistory ? `${questionHistory}\nNota: Usa este historial para evitar re-explorar lo ya trabajado. Si el paciente menciona temas recurrentes, reconócelo cálidamente en la "reflection".\n` : ''}
 
 ─────────────────────────────────────────────────────────────
 DIMENSIONES DEL CONFLICTO — audita cuáles están cubiertas

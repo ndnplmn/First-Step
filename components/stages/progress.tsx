@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { ArrowLeft } from '@phosphor-icons/react';
+import {
+  PHQ9_SEVERITY_LABELS, PHQ9_SEVERITY_COLORS,
+  GAD7_SEVERITY_LABELS, GAD7_SEVERITY_COLORS,
+} from '@/lib/clinical';
 
 /* ── constants ─────────────────────────────────────────── */
 
@@ -139,8 +143,8 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                     <div
                       className="w-3 h-3 rounded-full border-2"
                       style={{
-                        borderColor: session.stage === 5 ? 'var(--color-sage)' : 'var(--color-muted)',
-                        background: session.stage === 5 ? 'var(--color-sage)' : 'transparent',
+                        borderColor: session.stage === 6 ? 'var(--color-sage)' : 'var(--color-muted)',
+                        background: session.stage === 6 ? 'var(--color-sage)' : 'transparent',
                       }}
                     />
                     {!isLast && (
@@ -211,6 +215,34 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                       </p>
                     )}
 
+                    {/* Clinical score badges */}
+                    {(session.phq9 || session.gad7) && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {session.phq9 && (() => {
+                          const c = PHQ9_SEVERITY_COLORS[session.phq9.severity];
+                          return (
+                            <span
+                              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: c.bg, color: c.text }}
+                            >
+                              PHQ-9: {session.phq9.score} · {PHQ9_SEVERITY_LABELS[session.phq9.severity]}
+                            </span>
+                          );
+                        })()}
+                        {session.gad7 && (() => {
+                          const c = GAD7_SEVERITY_COLORS[session.gad7.severity];
+                          return (
+                            <span
+                              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: c.bg, color: c.text }}
+                            >
+                              GAD-7: {session.gad7.score} · {GAD7_SEVERITY_LABELS[session.gad7.severity]}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+
                     {/* Expanded content */}
                     <AnimatePresence>
                       {isExpanded && (
@@ -261,6 +293,53 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                                     {q}
                                   </p>
                                 ))}
+                              </div>
+                            )}
+
+                            {(session.phq9 || session.gad7) && (
+                              <div>
+                                <p className="text-xs font-medium uppercase tracking-widest mb-2"
+                                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+                                  Evaluación clínica
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {session.phq9 && (() => {
+                                    const c = PHQ9_SEVERITY_COLORS[session.phq9.severity];
+                                    return (
+                                      <div className="p-3 rounded-xl" style={{ background: c.bg }}>
+                                        <p className="text-[10px] font-medium uppercase tracking-wider mb-0.5"
+                                          style={{ color: c.text, fontFamily: 'var(--font-mono)' }}>
+                                          PHQ-9 · Depresión
+                                        </p>
+                                        <p className="text-xl font-semibold" style={{ color: c.text }}>
+                                          {session.phq9.score}
+                                          <span className="text-xs font-normal ml-1" style={{ opacity: 0.8 }}>/ 27</span>
+                                        </p>
+                                        <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
+                                          {PHQ9_SEVERITY_LABELS[session.phq9.severity]}
+                                        </p>
+                                      </div>
+                                    );
+                                  })()}
+                                  {session.gad7 && (() => {
+                                    const c = GAD7_SEVERITY_COLORS[session.gad7.severity];
+                                    return (
+                                      <div className="p-3 rounded-xl" style={{ background: c.bg }}>
+                                        <p className="text-[10px] font-medium uppercase tracking-wider mb-0.5"
+                                          style={{ color: c.text, fontFamily: 'var(--font-mono)' }}>
+                                          GAD-7 · Ansiedad
+                                        </p>
+                                        <p className="text-xl font-semibold" style={{ color: c.text }}>
+                                          {session.gad7.score}
+                                          <span className="text-xs font-normal ml-1" style={{ opacity: 0.8 }}>/ 21</span>
+                                        </p>
+                                        <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
+                                          {GAD7_SEVERITY_LABELS[session.gad7.severity]}
+                                        </p>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                             )}
                           </div>
