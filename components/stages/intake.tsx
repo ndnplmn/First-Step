@@ -9,9 +9,16 @@ import type {
   MaritalStatus,
   LivingSituation,
   EmploymentStatus,
+  Conflict,
+  FrameworkMatch,
+  GestaltActivity,
+  Stage3Type,
+  UnmappedPhrase,
 } from '@/lib/types';
 import { generateId } from '@/lib/id';
 import { db } from '@/lib/db';
+import { synthesizeConflicts } from '@/actions/ai';
+import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { ConsentScreen } from '@/components/ui/consent-screen';
@@ -44,6 +51,15 @@ type IntakeValues = {
   takingMedication: boolean | null;
   medicationDetail: string;
   consultationReason: string;
+};
+
+type IntakeSynthesis = {
+  conflicts: Conflict[];
+  frameworkMatches: FrameworkMatch[];
+  gestaltActivity: GestaltActivity | null;
+  stage3Type: Stage3Type;
+  narrativeSummary: string;
+  unmappedPhrases: string[];
 };
 
 const INITIAL_VALUES: IntakeValues = {
@@ -82,83 +98,125 @@ const WELLBEING_OPTIONS = [
 /*  Step definitions                                                   */
 /* ------------------------------------------------------------------ */
 
-const TOTAL_STEPS = 12;
+// Step order (0-indexed):
+// 0: wellbeing
+// 1: consultationReason  ← first real question (before demographics)
+// 2: name
+// 3: age
+// 4: gender
+// 5: maritalStatus
+// 6: children
+// 7: livingSituation
+// 8: employment
+// 9: supportNetwork
+// 10: previousTherapy
+// 11: medication
+// 12: specificEvents     ← new: structured event narration
+// 13: feelingsSensations ← new: feelings & bodily sensations
+
+const TOTAL_STEPS = 14;
 
 function getStepQuestion(step: number, values: IntakeValues): string {
   switch (step) {
     case 0: return 'Antes de comenzar, ¿cómo te sientes hoy?';
-    case 1: return '¿Cómo te llamas?';
-    case 2: return values.name ? `¿Cuántos años tienes, ${values.name}?` : '¿Cuántos años tienes?';
-    case 3: return '¿Cómo te identificas?';
-    case 4: return '¿Cuál es tu estado civil?';
-    case 5: return '¿Tienes hijos?';
-    case 6: return '¿Con quién vives?';
-    case 7: return '¿A qué te dedicas?';
-    case 8: return '¿Tienes personas de confianza con quienes puedas hablar?';
-    case 9: return '¿Has ido a terapia antes?';
-    case 10: return '¿Tomas algún medicamento, ya sea psiquiátrico o de cualquier otro tipo?';
-    case 11: return values.name ? `¿Qué te trae aquí hoy, ${values.name}?` : '¿Qué te trae aquí hoy?';
+    case 1: return '¿Qué te trae aquí hoy?';
+    case 2: return '¿Cómo te llamas?';
+    case 3: return values.name ? `¿Cuántos años tienes, ${values.name}?` : '¿Cuántos años tienes?';
+    case 4: return '¿Cómo te identificas?';
+    case 5: return '¿Cuál es tu estado civil?';
+    case 6: return '¿Tienes hijos?';
+    case 7: return '¿Con quién vives?';
+    case 8: return '¿A qué te dedicas?';
+    case 9: return '¿Tienes personas de confianza con quienes puedas hablar?';
+    case 10: return '¿Has ido a terapia antes?';
+    case 11: return '¿Tomas algún medicamento, ya sea psiquiátrico o de cualquier otro tipo?';
+    case 12: return values.name
+      ? `${values.name}, ¿puedes contarme una situación concreta o momento específico relacionado con lo que te trajo aquí?`
+      : '¿Puedes contarme una situación concreta o momento específico relacionado con lo que te trajo aquí?';
+    case 13: return values.name
+      ? `¿Qué sentimientos o sensaciones surgen en tu cuerpo cuando piensas en eso, ${values.name}?`
+      : '¿Qué sentimientos o sensaciones surgen en tu cuerpo cuando piensas en eso?';
     default: return '';
   }
 }
 
-function getStepAnswer(step: number, values: IntakeValues, wellbeing: number | null): string | null {
+function getStepAnswer(
+  step: number,
+  values: IntakeValues,
+  wellbeing: number | null,
+  specificEvents: string,
+  feelingsSensations: string,
+): string | null {
   switch (step) {
     case 0: return wellbeing ? WELLBEING_OPTIONS.find(o => o.value === wellbeing)?.label ?? null : null;
-    case 1: return values.name.trim() || null;
-    case 2: return values.age || null;
-    case 3: return values.gender;
-    case 4: return values.maritalStatus;
-    case 5: {
+    case 1: return values.consultationReason.trim() || null;
+    case 2: return values.name.trim() || null;
+    case 3: return values.age || null;
+    case 4: return values.gender;
+    case 5: return values.maritalStatus;
+    case 6: {
       if (values.hasChildren === null) return null;
       if (!values.hasChildren) return 'No';
       return values.childrenCount ? `Sí, ${values.childrenCount}` : 'Sí';
     }
-    case 6: {
+    case 7: {
       if (values.livingSituation === 'Otro' && values.livingSituationDetail.trim()) {
         return values.livingSituationDetail.trim();
       }
       return values.livingSituation;
     }
-    case 7: {
+    case 8: {
       const parts: string[] = [values.employment];
       if (values.occupation.trim()) parts.push(values.occupation.trim());
       return parts.join(' · ');
     }
-    case 8: {
+    case 9: {
       if (values.hasSupportNetwork === null) return null;
       if (!values.hasSupportNetwork) return 'No';
       return values.supportDescription.trim() ? `Sí — ${values.supportDescription.trim()}` : 'Sí';
     }
-    case 9: {
+    case 10: {
       if (values.previousTherapy === null) return null;
       if (!values.previousTherapy) return 'No';
       return values.previousTherapyDetail.trim() ? `Sí — ${values.previousTherapyDetail.trim()}` : 'Sí';
     }
-    case 10: {
+    case 11: {
       if (values.takingMedication === null) return null;
       if (!values.takingMedication) return 'No';
       return values.medicationDetail.trim() ? `Sí — ${values.medicationDetail.trim()}` : 'Sí';
     }
-    case 11: return values.consultationReason.trim() || null;
+    case 12: return specificEvents
+      ? specificEvents.slice(0, 80) + (specificEvents.length > 80 ? '...' : '')
+      : null;
+    case 13: return feelingsSensations
+      ? feelingsSensations.slice(0, 80) + (feelingsSensations.length > 80 ? '...' : '')
+      : null;
     default: return null;
   }
 }
 
-function canProceed(step: number, values: IntakeValues, wellbeing: number | null): boolean {
+function canProceed(
+  step: number,
+  values: IntakeValues,
+  wellbeing: number | null,
+  specificEvents: string,
+  feelingsSensations: string,
+): boolean {
   switch (step) {
     case 0: return wellbeing !== null;
-    case 1: return values.name.trim().length > 0;
-    case 2: { const n = parseInt(values.age); return n >= 18 && n < 120; }
-    case 3: return true; // always has a default
-    case 4: return true; // always has a default
-    case 5: return values.hasChildren !== null;
-    case 6: return values.livingSituation !== 'Otro' || values.livingSituationDetail.trim().length > 0;
-    case 7: return true; // always has a default
-    case 8: return values.hasSupportNetwork !== null;
-    case 9: return values.previousTherapy !== null;
-    case 10: return values.takingMedication !== null;
-    case 11: return values.consultationReason.trim().length > 0;
+    case 1: return values.consultationReason.trim().length > 0;
+    case 2: return values.name.trim().length > 0;
+    case 3: { const n = parseInt(values.age); return n >= 18 && n < 120; }
+    case 4: return true;
+    case 5: return true;
+    case 6: return values.hasChildren !== null;
+    case 7: return values.livingSituation !== 'Otro' || values.livingSituationDetail.trim().length > 0;
+    case 8: return true;
+    case 9: return values.hasSupportNetwork !== null;
+    case 10: return values.previousTherapy !== null;
+    case 11: return values.takingMedication !== null;
+    case 12: return specificEvents.trim().length >= 20;
+    case 13: return feelingsSensations.trim().length >= 10;
     default: return false;
   }
 }
@@ -256,18 +314,20 @@ function TextArea({
   onChange,
   placeholder,
   autoFocus,
+  rows = 3,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   autoFocus?: boolean;
+  rows?: number;
 }) {
   return (
     <textarea
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
-      rows={3}
+      rows={rows}
       autoFocus={autoFocus}
       className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 text-base placeholder:opacity-35"
       style={{
@@ -291,6 +351,15 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<IntakeValues>(INITIAL_VALUES);
   const [wellbeing, setWellbeing] = useState<number | null>(null);
+
+  // New steps state
+  const [specificEvents, setSpecificEvents] = useState('');
+  const [feelingsSensations, setFeelingsSensations] = useState('');
+
+  // AI synthesis state
+  const [intakeProcessing, setIntakeProcessing] = useState<'idle' | 'loading' | 'ready'>('idle');
+  const [intakeSynthesis, setIntakeSynthesis] = useState<IntakeSynthesis | null>(null);
+
   const [pendingData, setPendingData] = useState<{
     patient: Patient;
     session: PatientSession;
@@ -307,18 +376,26 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [step]);
+  }, [step, intakeProcessing]);
 
   const handleNext = () => {
-    if (!canProceed(step, values, wellbeing)) return;
+    if (!canProceed(step, values, wellbeing, specificEvents, feelingsSensations)) return;
     if (step === TOTAL_STEPS - 1) {
-      handleSubmit();
+      // Step 13: trigger AI synthesis instead of direct submit
+      handleIntakeAISynthesis();
     } else {
       setStep(s => s + 1);
     }
   };
 
   const handleBack = () => {
+    if (intakeProcessing === 'ready') {
+      // From result card, go back to step 13
+      setIntakeProcessing('idle');
+      setStep(13);
+      return;
+    }
+    if (intakeProcessing === 'loading') return; // block during loading
     if (step === 0) {
       onBack();
     } else {
@@ -326,9 +403,9 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
     }
   };
 
-  const handleSubmit = async () => {
+  const buildPatient = async (): Promise<Patient> => {
     const user = await db.getUser();
-    const patient: Patient = {
+    return {
       id: user?.id ?? generateId(),
       name: values.name,
       age: parseInt(values.age),
@@ -364,19 +441,52 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       consultationReason: values.consultationReason.trim(),
       createdAt: Date.now(),
     };
+  };
+
+  const handleIntakeAISynthesis = async () => {
+    setStep(14); // advance past all form steps so step 13 renders as a bubble
+    setIntakeProcessing('loading');
+    try {
+      const patient = await buildPatient();
+      const result = await synthesizeConflicts(
+        [values.consultationReason, specificEvents, feelingsSensations],
+        patient,
+        undefined,
+        undefined,
+        [],
+      );
+      setIntakeSynthesis(result);
+      setIntakeProcessing('ready');
+    } catch {
+      // Fallback: proceed without pre-synthesized conflicts
+      setIntakeProcessing('idle');
+      setStep(13);
+      handleSubmitWithSynthesis(null);
+    }
+  };
+
+  const handleSubmitWithSynthesis = async (synthesis: IntakeSynthesis | null) => {
+    const patient = await buildPatient();
+
+    const unmappedPhrases: UnmappedPhrase[] = (synthesis?.unmappedPhrases ?? []).map(text => ({
+      text,
+      sessionNumber: 1,
+    }));
 
     const session: PatientSession = {
       id: generateId(),
       patientId: patient.id,
       sessionNumber: 1,
-      stage: 2,
-      conflicts: [],
-      frameworkMatches: [],
-      gestaltActivity: null,
+      stage: synthesis ? 3 : 2,
+      conflicts: synthesis?.conflicts ?? [],
+      frameworkMatches: synthesis?.frameworkMatches ?? [],
+      gestaltActivity: synthesis?.gestaltActivity ?? null,
+      stage3Type: synthesis?.stage3Type,
+      narrativeSummary: synthesis?.narrativeSummary,
       memories: [],
       interpretation: null,
       closure: null,
-      unmappedPhrases: [],
+      unmappedPhrases,
       wellbeingBefore: wellbeing ?? undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -406,6 +516,8 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
     );
   }
 
+  const isReady = canProceed(step, values, wellbeing, specificEvents, feelingsSensations);
+
   return (
     <div className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-6 pb-48">
       {/* Header with back + progress */}
@@ -415,7 +527,11 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           onClick={handleBack}
           whileTap={shouldReduce ? {} : { scale: 0.97 }}
           className="flex items-center gap-2 flex-shrink-0"
-          style={{ color: 'var(--color-muted)' }}
+          style={{
+            color: 'var(--color-muted)',
+            opacity: intakeProcessing === 'loading' ? 0.3 : 1,
+            pointerEvents: intakeProcessing === 'loading' ? 'none' : 'auto',
+          }}
         >
           <ArrowLeft size={16} />
           <span className="text-sm">Volver</span>
@@ -437,8 +553,8 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       {/* Conversation area */}
       <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto">
         {/* Previous answered steps as bubbles */}
-        {Array.from({ length: step }).map((_, i) => {
-          const answer = getStepAnswer(i, values, wellbeing);
+        {Array.from({ length: Math.min(step, TOTAL_STEPS) }).map((_, i) => {
+          const answer = getStepAnswer(i, values, wellbeing, specificEvents, feelingsSensations);
           if (!answer) return null;
           return (
             <motion.div
@@ -460,37 +576,171 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           );
         })}
 
-        {/* Current step */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={shouldReduce ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-            className="space-y-5"
-          >
-            <p
-              className="text-xl leading-snug"
-              style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
+        {/* Current step — only shown when idle */}
+        {intakeProcessing === 'idle' && (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+              className="space-y-5"
             >
-              {getStepQuestion(step, values)}
-            </p>
+              <p
+                className="text-xl leading-snug"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
+              >
+                {getStepQuestion(step, values)}
+              </p>
 
-            <StepInput
-              step={step}
-              values={values}
-              wellbeing={wellbeing}
-              set={set}
-              setWellbeing={setWellbeing}
-              reduce={shouldReduce}
+              <StepInput
+                step={step}
+                values={values}
+                wellbeing={wellbeing}
+                set={set}
+                setWellbeing={setWellbeing}
+                reduce={shouldReduce}
+                specificEvents={specificEvents}
+                setSpecificEvents={setSpecificEvents}
+                feelingsSensations={feelingsSensations}
+                setFeelingsSensations={setFeelingsSensations}
+              />
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {/* AI Processing — loading */}
+        {intakeProcessing === 'loading' && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{ marginTop: '1rem' }}
+          >
+            <AIThinking
+              phrases={[
+                'Escuchando lo que compartiste...',
+                'Identificando lo que emerge...',
+                'Preparando tu camino terapéutico...',
+              ]}
             />
           </motion.div>
-        </AnimatePresence>
+        )}
+
+        {/* AI Result — Camino A */}
+        {intakeProcessing === 'ready' && intakeSynthesis && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '1rem' }}
+          >
+            {/* Narrative summary card */}
+            <div
+              style={{
+                padding: '1.5rem',
+                borderRadius: 'var(--radius-card)',
+                background: 'rgba(107,94,158,0.06)',
+                border: '1px solid rgba(107,94,158,0.15)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--color-violet)',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Lo que escuchamos
+              </p>
+              <p
+                style={{
+                  color: 'var(--color-deep)',
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '1.05rem',
+                  lineHeight: 1.6,
+                  margin: 0,
+                }}
+              >
+                {intakeSynthesis.narrativeSummary}
+              </p>
+              {intakeSynthesis.frameworkMatches[0] && (
+                <span
+                  style={{
+                    alignSelf: 'flex-start',
+                    padding: '0.375rem 0.875rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    background: 'var(--color-violet-light)',
+                    color: 'var(--color-violet)',
+                  }}
+                >
+                  {intakeSynthesis.frameworkMatches[0].name}
+                </span>
+              )}
+            </div>
+
+            {/* CTA */}
+            <p
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '1.125rem',
+                color: 'var(--color-deep)',
+                margin: 0,
+                lineHeight: 1.4,
+              }}
+            >
+              ¿Deseas empezar la terapia?
+            </p>
+            <motion.button
+              type="button"
+              onClick={() => handleSubmitWithSynthesis(intakeSynthesis)}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              style={{
+                background: 'var(--color-sage)',
+                boxShadow: 'var(--shadow-glow-sage)',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'var(--radius-inner)',
+                padding: '1rem 1.5rem',
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                alignSelf: 'stretch',
+                textAlign: 'center',
+              }}
+            >
+              Sí, empezar →
+            </motion.button>
+            <button
+              type="button"
+              onClick={() => { setIntakeProcessing('idle'); setStep(13); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-muted)',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                padding: '0.5rem',
+                textAlign: 'center',
+              }}
+            >
+              Quiero ajustar algo
+            </button>
+          </motion.div>
+        )}
       </div>
 
-      {/* Floating bar */}
-      <FloatingBar visible={canProceed(step, values, wellbeing)}>
+      {/* Floating bar — hidden during AI processing */}
+      <FloatingBar visible={intakeProcessing === 'idle' && isReady}>
         <motion.button
           type="button"
           onClick={handleNext}
@@ -498,14 +748,17 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
           style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
         >
-          {step === TOTAL_STEPS - 1 ? 'Comenzar mi proceso' : 'Siguiente'}
+          {step === TOTAL_STEPS - 1 ? 'Continuar' : 'Siguiente'}
         </motion.button>
       </FloatingBar>
 
       {/* Chapter transition overlay */}
       <AnimatePresence>
         {showTransition && (
-          <ChapterTransition toStage={2} onComplete={handleTransitionComplete} />
+          <ChapterTransition
+            toStage={pendingData?.session.stage ?? 2}
+            onComplete={handleTransitionComplete}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -523,6 +776,10 @@ function StepInput({
   set,
   setWellbeing,
   reduce,
+  specificEvents,
+  setSpecificEvents,
+  feelingsSensations,
+  setFeelingsSensations,
 }: {
   step: number;
   values: IntakeValues;
@@ -530,6 +787,10 @@ function StepInput({
   set: <K extends keyof IntakeValues>(key: K, val: IntakeValues[K]) => void;
   setWellbeing: (v: number) => void;
   reduce: boolean | null;
+  specificEvents: string;
+  setSpecificEvents: (v: string) => void;
+  feelingsSensations: string;
+  setFeelingsSensations: (v: string) => void;
 }) {
   const genders: Gender[] = ['Femenino', 'Masculino', 'Otro'];
   const statuses: MaritalStatus[] = ['Soltero/a', 'En pareja', 'Casado/a', 'Divorciado/a', 'Viudo/a', 'Separado/a'];
@@ -554,6 +815,17 @@ function StepInput({
 
     case 1:
       return (
+        <TextArea
+          value={values.consultationReason}
+          onChange={v => set('consultationReason', v)}
+          placeholder="Escribe lo que sientas, no hay respuestas incorrectas"
+          autoFocus
+          rows={4}
+        />
+      );
+
+    case 2:
+      return (
         <TextInput
           value={values.name}
           onChange={v => set('name', v)}
@@ -562,7 +834,7 @@ function StepInput({
         />
       );
 
-    case 2: {
+    case 3: {
       const ageNum = parseInt(values.age);
       const isTooYoung = values.age.length > 0 && !isNaN(ageNum) && ageNum < 18;
       return (
@@ -591,7 +863,7 @@ function StepInput({
       );
     }
 
-    case 3:
+    case 4:
       return (
         <div className="flex flex-wrap gap-3">
           {genders.map(g => (
@@ -600,7 +872,7 @@ function StepInput({
         </div>
       );
 
-    case 4:
+    case 5:
       return (
         <div className="flex flex-wrap gap-3">
           {statuses.map(s => (
@@ -609,7 +881,7 @@ function StepInput({
         </div>
       );
 
-    case 5:
+    case 6:
       return (
         <div className="space-y-3">
           <YesNo value={values.hasChildren} onChange={v => set('hasChildren', v)} reduce={reduce} />
@@ -636,7 +908,7 @@ function StepInput({
         </div>
       );
 
-    case 6:
+    case 7:
       return (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-3">
@@ -665,7 +937,7 @@ function StepInput({
         </div>
       );
 
-    case 7:
+    case 8:
       return (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-3">
@@ -681,7 +953,7 @@ function StepInput({
         </div>
       );
 
-    case 8:
+    case 9:
       return (
         <div className="space-y-3">
           <YesNo value={values.hasSupportNetwork} onChange={v => set('hasSupportNetwork', v)} reduce={reduce} />
@@ -706,7 +978,7 @@ function StepInput({
         </div>
       );
 
-    case 9:
+    case 10:
       return (
         <div className="space-y-3">
           <YesNo value={values.previousTherapy} onChange={v => set('previousTherapy', v)} reduce={reduce} />
@@ -731,7 +1003,7 @@ function StepInput({
         </div>
       );
 
-    case 10:
+    case 11:
       return (
         <div className="space-y-3">
           <YesNo value={values.takingMedication} onChange={v => set('takingMedication', v)} reduce={reduce} />
@@ -756,13 +1028,25 @@ function StepInput({
         </div>
       );
 
-    case 11:
+    case 12:
       return (
         <TextArea
-          value={values.consultationReason}
-          onChange={v => set('consultationReason', v)}
-          placeholder="Escribe lo que sientas, no hay respuestas incorrectas"
+          value={specificEvents}
+          onChange={setSpecificEvents}
+          placeholder="Describe el momento con el mayor detalle posible..."
           autoFocus
+          rows={5}
+        />
+      );
+
+    case 13:
+      return (
+        <TextArea
+          value={feelingsSensations}
+          onChange={setFeelingsSensations}
+          placeholder="Tensión, opresión, mariposas... cualquier cosa que surja..."
+          autoFocus
+          rows={5}
         />
       );
 
