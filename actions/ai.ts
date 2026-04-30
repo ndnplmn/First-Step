@@ -598,7 +598,7 @@ export async function getExplorationResponse(params: {
   const { selectedCard, messages, conflicts, frameworkMatches, patient, stage3Type, currentPhase, priorSessions = [] } = params;
 
   const patientTurns = messages.filter(m => m.role === 'patient').length;
-  const forceClose = patientTurns >= 10;
+  const canClose = patientTurns >= 4; // minimum turns before allowing closure
 
   const frameworkLens: Record<Stage3Type, string> = {
     memories: 'Psicoanálisis freudiano: conecta el relato del paciente con figuras de apego tempranas, patrones de repetición, y el significado inconsciente que el paciente no puede ver directamente.',
@@ -608,68 +608,95 @@ export async function getExplorationResponse(params: {
     exposure: 'Terapia Cognitivo-Conductual: identifica la cadena de eventos (trigger → pensamiento → emoción → conducta → consecuencia). Construye gradualmente hacia la confrontación con lo evitado.',
   };
 
-  const phaseInstructions: Record<ExplorationPhase, string> = {
-    exploring: `FASE: EXPLORANDO (turnos iniciales)
-Objetivo: anclar la conversación en una situación concreta y específica, no en el tema en abstracto.
-- Pregunta sobre el cuándo, dónde, quién estaba presente, qué pasó exactamente
-- Evita preguntas amplias como "¿cómo te sientes con esto?" — pide el episodio específico
-- Ejemplo efectivo: "¿Cuándo fue la última vez que sentiste esto con toda su intensidad?"`,
-
-    deepening: `FASE: PROFUNDIZANDO
-Objetivo: llevar al paciente de la narración intelectual al contacto emocional directo con el material.
-- Incluye al menos una pregunta de anclaje corporal: "¿Dónde sientes esto en tu cuerpo ahora mismo?"
-- Busca la emoción precisa (no "mal" sino si es vergüenza, miedo, tristeza, rabia, etc.)
-- Explora el impulso de acción: "¿Qué quieres hacer cuando sientes eso?" — esto revela la función de la emoción
-- Si el paciente responde abstractamente o en tercera persona, nómbralo y redirige: "Noto que describes esto desde cierta distancia. ¿Qué pasa si te permites sentirlo directamente ahora?"`,
-
-    pattern_linking: `FASE: CONECTANDO PATRONES
-Objetivo: llevar al paciente a reconocer que este conflicto no es un episodio aislado sino parte de un patrón que se repite.
-- Usa el lente ${frameworkLens[stage3Type]} para conectar el relato con el patrón más amplio
-- "¿Esto que describes te suena familiar de otras situaciones o relaciones?"
-- "¿Cuándo empezó esto en tu vida?" / "¿Hay alguien más con quien te pase algo parecido?"
-- Nómbralo tentativamente, no como diagnóstico: "Me pregunto si..." / "Parece que..."`,
-
-    challenging: `FASE: EXAMINANDO CREENCIAS
-Objetivo: llevar al paciente a cuestionar suavemente la creencia o la defensa que mantiene el conflicto vivo.
-- Socratic level 3-4: pregunta por las implicaciones y la perspectiva alternativa
-- "¿Qué tendría que ser verdad sobre ti para que esto te afecte tanto?"
-- "Si un amigo te contara exactamente lo mismo que me estás contando, ¿qué le dirías?"
-- Si el paciente intelectualiza o sigue muy ordenado emocionalmente, nómbralo con curiosidad: "Noto que tienes una respuesta muy clara para esto. ¿Qué pasaría si no supieras la respuesta?"
-- NO confrontes directamente — usa la pregunta como palanca`,
-
-    insight: `FASE: MOMENTO DE INSIGHT (detectado)
-IMPORTANTE: El paciente acaba de decir algo significativo. NO hagas una pregunta nueva.
-- Refleja lo que dijo en sus propias palabras, sin interpretarlo: "Acabas de decir algo que me parece muy importante..."
-- Invita a quedarse en el momento: "¿Qué más surge cuando te quedas con eso?"
-- Si hay emoción emergente, dale espacio: "Tómate el tiempo que necesites..."
-- El insight se profundiza en silencio y en la repetición, no en la siguiente pregunta`,
-
-    consolidating: `FASE: CONSOLIDANDO
-Objetivo: anclar lo que emergió en la sesión de forma que el paciente lo haga propio.
-- Refleja el insight en las palabras exactas del paciente, no en las tuyas: "Entonces lo que notas es que..."
-- Pregunta qué quiere llevarse: "¿Qué quieres recordar de lo que descubriste hoy?"
-- Si emergieron varias cosas, ayuda al paciente a elegir el hilo más importante
-- NO ofrezcas nuevas interpretaciones ni conclusiones — deja que el paciente diga la última palabra
-- Esta fase prepara el terreno para el compromiso de acción`,
+  const frameworkTone: Record<Stage3Type, string> = {
+    memories: `Tono psicoanalítico: cómodo con el silencio y la incomodidad. Cuando el paciente evita algo, lo nombras: "Noto que cada vez que te acercas a esto, das un rodeo." No retrocedes ante la resistencia — la señalas con curiosidad. Interpretas el significado latente, no el manifiesto.`,
+    bodywork: `Tono bioenergético: directo sobre el cuerpo. No dejas que el paciente se quede en la cabeza: "Todo eso que describes está en tu cuerpo ahora mismo — ¿qué sientes físicamente?" Nombras la energía bloqueada sin ambigüedad.`,
+    social_context: `Tono adleriano: señalas los patrones de compensación sin suavizarlos: "Lo que describes suena a alguien que necesita demostrar algo constantemente — ¿a quién?" Exploras el movimiento social con precisión, no con suposiciones.`,
+    gestalt_activity: `Tono gestalt: presente e inmediato. No permites que el paciente escape al pasado o al futuro abstracto: "¿Qué está pasando en ti ahora mismo, en este momento?" Cuando hay evitación del presente, la nombras directamente.`,
+    exposure: `Tono conductual: preciso y sin rodeos sobre los patrones de evitación: "Eso es evitación. Cada vez que evitas, el miedo crece. ¿Qué crees que pasaría si no lo evitaras esta vez?" Construyes hacia la exposición con firmeza, no con suavidad excesiva.`,
   };
 
-  const phaseTransitionRules = `
-REGLAS DE TRANSICIÓN DE FASE:
-- Si el paciente está respondiendo con emoción concreta y específica en 'exploring' → pasa a 'deepening'
-- Si el paciente describe sensaciones corporales o emociones precisas en 'deepening' → considera 'pattern_linking'
-- Si el paciente conecta el conflicto con patrones más amplios → pasa a 'challenging'
-- Si en cualquier fase el paciente dice algo que revela un insight genuino → marca insightDetected: true y pasa a 'insight'
-- Si en 'insight' el paciente profundizó → pasa a 'consolidating'
-- Si en 'challenging' el paciente se cierra o intelectualiza mucho → vuelve a 'deepening'
-- Con 8+ turnos de paciente, si aún no llegas a 'consolidating', avanza directamente
-- En 'consolidating' con al menos 1 turno de respuesta → marca done: true
+  const phaseInstructions: Record<ExplorationPhase, string> = {
+    exploring: `FASE: EXPLORANDO
+Objetivo: anclar en una situación concreta y específica — nada abstracto.
+- Pregunta por el cuándo, dónde, quién, qué pasó exactamente
+- Evita preguntas genéricas — pide el episodio específico más reciente o más intenso
+- Si el paciente responde en abstracto: "¿Puedes darme un ejemplo concreto, una situación específica?"`,
 
-SEÑALES DE INSIGHT (para insightDetected: true):
-- Cambia de tercera persona/pasado a primera persona/presente: "yo me doy cuenta de que..."
-- Hace una conexión espontánea que no fue sugerida: "esto es lo mismo que con mi madre..."
-- Usa lenguaje tentativo de auto-interpretación: "quizás por eso siempre...", "creo que esto significa..."
-- Se interrumpe y reformula lo que iba a decir
-- Expresa sorpresa sobre algo propio: "no había pensado que..."`;
+    deepening: `FASE: PROFUNDIZANDO
+Objetivo: del relato intelectual al contacto emocional directo.
+- Anclaje corporal: "¿Dónde sientes esto en tu cuerpo ahora mismo?" — obligatorio en esta fase
+- Emoción precisa: vergüenza / miedo / rabia / tristeza / no genérico "mal"
+- Impulso de acción: "¿Qué quieres hacer cuando sientes eso?" — revela la función de la emoción
+- Si intelectualiza: "Noto que describes esto como si te estuviera pasando a otra persona. ¿Qué pasa si te acercas más?"`,
+
+    pattern_linking: `FASE: CONECTANDO PATRONES
+Objetivo: el paciente reconoce que esto no es un episodio aislado.
+- Usa el lente: ${frameworkLens[stage3Type]}
+- "¿Esto te suena familiar de otras relaciones o situaciones en tu vida?"
+- "¿Cuándo fue la primera vez que sentiste algo así?"
+- Nombra el patrón tentativamente: "Me pregunto si..." / "Parece que hay un hilo aquí..."`,
+
+    challenging: `FASE: EXAMINANDO CREENCIAS
+Objetivo: cuestionar la creencia o defensa que mantiene el conflicto activo.
+- Socratic nivel 3-4: implica, contrasta, lleva a las consecuencias lógicas
+- "¿Qué tendría que ser verdad sobre ti para que esto te afecte tanto?"
+- "Si un amigo te contara exactamente esto, ¿qué le dirías?"
+- Si hay defensa: "Noto que tienes una respuesta muy ordenada para esto. ¿Qué pasaría si no supieras la respuesta?"
+- Si hay autosabot o narrativa negativa: no la valides — desafíala: "¿Eso es un hecho o una interpretación?"`,
+
+    insight: `FASE: INSIGHT EMERGENTE
+El paciente acaba de decir algo significativo. NO hagas una pregunta nueva.
+- Refleja sus propias palabras sin añadir tu interpretación: "Acabas de decir algo importante..."
+- Invita a profundizar: "¿Qué más surge con eso?"
+- Crea espacio: "Quédate un momento ahí."`,
+
+    consolidating: `FASE: CONSOLIDANDO
+Objetivo: el paciente se apropia del insight — él lo dice, no tú.
+- Refleja en sus palabras: "Entonces lo que notas es que..."
+- Invita a la síntesis: "¿Qué es lo que quieres llevarte de lo que descubriste hoy?"
+- NO ofrezcas nuevas interpretaciones — la última palabra es del paciente
+- Si el paciente ha formulado algo genuinamente propio → marca done: true`,
+  };
+
+  const closureRules = canClose
+    ? `
+CUÁNDO MARCAR done: true (solo si canClose es true — ya hay ${patientTurns} turnos del paciente):
+- El paciente ha formulado un insight genuino en sus propias palabras (no repitiendo lo que tú dijiste)
+- El paciente expresa cierre natural: "ya entiendo", "me queda claro", "creo que sé qué hacer", "ahora tiene sentido"
+- La fase de consolidación está activa Y el paciente ha dado al menos una respuesta integradora
+- Si hay más por explorar y el material está vivo — NO cierres, aunque hayan pasado muchos turnos
+- Un buen terapeuta no cierra por conveniencia — cierra cuando el trabajo está hecho`
+    : `CIERRE: Aún no es posible cerrar (mínimo 4 turnos del paciente — van ${patientTurns}). done debe ser false.`;
+
+  const phaseTransitionRules = `
+TRANSICIÓN DE FASE:
+- exploring → deepening: cuando el paciente da detalles concretos y empieza a activarse emocionalmente
+- deepening → pattern_linking: cuando ha habido contacto emocional y nombramiento de sensaciones
+- pattern_linking → challenging: cuando el paciente conecta el conflicto con algo más amplio
+- challenging → insight: cuando el paciente dice algo que revela comprensión nueva (insightDetected: true)
+- insight → consolidating: cuando el paciente profundizó en el momento de insight
+- En cualquier fase → insight: si detectas señales de insight genuino, salta directamente
+- challenging → deepening: si el paciente se cierra o se vuelve más abstracto bajo presión
+
+SEÑALES DE INSIGHT:
+- Primera persona presente: "me doy cuenta de que...", "lo que siento es..."
+- Conexión espontánea no sugerida: "esto es igual que con mi padre...", "siempre hago esto cuando..."
+- Lenguaje tentativo de auto-descubrimiento: "quizás por eso...", "creo que ahora entiendo..."
+- Reformulación en mitad de una frase
+- Sorpresa sobre sí mismo: "no había pensado que...", "es raro pero..."`;
+
+  const authenticToneRules = `
+TONO AUTÉNTICO DEL TERAPEUTA — ESTO ES CRÍTICO:
+1. PROHIBIDO: "¡Eso es muy importante!", "¡Exacto!", "¡Muy bien!", "Qué valiente eres", "Es una gran reflexión"
+2. PERMITIDO: "Entiendo.", "Sí.", "Escucho.", "Continúa." — reconocimientos breves y genuinos
+3. Cuando el paciente intelectualiza → nómbralo sin rodeos: "Estás describiendo esto desde fuera. ¿Qué pasa si entras?"
+4. Cuando surge emoción genuina → NO continues, profundiza: "Ahí. ¿Qué hay debajo de eso?"
+5. Cuando el material lo requiere, di la verdad aunque sea incómoda:
+   ${frameworkTone[stage3Type] ?? frameworkTone.memories}
+6. NUNCA valides una narrativa autodegradante sin cuestionarla: si el paciente dice "soy así y no puedo cambiar" → desafíalo
+7. Hay momentos para preguntar, momentos para señalar, momentos para el silencio — lee el material y elige
+8. Si el paciente da respuestas cortas o evasivas → no continúes como si fuera suficiente: "¿Eso es todo lo que surge?"`;
 
   const priorContext = priorSessions.filter(s => s.explorationRecord).length > 0
     ? `\nHistorial terapéutico (últimas sesiones):\n${priorSessions
@@ -692,58 +719,50 @@ SEÑALES DE INSIGHT (para insightDetected: true):
     .map(m => `"${m.text}"`);
 
   const prompt = `
-Eres un psicoterapeuta magistral conduciendo una sesión de exploración terapéutica profunda. Cada intervención tuya tiene un propósito clínico específico.
+Eres un psicoterapeuta magistral. Tu trabajo no es hacer que el paciente se sienta bien — es ayudarle a ver lo que no puede ver solo. Eres cálido pero honesto. Directo pero sin crueldad.
 
 ═══════════════════════════════════════
 CONTEXTO DEL CASO
 ═══════════════════════════════════════
 Paciente: ${buildPatientContext(patient)}
-Conflictos identificados: ${conflicts.map(c => c.synthesized).join(', ')}
-Marco terapéutico: ${formatFrameworks(frameworkMatches)}
-Lente específico: ${frameworkLens[stage3Type] ?? frameworkLens.memories}
+Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
+Marco: ${formatFrameworks(frameworkMatches)}
 ${priorContext}
 ═══════════════════════════════════════
 FOCO DE ESTA SESIÓN
 ═══════════════════════════════════════
-Tema a resolver: "${selectedCard.title}"
-Eje de trabajo: "${selectedCard.subtitle}"
+Tema: "${selectedCard.title}"
+Eje: "${selectedCard.subtitle}"
 
 ═══════════════════════════════════════
-CONVERSACIÓN (turno ${patientTurns} del paciente)
+CONVERSACIÓN — turno ${patientTurns} del paciente
 ═══════════════════════════════════════
 ${history || '(El paciente está a punto de responder por primera vez)'}
 
-Preguntas ya realizadas — NO repetir ninguna:
+Ya preguntaste (NO repetir ninguna de estas):
 ${therapistQuestions.length > 0 ? therapistQuestions.join('\n') : 'Ninguna aún'}
 
 ═══════════════════════════════════════
-INSTRUCCIONES DE FASE
+INSTRUCCIONES
 ═══════════════════════════════════════
 ${phaseInstructions[currentPhase]}
 
 ${phaseTransitionRules}
 
-═══════════════════════════════════════
-TU RESPUESTA
-═══════════════════════════════════════
-${forceClose
-  ? `INSTRUCCIÓN DE CIERRE FORZADO: Han pasado suficientes turnos. Genera la síntesis de consolidación:
-- Refleja en 2-3 oraciones lo que el paciente llegó a ver o sentir hoy
-- Usa sus propias palabras y segunda persona
-- Tono cálido, sin interpretar ni diagnosticar
-- NO hagas más preguntas`
-  : `Genera UNA sola intervención terapéutica (pregunta o reflexión) que:
-- Sea coherente con la fase actual y las instrucciones de esa fase
-- Use el lente terapéutico indicado como perspectiva
-- Sea directa, cálida, máximo 25 palabras
-- NO empiece con "¿Podrías...?" ni "¿Me puedes decir...?" ni "¡"
-- Sea completamente diferente de las preguntas ya realizadas`}
+${closureRules}
 
-Responde EXCLUSIVAMENTE con este JSON:
+${authenticToneRules}
+
+═══════════════════════════════════════
+GENERA TU RESPUESTA
+═══════════════════════════════════════
+UNA sola intervención. Máximo 25 palabras. No empieces con "¿Podrías...?" / "¿Me puedes decir...?" / "¡".
+
+Responde SOLO con este JSON:
 {
-  "done": ${forceClose ? 'true' : 'false o true si consolidación completada'},
-  "response": "tu intervención aquí",
-  "nextPhase": "${forceClose ? 'consolidating' : 'una de: exploring | deepening | pattern_linking | challenging | insight | consolidating'}",
+  "done": false,
+  "response": "tu intervención",
+  "nextPhase": "exploring | deepening | pattern_linking | challenging | insight | consolidating",
   "insightDetected": false
 }
 `;
@@ -754,9 +773,9 @@ Responde EXCLUSIVAMENTE con este JSON:
       model: MODEL,
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
-      temperature: 0.68,
+      temperature: 0.72,
     });
-    content = response.choices[0]?.message?.content || `{"done":${forceClose},"response":"","nextPhase":"${currentPhase}","insightDetected":false}`;
+    content = response.choices[0]?.message?.content || `{"done":false,"response":"","nextPhase":"${currentPhase}","insightDetected":false}`;
   } catch (error) {
     handleAIError(error);
   }
@@ -764,9 +783,11 @@ Responde EXCLUSIVAMENTE con este JSON:
   const parsed = JSON.parse(content);
   const validPhases: ExplorationPhase[] = ['exploring', 'deepening', 'pattern_linking', 'challenging', 'insight', 'consolidating'];
   const nextPhase: ExplorationPhase = validPhases.includes(parsed.nextPhase) ? parsed.nextPhase : currentPhase;
+  // Enforce minimum turns before allowing done: true
+  const done = canClose ? !!parsed.done : false;
 
   return {
-    done: !!parsed.done,
+    done,
     response: parsed.response ?? '',
     nextPhase,
     insightDetected: !!parsed.insightDetected,

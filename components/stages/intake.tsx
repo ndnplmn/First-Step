@@ -18,6 +18,7 @@ import type {
 import { generateId } from '@/lib/id';
 import { db } from '@/lib/db';
 import { synthesizeConflicts } from '@/actions/ai';
+import { VoiceFillButton } from '@/components/ui/voice-fill-button';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
@@ -323,21 +324,27 @@ function TextArea({
   rows?: number;
 }) {
   return (
-    <textarea
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={rows}
-      autoFocus={autoFocus}
-      className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 text-base placeholder:opacity-35"
-      style={{
-        borderColor: 'var(--color-border)',
-        color: 'var(--color-deep)',
-        transition: 'border-color 0.2s ease',
-      }}
-      onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-      onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-    />
+    <div style={{ position: 'relative' }}>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        autoFocus={autoFocus}
+        className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 text-base placeholder:opacity-35"
+        style={{
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-deep)',
+          transition: 'border-color 0.2s ease',
+          paddingBottom: '2.75rem',
+        }}
+        onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+        onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+      />
+      <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
+        <VoiceFillButton onFill={text => onChange(value ? value + ' ' + text : text)} />
+      </div>
+    </div>
   );
 }
 

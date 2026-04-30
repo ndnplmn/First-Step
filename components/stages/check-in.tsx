@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { FloatingBar } from '@/components/ui/floating-bar';
+import { VoiceFillButton } from '@/components/ui/voice-fill-button';
 
 /* ── constants ─────────────────────────────────────────── */
 
@@ -253,16 +254,21 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
                       transition={{ duration: 0.25 }}
                       className="overflow-hidden"
                     >
-                      <textarea
-                        value={lifeDetail}
-                        onChange={e => setLifeDetail(e.target.value)}
-                        placeholder="¿Quieres contarme más? (opcional)"
-                        rows={3}
-                        className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
-                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
-                        onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-                        onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <textarea
+                          value={lifeDetail}
+                          onChange={e => setLifeDetail(e.target.value)}
+                          placeholder="¿Quieres contarme más? (opcional)"
+                          rows={3}
+                          className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
+                          style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
+                          onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+                          onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                        />
+                        <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
+                          <VoiceFillButton onFill={text => setLifeDetail(prev => prev ? prev + ' ' + text : text)} />
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -272,17 +278,22 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
             {/* Step 2: Session intention */}
             {step === 2 && (
               <div className="space-y-3">
-                <textarea
-                  value={intention}
-                  onChange={e => setIntention(e.target.value)}
-                  placeholder="Puede ser algo nuevo, algo pendiente, o simplemente cómo te sientes…"
-                  rows={4}
-                  autoFocus
-                  className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
-                  onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-                  onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-                />
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    value={intention}
+                    onChange={e => setIntention(e.target.value)}
+                    placeholder="Puede ser algo nuevo, algo pendiente, o simplemente cómo te sientes…"
+                    rows={4}
+                    autoFocus
+                    className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
+                    onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                  />
+                  <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
+                    <VoiceFillButton onFill={text => setIntention(prev => prev ? prev + ' ' + text : text)} />
+                  </div>
+                </div>
               </div>
             )}
           </motion.div>
