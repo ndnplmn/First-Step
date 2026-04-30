@@ -140,6 +140,14 @@ export type ExplorationInsight = {
   observation: string;  // 1-2 sentence factual observation
 };
 
+export type ExplorationPhase =
+  | 'exploring'
+  | 'deepening'
+  | 'pattern_linking'
+  | 'challenging'
+  | 'insight'
+  | 'consolidating';
+
 export type ExplorationRecord = {
   sessionNumber: number;
   framework: FrameworkKey;
@@ -148,6 +156,7 @@ export type ExplorationRecord = {
   insights: ExplorationInsight[];  // 3-5 key observations extracted by AI
   aiReflection: string;            // Warm therapist-voice paragraph shown to user
   completedAt: number;
+  actionCommitment?: string;       // Patient-chosen micro-experiment for next session
 };
 
 export type PHQ9Response = {
