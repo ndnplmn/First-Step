@@ -97,7 +97,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
     <div className="space-y-8 pb-48">
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Fase 2 — Procesamiento emocional
+          Etapa 4 — Comprensión
         </p>
         <h2
           className="leading-tight breathe"

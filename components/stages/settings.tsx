@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ArrowLeft, SignOut, Trash, Lock, EnvelopeSimple, CheckCircle, Bell, BellSlash } from '@phosphor-icons/react';
 import { db } from '@/lib/db';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
 interface SettingsProps {
   onBack: () => void;
@@ -221,6 +222,27 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               Cerrar sesión
             </p>
           </motion.button>
+        </div>
+
+        {/* Language section */}
+        <div>
+          <p
+            className="text-xs font-medium uppercase tracking-widest mb-3"
+            style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+          >
+            Idioma
+          </p>
+          <div
+            className="rounded-[var(--radius-card)] overflow-hidden"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <div className="px-5 py-4 flex items-center justify-between gap-3">
+              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                Idioma de la aplicación
+              </p>
+              <LanguageSwitcher />
+            </div>
+          </div>
         </div>
 
         {/* Notifications section */}

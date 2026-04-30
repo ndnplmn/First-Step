@@ -257,7 +257,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
       <div style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', margin: 0 }}>
-            Fase 3 — {frameworkName}
+            Etapa 3 — {frameworkName}
           </p>
           {synthesisState === 'idle' && (
             <AnimatePresence mode="wait">
@@ -532,43 +532,43 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
 
           {/* Conversation history */}
           {messages.length > 1 && (
-            <div ref={historyRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '380px', overflowY: 'auto' }}>
-              {messages.slice(0, awaitingPatient ? -1 : messages.length).map((msg, i) => {
-                if (msg.isInsight && msg.role === 'therapist') {
-                  return (
-                    <motion.div
-                      key={i}
-                      initial={shouldReduce ? {} : { opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.4 }}
-                      style={{ padding: '1rem 1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.08)', border: '1px solid rgba(107,94,158,0.2)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}
-                    >
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-violet)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Algo emergió ✦
-                      </p>
-                      <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1rem', lineHeight: 1.55, margin: 0 }}>
-                        {msg.text}
-                      </p>
-                    </motion.div>
-                  );
-                }
-                return (
-                  <motion.div
-                    key={i}
-                    initial={shouldReduce ? {} : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}
+            <div ref={historyRef} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '380px', overflowY: 'auto' }}>
+              {messages.slice(0, awaitingPatient ? -1 : messages.length).map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                  className={`flex ${msg.role === 'patient' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className="max-w-[85%] px-4 py-3.5 rounded-[18px]"
+                    style={msg.role === 'patient' ? {
+                      background: 'var(--color-sage)',
+                      color: 'white',
+                      borderBottomRightRadius: 6,
+                    } : {
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-deep)',
+                      borderBottomLeftRadius: 6,
+                      boxShadow: 'var(--shadow-card)',
+                    }}
                   >
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', fontWeight: 500, color: msg.role === 'therapist' ? 'var(--color-violet)' : 'var(--color-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {msg.role === 'therapist' ? 'Terapeuta' : 'Tú'}
-                    </p>
-                    <p style={{ color: msg.role === 'therapist' ? 'var(--color-deep)' : 'var(--color-muted)', fontSize: msg.role === 'therapist' ? '0.9375rem' : '0.875rem', lineHeight: 1.6, margin: 0, fontStyle: msg.role === 'patient' ? 'italic' : 'normal', paddingLeft: msg.role === 'therapist' ? '0.75rem' : '0', borderLeft: msg.role === 'therapist' ? '2px solid rgba(107,94,158,0.25)' : 'none' }}>
+                    <p className="leading-relaxed text-[15px]"
+                      style={{
+                        ...(msg.role === 'therapist' ? { fontFamily: 'var(--font-display)' } : {}),
+                        ...(msg.isInsight ? { fontStyle: 'italic' } : {}),
+                      }}>
                       {msg.text}
                     </p>
-                  </motion.div>
-                );
-              })}
+                    {msg.isInsight && msg.role === 'therapist' && (
+                      <p style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', marginTop: '0.375rem', fontWeight: 600 }}>
+                        ✦ Algo emergió
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
             </div>
           )}
 
@@ -584,20 +584,26 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                 transition={transition}
                 style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
               >
-                {lastMessage.isInsight ? (
-                  <div style={{ padding: '1rem 1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.08)', border: '1px solid rgba(107,94,158,0.2)' }}>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-violet)', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Algo emergió ✦
-                    </p>
-                    <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.125rem, 2.5vw, 1.375rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: 0 }}>
+                <div className="flex justify-start">
+                  <div
+                    className="max-w-[85%] px-4 py-3.5 rounded-[18px]"
+                    style={{
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-deep)',
+                      borderBottomLeftRadius: 6,
+                      boxShadow: 'var(--shadow-card)',
+                    }}
+                  >
+                    <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.5, margin: 0, ...(lastMessage.isInsight ? { fontStyle: 'italic' } : {}) }}>
                       {lastMessage.text}
                     </p>
+                    {lastMessage.isInsight && (
+                      <p style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', marginTop: '0.375rem', fontWeight: 600 }}>
+                        ✦ Algo emergió
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.125rem, 2.5vw, 1.375rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: 0 }}>
-                    {lastMessage.text}
-                  </p>
-                )}
+                </div>
 
                 {/* TTS speaking indicator */}
                 {isSpeaking && (
@@ -615,13 +621,33 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
 
                 {/* Input — voice mode or text mode */}
                 {isVoiceMode ? (
-                  <VoiceMicButton
-                    isRecording={isRecording}
-                    isTranscribing={isTranscribing}
-                    pendingText={transcribedText}
-                    onStart={startRecording}
-                    onStop={stopRecording}
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <motion.button
+                        type="button"
+                        onClick={() => { toggleVoiceMode(); if (isSpeaking) cancelSpeech(); }}
+                        whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                        style={{
+                          width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'var(--color-sage)',
+                          color: 'white',
+                          boxShadow: 'var(--shadow-card)', border: 'none', cursor: 'pointer',
+                        }}
+                        aria-label="Desactivar modo de voz"
+                        aria-pressed={true}
+                      >
+                        <SpeakerHigh size={18} aria-hidden />
+                      </motion.button>
+                    </div>
+                    <VoiceMicButton
+                      isRecording={isRecording}
+                      isTranscribing={isTranscribing}
+                      pendingText={transcribedText}
+                      onStart={startRecording}
+                      onStop={stopRecording}
+                    />
+                  </div>
                 ) : (
                   <>
                     <textarea
@@ -641,26 +667,44 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                         }
                       }}
                     />
-                    <AnimatePresence>
-                      {currentInput.trim().length >= 5 && (
-                        <motion.button
-                          type="button"
-                          onClick={() => handleSubmit()}
-                          initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={shouldReduce ? {} : { opacity: 0 }}
-                          whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                          style={{
-                            background: lastMessage.isInsight ? 'var(--color-violet)' : 'var(--color-sage)',
-                            boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none',
-                            borderRadius: 'var(--radius-inner)', padding: '0.875rem 1.5rem',
-                            fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start',
-                          }}
-                        >
-                          Enviar
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                      <motion.button
+                        type="button"
+                        onClick={() => { toggleVoiceMode(); if (isSpeaking) cancelSpeech(); }}
+                        whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                        style={{
+                          width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'var(--color-surface)',
+                          color: 'var(--color-muted)',
+                          boxShadow: 'var(--shadow-card)', border: 'none', cursor: 'pointer',
+                        }}
+                        aria-label="Activar modo de voz"
+                        aria-pressed={false}
+                      >
+                        <SpeakerSlash size={18} aria-hidden />
+                      </motion.button>
+                      <AnimatePresence>
+                        {currentInput.trim().length >= 5 && (
+                          <motion.button
+                            type="button"
+                            onClick={() => handleSubmit()}
+                            initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={shouldReduce ? {} : { opacity: 0 }}
+                            whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                            style={{
+                              background: lastMessage.isInsight ? 'var(--color-violet)' : 'var(--color-sage)',
+                              boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none',
+                              borderRadius: 'var(--radius-inner)', padding: '0.875rem 1.5rem',
+                              fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', flex: 1,
+                            }}
+                          >
+                            Enviar
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </>
                 )}
 
@@ -761,27 +805,6 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         )}
       </AnimatePresence>
 
-      {/* Floating voice/speaker toggle */}
-      {synthesisState === 'idle' && !showActionStep && (
-        <div style={{ position: 'fixed', bottom: '5.5rem', right: '1.25rem', zIndex: 40, display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-          <motion.button
-            type="button"
-            onClick={() => { toggleVoiceMode(); if (isSpeaking) cancelSpeech(); }}
-            whileTap={shouldReduce ? {} : { scale: 0.9 }}
-            style={{
-              width: '2.5rem', height: '2.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: isVoiceMode ? 'var(--color-sage)' : 'var(--color-surface)',
-              color: isVoiceMode ? 'white' : 'var(--color-muted)',
-              border: isVoiceMode ? 'none' : '1px solid var(--color-border)',
-              cursor: 'pointer', boxShadow: 'var(--shadow-card)',
-            }}
-            aria-label={isVoiceMode ? 'Desactivar modo de voz' : 'Activar modo de voz'}
-            aria-pressed={isVoiceMode}
-          >
-            {isVoiceMode ? <SpeakerHigh size={18} aria-hidden /> : <SpeakerSlash size={18} aria-hidden />}
-          </motion.button>
-        </div>
-      )}
     </div>
   );
 }

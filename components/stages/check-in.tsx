@@ -5,29 +5,10 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { VoiceFillButton } from '@/components/ui/voice-fill-button';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { useLanguage } from '@/contexts/language-context';
 
-/* ── constants ─────────────────────────────────────────── */
-
-const WELLBEING_OPTIONS = [
-  { value: 1, label: 'Muy mal' },
-  { value: 2, label: 'Mal' },
-  { value: 3, label: 'Regular' },
-  { value: 4, label: 'Bien' },
-  { value: 5, label: 'Muy bien' },
-];
-
-const LIFE_CHANGE_OPTIONS = [
-  'Cambié de trabajo',
-  'Cambié de vivienda',
-  'Cambio en mi relación',
-  'Problema de salud',
-  'Pérdida de alguien',
-  'Conflicto familiar',
-  'Cambio económico',
-  'Otro',
-];
-
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 2;
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -35,35 +16,6 @@ interface CheckInProps {
   patient: Patient;
   session: PatientSession;
   onComplete: (session: PatientSession) => void;
-}
-
-/* ── helpers ───────────────────────────────────────────── */
-
-function getStepQuestion(step: number, patientName: string): string {
-  switch (step) {
-    case 0: return `Hola ${patientName}, ¿cómo te sientes hoy?`;
-    case 1: return '¿Hubo algún cambio importante desde la última vez?';
-    case 2: return '¿Qué quieres trabajar hoy?';
-    default: return '';
-  }
-}
-
-function getStepAnswer(
-  step: number,
-  wellbeing: number | null,
-  lifeChanges: string[],
-  lifeDetail: string,
-  intention: string
-): string | null {
-  switch (step) {
-    case 0: return wellbeing ? WELLBEING_OPTIONS.find(o => o.value === wellbeing)?.label ?? null : null;
-    case 1: {
-      if (lifeChanges.length === 0) return 'Sin cambios';
-      return lifeChanges.join(', ') + (lifeDetail.trim() ? ` — ${lifeDetail.trim()}` : '');
-    }
-    case 2: return intention.trim() || null;
-    default: return null;
-  }
 }
 
 /* ── chip subcomponent ─────────────────────────────────── */
@@ -101,6 +53,7 @@ function Chip({
 
 export function CheckIn({ patient, session, onComplete }: CheckInProps) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
   const [step, setStep] = useState(0);
 
   // Step 0
@@ -108,8 +61,49 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
   // Step 1
   const [lifeChanges, setLifeChanges] = useState<string[]>([]);
   const [lifeDetail, setLifeDetail] = useState('');
-  // Step 2
-  const [intention, setIntention] = useState('');
+
+  const WELLBEING_OPTIONS = [
+    { value: 1, label: t('checkin.wellbeing.1') },
+    { value: 2, label: t('checkin.wellbeing.2') },
+    { value: 3, label: t('checkin.wellbeing.3') },
+    { value: 4, label: t('checkin.wellbeing.4') },
+    { value: 5, label: t('checkin.wellbeing.5') },
+  ];
+
+  const LIFE_CHANGE_OPTIONS = [
+    t('checkin.lifechange.work'),
+    t('checkin.lifechange.home'),
+    t('checkin.lifechange.relationship'),
+    t('checkin.lifechange.health'),
+    t('checkin.lifechange.loss'),
+    t('checkin.lifechange.family'),
+    t('checkin.lifechange.money'),
+    t('checkin.lifechange.other'),
+  ];
+
+  function getStepQuestion(s: number): string {
+    switch (s) {
+      case 0: return t('checkin.step0.question');
+      case 1: return t('checkin.step1.question');
+      default: return '';
+    }
+  }
+
+  function getStepAnswer(
+    s: number,
+    wb: number | null,
+    lc: string[],
+    ld: string,
+  ): string | null {
+    switch (s) {
+      case 0: return wb ? WELLBEING_OPTIONS.find(o => o.value === wb)?.label ?? null : null;
+      case 1: {
+        if (lc.length === 0) return t('checkin.lifechange.none');
+        return lc.join(', ') + (ld.trim() ? ` — ${ld.trim()}` : '');
+      }
+      default: return null;
+    }
+  }
 
   const toggleLifeChange = (option: string) => {
     setLifeChanges(prev =>
@@ -128,7 +122,6 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
     lifeChanges: lifeChanges.length > 0
       ? { categories: lifeChanges, detail: lifeDetail.trim() || undefined }
       : undefined,
-    sessionIntention: intention.trim() || undefined,
   });
 
   const handleNext = () => {
@@ -150,6 +143,11 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
 
   return (
     <div className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-6 pb-48">
+      {/* Language switcher */}
+      <div className="flex justify-end mb-4">
+        <LanguageSwitcher />
+      </div>
+
       {/* Progress bar */}
       <div className="flex gap-0.5 mb-8">
         {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -170,7 +168,7 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
       {/* Answered steps as bubbles */}
       <div className="flex-1 space-y-6 overflow-y-auto">
         {Array.from({ length: step }).map((_, i) => {
-          const answer = getStepAnswer(i, wellbeing, lifeChanges, lifeDetail, intention);
+          const answer = getStepAnswer(i, wellbeing, lifeChanges, lifeDetail);
           if (!answer) return null;
           return (
             <motion.div
@@ -183,7 +181,7 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
                 className="text-xs"
                 style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
               >
-                {getStepQuestion(i, patient.name)}
+                {getStepQuestion(i)}
               </p>
               <p
                 className="text-sm inline-block px-3 py-1.5 rounded-[var(--radius-inner)]"
@@ -213,7 +211,7 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
               className="text-xl leading-snug"
               style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
             >
-              {getStepQuestion(step, patient.name)}
+              {getStepQuestion(step)}
             </p>
 
             {/* Step 0: Wellbeing */}
@@ -258,7 +256,7 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
                         <textarea
                           value={lifeDetail}
                           onChange={e => setLifeDetail(e.target.value)}
-                          placeholder="¿Quieres contarme más? (opcional)"
+                          placeholder={t('checkin.lifechange.detail')}
                           rows={3}
                           className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
                           style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
@@ -275,27 +273,6 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
               </div>
             )}
 
-            {/* Step 2: Session intention */}
-            {step === 2 && (
-              <div className="space-y-3">
-                <div style={{ position: 'relative' }}>
-                  <textarea
-                    value={intention}
-                    onChange={e => setIntention(e.target.value)}
-                    placeholder="Puede ser algo nuevo, algo pendiente, o simplemente cómo te sientes…"
-                    rows={4}
-                    autoFocus
-                    className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
-                    onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-                    onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-                  />
-                  <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
-                    <VoiceFillButton onFill={text => setIntention(prev => prev ? prev + ' ' + text : text)} />
-                  </div>
-                </div>
-              </div>
-            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -310,16 +287,16 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
             className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
             style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
           >
-            {step === TOTAL_STEPS - 1 ? 'Comenzar sesión →' : 'Siguiente'}
+            {step === TOTAL_STEPS - 1 ? t('checkin.start') : t('checkin.next')}
           </motion.button>
-          {step > 0 && (
+          {step === 1 && (
             <button
               type="button"
               onClick={handleSkip}
               className="w-full py-2 text-sm text-center hover:opacity-70 transition-opacity"
               style={{ color: 'var(--color-muted)' }}
             >
-              {step === 1 ? 'Todo sigue igual, continuar' : 'Continuar sin definir un tema'}
+              {t('checkin.skip')}
             </button>
           )}
         </div>

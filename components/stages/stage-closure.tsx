@@ -113,7 +113,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     <div className="space-y-8 pb-48">
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Fase 3 — Cierre
+          Etapa 6 — Cierre
         </p>
         <h2
           className="leading-tight breathe"

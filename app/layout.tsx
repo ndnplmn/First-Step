@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Instrument_Serif, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { LanguageProvider } from '@/contexts/language-context'
 import './globals.css'
 
 const instrumentSerif = Instrument_Serif({
@@ -55,7 +56,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${instrumentSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-[var(--color-base)] min-h-dvh">
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -68,6 +71,7 @@ export default function RootLayout({
           }}
         />
       </body>
+
     </html>
   )
 }

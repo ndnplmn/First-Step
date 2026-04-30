@@ -3,10 +3,8 @@
 import { motion, useReducedMotion } from 'motion/react';
 
 const STAGES = [
-  { number: 2, name: 'Conflictos' },
+  { number: 2, name: 'Apertura' },
   { number: 3, name: 'Exploración' },
-  { number: 4, name: 'Comprensión' },
-  { number: 5, name: 'Integración' },
   { number: 6, name: 'Cierre' },
 ];
 

@@ -332,7 +332,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
       {/* Header */}
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Capítulo 2 — Conflictos
+          Etapa 2 — Apertura
         </p>
         <AnimatePresence mode="wait">
           {!showAnalysis && (
