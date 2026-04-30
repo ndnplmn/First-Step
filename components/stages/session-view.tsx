@@ -2,15 +2,11 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase, Stage3Type, ExplorationRecord, WorkCard } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Interpretation, UnmappedPhrase, Stage3Type, ExplorationRecord, WorkCard } from '@/lib/types';
 import { SessionHeader } from '@/components/ui/session-header';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { StageConflicts } from './stage-conflicts';
-import { StageMemories } from './stage-memories';
-import { StageBodywork } from '@/components/stages/stage-bodywork';
-import { StageSocialContext } from '@/components/stages/stage-social-context';
-import { StageGestaltActivity } from '@/components/stages/stage-gestalt-activity';
-import { StageExposure } from '@/components/stages/stage-exposure';
+import { StageExploration } from '@/components/stages/stage-exploration';
 import { StageInterpretation } from './stage-interpretation';
 import { StageClosure } from './stage-closure';
 
@@ -82,33 +78,7 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
     });
   };
 
-  const handleStage3MemoriesAdvance = (memories: Memory[], newUnmapped: string[], record: ExplorationRecord) => {
-    advanceStage({
-      memories,
-      explorationRecord: record,
-      unmappedPhrases: [
-        ...session.unmappedPhrases,
-        ...newUnmapped.map((text: string): UnmappedPhrase => ({
-          text,
-          sessionNumber: session.sessionNumber,
-        })),
-      ],
-    });
-  };
-
-  const handleStage3BodyworkAdvance = (record: ExplorationRecord) => {
-    advanceStage({ explorationRecord: record });
-  };
-
-  const handleStage3SocialAdvance = (record: ExplorationRecord) => {
-    advanceStage({ explorationRecord: record });
-  };
-
-  const handleStage3GestaltAdvance = (record: ExplorationRecord) => {
-    advanceStage({ explorationRecord: record });
-  };
-
-  const handleStage3ExposureAdvance = (record: ExplorationRecord) => {
+  const handleStage3Advance = (record: ExplorationRecord) => {
     advanceStage({ explorationRecord: record });
   };
 
@@ -159,30 +129,15 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
           </div>
         )}
 
-        {session.stage === 3 && (() => {
-          const s3type = session.stage3Type ?? 'memories';
-          const stage3CommonProps = {
-            session,
-            patient,
-            onUpdate: updateSession,
-          };
-          if (s3type === 'memories') {
-            return <StageMemories {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3MemoriesAdvance} />;
-          }
-          if (s3type === 'bodywork') {
-            return <StageBodywork {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3BodyworkAdvance} />;
-          }
-          if (s3type === 'social_context') {
-            return <StageSocialContext {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3SocialAdvance} />;
-          }
-          if (s3type === 'gestalt_activity') {
-            return <StageGestaltActivity {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3GestaltAdvance} />;
-          }
-          if (s3type === 'exposure') {
-            return <StageExposure {...stage3CommonProps} priorSessions={priorSessions} onAdvance={handleStage3ExposureAdvance} />;
-          }
-          return null;
-        })()}
+        {session.stage === 3 && (
+          <StageExploration
+            session={session}
+            patient={patient}
+            priorSessions={priorSessions}
+            onAdvance={handleStage3Advance}
+            onUpdate={updateSession}
+          />
+        )}
 
         {session.stage === 4 && (
           <StageInterpretation

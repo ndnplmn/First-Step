@@ -584,6 +584,103 @@ Responde SOLO con JSON: { "cards": [ { "id": "1", "title": "...", "subtitle": ".
   return cards;
 }
 
+// --- ACTION 5b: Conversación adaptativa de exploración (Etapa 3 rediseñada) ---
+export async function getExplorationResponse(params: {
+  selectedCard: WorkCard;
+  messages: { role: 'patient' | 'therapist'; text: string }[];
+  conflicts: Conflict[];
+  frameworkMatches: FrameworkMatch[];
+  patient: Patient;
+  stage3Type: Stage3Type;
+  priorSessions?: PatientSession[];
+}): Promise<{ done: boolean; response: string }> {
+  const { selectedCard, messages, conflicts, frameworkMatches, patient, stage3Type, priorSessions = [] } = params;
+
+  const patientTurns = messages.filter(m => m.role === 'patient').length;
+  const forceClose = patientTurns >= 5;
+
+  const frameworkLens: Record<Stage3Type, string> = {
+    memories: 'Usa el lente psicoanalítico. Conecta con experiencias pasadas, figuras de apego y patrones que se repiten. Explora el significado inconsciente.',
+    bodywork: 'Usa el lente bioenergético. Redirige hacia sensaciones físicas, tensiones corporales y la conexión entre lo emocional y lo somático.',
+    social_context: 'Usa el lente adleriano. Explora roles sociales, pertenencia, inferiordad/superioridad y motivaciones detrás de los comportamientos.',
+    gestalt_activity: 'Usa el lente gestalt. Mantén la atención en el momento presente, lo que está vivo ahora, polaridades y asuntos inconclusos.',
+    exposure: 'Usa el lente conductual. Identifica patrones de evitación, triggers específicos y avanza gradualmente hacia la confrontación con lo temido.',
+  };
+
+  const priorContext = priorSessions.filter(s => s.explorationRecord).length > 0
+    ? `\nHistorial terapéutico previo:\n${priorSessions
+        .filter(s => s.explorationRecord)
+        .map(s => {
+          const r = s.explorationRecord!;
+          return `Sesión ${r.sessionNumber} (${r.frameworkName}): ${r.insights.map(i => i.theme).join(', ')}`;
+        })
+        .join('\n')}\n`
+    : '';
+
+  const history = messages.map(m =>
+    `${m.role === 'therapist' ? 'Terapeuta' : 'Paciente'}: ${m.text}`
+  ).join('\n');
+
+  const therapistQuestions = messages
+    .filter(m => m.role === 'therapist')
+    .map(m => `"${m.text}"`);
+
+  const prompt = `
+Eres un psicoterapeuta experto conduciendo una sesión de exploración activa. Tu objetivo es ayudar al paciente a resolver específicamente este tema:
+
+TEMA A RESOLVER: "${selectedCard.title}"
+Pregunta base: "${selectedCard.subtitle}"
+
+Contexto del paciente: ${buildPatientContext(patient)}
+Conflictos identificados: ${conflicts.map(c => c.synthesized).join(', ')}
+Marco terapéutico: ${formatFrameworks(frameworkMatches)}
+${priorContext}
+LENTE TERAPÉUTICO: ${frameworkLens[stage3Type] ?? frameworkLens.memories}
+
+Conversación hasta ahora:
+${history || '(Primera respuesta del paciente)'}
+
+Preguntas ya realizadas — NO repetir ninguna de estas:
+${therapistQuestions.length > 0 ? therapistQuestions.join('\n') : 'Ninguna aún'}
+
+${forceClose
+  ? `INSTRUCCIÓN: Ya tuviste suficientes intercambios. Genera un cierre cálido que:
+- Resume lo que el paciente llegó a ver o sentir
+- Conecta con el tema "${selectedCard.title}"
+- Usa segunda persona, tono empático, máximo 3 oraciones
+- NO hagas más preguntas
+Responde: { "done": true, "response": "[tu cierre]" }`
+  : `INSTRUCCIÓN: Genera UNA sola pregunta terapéutica que:
+- Profundice en "${selectedCard.title}" usando el lente indicado
+- Avance hacia un insight concreto, no exploración abierta genérica
+- Sea directa, cálida, máximo 20 palabras
+- NO empiece con "¿Podrías...?" ni "¿Me puedes decir...?" ni "¡"
+- Sea diferente de todas las preguntas anteriores listadas arriba
+Responde: { "done": false, "response": "[tu pregunta]" }`}
+
+Responde SOLO con JSON con esa estructura exacta.
+`;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.65,
+    });
+    content = response.choices[0]?.message?.content || '{"done":true,"response":""}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  return {
+    done: !!parsed.done,
+    response: parsed.response ?? '',
+  };
+}
+
 // --- ACTION 5c: Respuesta terapéutica en modo resolutivo ---
 export async function getDeepWorkResponse(params: {
   selectedCard: WorkCard;
