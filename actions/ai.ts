@@ -496,6 +496,46 @@ export async function generateReflectionQuestions(params: {
   return Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : [];
 }
 
+// --- ACTION 2b: Generar tarjetas de enfoque de sesión (antes de Stage 3) ---
+export async function generateSessionWorkCards(params: {
+  conflicts: Conflict[];
+  frameworkMatches: FrameworkMatch[];
+}): Promise<WorkCard[]> {
+  const { conflicts, frameworkMatches } = params;
+
+  const prompt = `
+Eres un psicoterapeuta que acaba de identificar los conflictos de un paciente y propones tres áreas concretas de exploración para la sesión de hoy.
+
+Conflictos identificados: ${conflicts.map(c => c.synthesized).join(', ')}
+Marco terapéutico: ${formatFrameworks(frameworkMatches)}
+
+Genera exactamente 3 tarjetas de enfoque de sesión, cada una representando un ángulo distinto de los conflictos. Para cada tarjeta:
+- "title": frase en infinitivo, 4-8 palabras, específica al conflicto (ej: "Explorar la raíz del miedo", "Entender el patrón con mi familia")
+- "subtitle": pregunta reflexiva que invita al paciente a explorar, 10-20 palabras, segunda persona singular
+- "openingLine": primera frase del terapeuta al comenzar la exploración. Cálida, concreta, máximo 20 palabras. Segunda persona singular. No empieces con "¡"
+
+Las tarjetas son puntos de entrada a la exploración, no conclusiones. Deben sentirse alcanzables en una sesión.
+
+Responde SOLO con JSON: { "cards": [{ "id": "1", "title": "...", "subtitle": "...", "openingLine": "..." }, { "id": "2", ... }, { "id": "3", ... }] }
+  `;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.6,
+    });
+    content = response.choices[0]?.message?.content || '{"cards":[]}';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  const parsed = JSON.parse(content);
+  return Array.isArray(parsed.cards) ? parsed.cards.slice(0, 3) : [];
+}
+
 // --- ACTION 5b: Generar tarjetas de trabajo activo ---
 export async function generateWorkCards(params: {
   conflicts: Conflict[];

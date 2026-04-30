@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Stage3Type } from '@/lib/types';
-import { synthesizeConflicts, getNextTherapistQuestion } from '@/actions/ai';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Stage3Type, WorkCard } from '@/lib/types';
+import { synthesizeConflicts, getNextTherapistQuestion, generateSessionWorkCards } from '@/actions/ai';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
@@ -28,7 +28,7 @@ interface StageConflictsProps {
   session: PatientSession;
   patient: Patient;
   priorSessions?: PatientSession[];
-  onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity | null, unmappedPhrases: string[], narrativeSummary: string, stage3Type: Stage3Type) => void;
+  onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity | null, unmappedPhrases: string[], narrativeSummary: string, stage3Type: Stage3Type, selectedWorkCard: WorkCard) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
@@ -140,6 +140,11 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
   const [showBridge, setShowBridge] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(!!hasExistingData);
   const [showValidation, setShowValidation] = useState(false);
+
+  // Selección de tarjeta de trabajo
+  const [showCardSelection, setShowCardSelection] = useState(false);
+  const [sessionCards, setSessionCards] = useState<WorkCard[]>([]);
+  const [isLoadingCards, setIsLoadingCards] = useState(false);
 
   // Análisis final
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -307,10 +312,41 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
     }
   };
 
+  const handleConfirmValidation = async () => {
+    if (!result) return;
+    setShowCardSelection(true);
+    setIsLoadingCards(true);
+    try {
+      const cards = await generateSessionWorkCards({
+        conflicts: result.conflicts,
+        frameworkMatches: result.frameworkMatches,
+      });
+      setSessionCards(cards);
+    } catch {
+      // Fallback: advance directly if card generation fails
+      const fallbackCard: WorkCard = {
+        id: 'fallback',
+        title: 'Explorar lo que siento hoy',
+        subtitle: '¿Qué aspecto de todo lo que compartiste quieres profundizar ahora?',
+        openingLine: 'Cuéntame qué es lo que más te pesa de todo lo que hablamos.',
+      };
+      onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmappedPhrases, result.narrativeSummary, result.stage3Type, fallbackCard);
+    } finally {
+      setIsLoadingCards(false);
+    }
+  };
+
+  const handleSelectCard = (card: WorkCard) => {
+    if (!result) return;
+    onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmappedPhrases, result.narrativeSummary, result.stage3Type, card);
+  };
+
   const handleWantsToAdd = () => {
     setShowAnalysis(false);
     setShowValidation(false);
     setShowBridge(false);
+    setShowCardSelection(false);
+    setSessionCards([]);
   };
 
   const reanalyze = () => goToAnalysis(getPatientInputs(messages));
@@ -327,10 +363,12 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
 
   // FloatingBar should only be visible when there's actionable content inside
   const floatingBarVisible =
-    (!showAnalysis && !isEvaluating && !showBridge) ||
-    (showBridge && !isEvaluating) ||
-    (showAnalysis && showValidation && !!result && !isAnalyzing) ||
-    (showAnalysis && !showValidation && !!result && !isAnalyzing);
+    !showCardSelection && (
+      (!showAnalysis && !isEvaluating && !showBridge) ||
+      (showBridge && !isEvaluating) ||
+      (showAnalysis && showValidation && !!result && !isAnalyzing) ||
+      (showAnalysis && !showValidation && !!result && !isAnalyzing)
+    );
 
   // ─── Render ───────────────────────────────────────────────────────
   return (
@@ -360,7 +398,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
               </p>
             </motion.div>
           )}
-          {showAnalysis && (
+          {showAnalysis && !showCardSelection && (
             <motion.div key="h-analysis"
               initial={shouldReduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
@@ -372,6 +410,20 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                   ? '¿Reconoces esto en lo que compartiste?'
                   : 'Esto es lo que percibo en todo lo que compartiste.'}
               </p>
+            </motion.div>
+          )}
+          {showCardSelection && (
+            <motion.div key="h-cards"
+              initial={shouldReduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
+              <h2 className="text-[40px] leading-tight breathe" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
+                {isLoadingCards ? 'Preparando la sesión' : '¿Qué trabajamos hoy?'}
+              </h2>
+              {!isLoadingCards && (
+                <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                  Elige el tema que más resonó. Lo exploraremos juntos ahora.
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -569,6 +621,49 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         )}
       </AnimatePresence>
 
+      {/* ─── Selección de tarjeta de trabajo ─── */}
+      <AnimatePresence>
+        {showCardSelection && (
+          <motion.div
+            key="card-selection"
+            initial={shouldReduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-3"
+          >
+            {isLoadingCards && (
+              <AIThinking phrases={['Pensando en lo que más importa ahora...', 'Eligiendo los hilos más vivos...', 'Preparando algo concreto para ti...']} />
+            )}
+            {!isLoadingCards && sessionCards.map((card, i) => (
+              <motion.button
+                key={card.id}
+                type="button"
+                onClick={() => handleSelectCard(card)}
+                initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                className="w-full text-left p-5 rounded-[var(--radius-card)] space-y-1.5"
+                style={{
+                  background: 'var(--color-surface)',
+                  boxShadow: 'var(--shadow-card)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                <p className="font-medium text-[15px]" style={{ color: 'var(--color-deep)' }}>
+                  {card.title}
+                </p>
+                <p className="text-sm italic leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                  {card.subtitle}
+                </p>
+                <p className="text-xs font-medium mt-2" style={{ color: 'var(--color-sage)' }}>
+                  Trabajar esto →
+                </p>
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ─── FloatingBar ─── */}
       <FloatingBar visible={floatingBarVisible}>
         <div className="space-y-3">
@@ -640,11 +735,11 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
           )}
 
           {/* Validación — confirmar o agregar */}
-          {showAnalysis && showValidation && result && !isAnalyzing && (
+          {showAnalysis && showValidation && result && !isAnalyzing && !showCardSelection && (
             <>
               <motion.button
                 type="button"
-                onClick={() => onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmappedPhrases, result.narrativeSummary, result.stage3Type)}
+                onClick={handleConfirmValidation}
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide flex items-center justify-center gap-2"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}

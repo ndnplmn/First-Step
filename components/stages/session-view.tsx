@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase, Stage3Type, DeepWorkSession, ExplorationRecord } from '@/lib/types';
+import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Memory, Interpretation, UnmappedPhrase, Stage3Type, ExplorationRecord, WorkCard } from '@/lib/types';
 import { SessionHeader } from '@/components/ui/session-header';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { StageConflicts } from './stage-conflicts';
@@ -12,7 +12,6 @@ import { StageSocialContext } from '@/components/stages/stage-social-context';
 import { StageGestaltActivity } from '@/components/stages/stage-gestalt-activity';
 import { StageExposure } from '@/components/stages/stage-exposure';
 import { StageInterpretation } from './stage-interpretation';
-import { StageDeepWork } from './stage-deep-work';
 import { StageClosure } from './stage-closure';
 
 const STAGE_GRADIENTS: Record<number, string> = {
@@ -36,8 +35,8 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
   const [showTransition, setShowTransition] = useState(false);
   const [targetStage, setTargetStage] = useState<number>(session.stage);
 
-  const advanceStage = (updates: Partial<PatientSession>) => {
-    const nextStage = Math.min(session.stage + 1, 6);
+  const advanceStage = (updates: Partial<PatientSession>, toStage?: number) => {
+    const nextStage = toStage ?? Math.min(session.stage + 1, 6);
     setPendingUpdates(updates);
     setTargetStage(nextStage);
     setShowTransition(true);
@@ -66,7 +65,8 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
     gestaltActivity: GestaltActivity | null,
     unmappedPhrases: string[],
     narrativeSummary: string,
-    stage3Type: Stage3Type
+    stage3Type: Stage3Type,
+    selectedWorkCard: WorkCard,
   ) => {
     advanceStage({
       conflicts,
@@ -78,6 +78,7 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
       })),
       narrativeSummary,
       stage3Type,
+      selectedWorkCard,
     });
   };
 
@@ -111,9 +112,6 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
     advanceStage({ explorationRecord: record });
   };
 
-  const handleStage4Advance = (deepWork: DeepWorkSession) => {
-    advanceStage({ deepWork });
-  };
 
   return (
     <div
@@ -134,6 +132,31 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
             onAdvance={handleStage2Advance}
             onUpdate={updateSession}
           />
+        )}
+
+        {session.stage === 3 && session.selectedWorkCard && (
+          <div
+            style={{
+              marginBottom: '0.5rem',
+              padding: '0.875rem 1rem',
+              borderRadius: 'var(--radius-inner)',
+              background: 'rgba(107,94,158,0.07)',
+              border: '1px solid rgba(107,94,158,0.18)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem',
+            }}
+          >
+            <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.7rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+              Explorando hoy
+            </p>
+            <p style={{ color: 'var(--color-deep)', fontSize: '0.9375rem', fontWeight: 500, margin: 0 }}>
+              {session.selectedWorkCard.title}
+            </p>
+            <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', fontStyle: 'italic', margin: 0, lineHeight: 1.5 }}>
+              {session.selectedWorkCard.subtitle}
+            </p>
+          </div>
         )}
 
         {session.stage === 3 && (() => {
@@ -166,16 +189,7 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
             session={session}
             patient={patient}
             priorSessions={priorSessions}
-            onAdvance={(interpretation: Interpretation) => advanceStage({ interpretation })}
-            onUpdate={updateSession}
-          />
-        )}
-
-        {session.stage === 5 && (
-          <StageDeepWork
-            session={session}
-            patient={patient}
-            onAdvance={handleStage4Advance}
+            onAdvance={(interpretation: Interpretation) => advanceStage({ interpretation }, 6)}
             onUpdate={updateSession}
           />
         )}

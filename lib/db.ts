@@ -72,6 +72,7 @@ function rowToSession(row: Record<string, unknown>): PatientSession {
     phq9: row.phq9 as PatientSession['phq9'],
     gad7: row.gad7 as PatientSession['gad7'],
     explorationRecord: row.exploration_record as PatientSession['explorationRecord'],
+    selectedWorkCard: row.selected_work_card as PatientSession['selectedWorkCard'],
     createdAt: new Date(row.created_at as string).getTime(),
     updatedAt: new Date(row.updated_at as string).getTime(),
   };
@@ -151,6 +152,7 @@ export const db = {
       phq9: session.phq9 ?? null,
       gad7: session.gad7 ?? null,
       exploration_record: session.explorationRecord ?? null,
+      selected_work_card: session.selectedWorkCard ?? null,
       updated_at: new Date().toISOString(),
     });
   },

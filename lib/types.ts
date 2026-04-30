@@ -179,6 +179,7 @@ export type PatientSession = {
   unmappedPhrases: UnmappedPhrase[];
   reflectionQuestions?: string[];
   deepWork?: DeepWorkSession;
+  selectedWorkCard?: WorkCard;
   stage3Notes?: string;
   narrativeSummary?: string;
   wellbeingBefore?: number;  // 1-5 scale
