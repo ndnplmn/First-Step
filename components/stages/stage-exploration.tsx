@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
-import type { Patient, PatientSession, ExplorationRecord, ExplorationPhase, Stage3Type, FrameworkKey } from '@/lib/types';
-import { getExplorationResponse, synthesizeExploration } from '@/actions/ai';
+import { SpeakerHigh, SpeakerSlash, Heart, ArrowCounterClockwise } from '@phosphor-icons/react';
+import type { Patient, PatientSession, ExplorationRecord, ExplorationPhase, Stage3Type, FrameworkKey, Interpretation } from '@/lib/types';
+import { getExplorationResponse, synthesizeExploration, generateInterpretation } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
+import { AICard } from '@/components/ai/ai-card';
 import { VoiceMicButton } from '@/components/ui/voice-mic-button';
 import { useVoice } from '@/hooks/use-voice';
+import { useAIStream } from '@/hooks/use-ai-stream';
 
 type Message = { role: 'patient' | 'therapist'; text: string; isInsight?: boolean };
 
@@ -15,7 +17,7 @@ type Props = {
   session: PatientSession;
   patient: Patient;
   priorSessions?: PatientSession[];
-  onAdvance: (record: ExplorationRecord) => void;
+  onAdvance: (record: ExplorationRecord, interpretation: Interpretation) => void;
   onUpdate: (session: PatientSession) => void;
 };
 
@@ -72,6 +74,13 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
   const [explorationRecord, setExplorationRecord] = useState<ExplorationRecord | null>(null);
   const [showActionStep, setShowActionStep] = useState(false);
   const [actionInput, setActionInput] = useState('');
+
+  // Interpretation (merged from Stage 4)
+  const [interpretationPhase, setInterpretationPhase] = useState<'hidden' | 'consent' | 'pause' | 'generating' | 'done'>('hidden');
+  const [fullInterpretation, setFullInterpretation] = useState<Interpretation | null>(null);
+  const [resonated, setResonated] = useState(false);
+  const [showRing, setShowRing] = useState(false);
+  const { text: streamText, isStreaming, isDone: streamDone, startStream } = useAIStream();
 
   // Voice
   const {
@@ -193,12 +202,39 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
       setSynthesisState('done');
     } catch {
       setSynthesisState('idle');
-      onAdvance({
-        sessionNumber: session.sessionNumber, framework: frameworkKey, frameworkName,
-        stage3Type, insights: [], aiReflection: '', completedAt: Date.now(),
-        actionCommitment: commitment || undefined,
-      });
+      onAdvance(
+        { sessionNumber: session.sessionNumber, framework: frameworkKey, frameworkName, stage3Type, insights: [], aiReflection: '', completedAt: Date.now(), actionCommitment: commitment || undefined },
+        { text: '', groundingSources: [] },
+      );
     }
+  };
+
+  const generateInterp = async () => {
+    setInterpretationPhase('generating');
+    setFullInterpretation(null);
+    try {
+      const result = await generateInterpretation({
+        conflicts: session.conflicts,
+        frameworkMatches: session.frameworkMatches,
+        memories: session.memories,
+        patient,
+        lifeChanges: session.lifeChanges,
+        explorationRecord: explorationRecord ?? undefined,
+        priorSessions,
+      });
+      setFullInterpretation(result);
+      startStream(result.text);
+      setInterpretationPhase('done');
+    } catch {
+      onAdvance(explorationRecord!, { text: '', groundingSources: [] });
+    }
+  };
+
+  const handleResonate = () => {
+    if (!fullInterpretation) return;
+    setResonated(true);
+    setShowRing(true);
+    setTimeout(() => setShowRing(false), 600);
   };
 
   const textareaStyle: React.CSSProperties = {
@@ -339,14 +375,144 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
               </div>
             )}
           </div>
-          <motion.button
-            type="button"
-            onClick={() => onAdvance(explorationRecord)}
-            whileTap={shouldReduce ? {} : { scale: 0.97 }}
-            style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)', alignSelf: 'stretch', textAlign: 'center' }}
-          >
-            Continuar a la interpretación →
+          {interpretationPhase === 'hidden' && (
+            <motion.button
+              type="button"
+              onClick={() => setInterpretationPhase('consent')}
+              whileTap={shouldReduce ? {} : { scale: 0.97 }}
+              style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)', alignSelf: 'stretch', textAlign: 'center' }}
+            >
+              Recibir la interpretación →
+            </motion.button>
+          )}
+        </motion.div>
+      )}
+
+      {/* Interpretation — consent gate */}
+      {synthesisState === 'done' && interpretationPhase === 'consent' && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          style={{ padding: '1.5rem', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        >
+          <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.0625rem', lineHeight: 1.5, margin: 0 }}>
+            He escuchado toda tu exploración. Tengo algo para ti antes de cerrar.
+          </p>
+          <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>
+            Es una interpretación de lo que veo en tu historia de hoy. ¿La lees?
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.25rem' }}>
+            <motion.button type="button" onClick={generateInterp} whileTap={shouldReduce ? {} : { scale: 0.97 }} style={{ padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
+              Quiero leerla
+            </motion.button>
+            <motion.button type="button" onClick={() => setInterpretationPhase('pause')} whileTap={shouldReduce ? {} : { scale: 0.98 }} style={{ padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-inner)', background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer' }}>
+              Dame un momento
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Interpretation — pause mode */}
+      {synthesisState === 'done' && interpretationPhase === 'pause' && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ padding: '1.5rem', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}
+        >
+          <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>
+            Tómate el tiempo que necesites. Aquí estaré.
+          </p>
+          <motion.button type="button" onClick={generateInterp} whileTap={shouldReduce ? {} : { scale: 0.97 }} style={{ padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
+            Cuando quieras
           </motion.button>
+        </motion.div>
+      )}
+
+      {/* Interpretation — generating */}
+      {synthesisState === 'done' && interpretationPhase === 'generating' && (
+        <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '0.5rem' }}>
+          <AIThinking phrases={['Escuchando todo lo que compartiste...', 'Conectando perspectivas...', 'Formulando algo para ti...']} />
+        </motion.div>
+      )}
+
+      {/* Interpretation — streaming + done */}
+      {synthesisState === 'done' && interpretationPhase === 'done' && (
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+        >
+          <div>
+            <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Tu historia vista con claridad
+            </p>
+            <AICard sources={[]}>
+              <p style={{ lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
+                {shouldReduce ? (fullInterpretation?.text ?? '') : streamText}
+                {isStreaming && !shouldReduce && (
+                  <motion.span
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 0.9, repeat: Infinity }}
+                    style={{ color: 'var(--color-sage)', marginLeft: 1 }}
+                  >|</motion.span>
+                )}
+              </p>
+            </AICard>
+          </div>
+
+          {(streamDone || shouldReduce) && (
+            <>
+              <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative' }}>
+                  <motion.button
+                    type="button"
+                    onClick={handleResonate}
+                    disabled={resonated}
+                    whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.875rem', borderRadius: '9999px', fontSize: '0.8125rem', background: resonated ? 'var(--color-terracotta)' : 'var(--color-surface)', color: resonated ? 'white' : 'var(--color-muted)', border: 'none', cursor: resonated ? 'default' : 'pointer', boxShadow: 'var(--shadow-card)', transition: 'all 0.2s ease' }}
+                  >
+                    <motion.span animate={resonated && !shouldReduce ? { scale: [1, 1.4, 1] } : { scale: 1 }} transition={{ duration: 0.4 }}>
+                      <Heart size={14} weight={resonated ? 'fill' : 'regular'} />
+                    </motion.span>
+                    {resonated ? 'Me resuena' : 'Esto me resuena'}
+                  </motion.button>
+                  <AnimatePresence>
+                    {showRing && !shouldReduce && (
+                      <motion.div
+                        style={{ position: 'absolute', inset: 0, borderRadius: '9999px', border: '2px solid var(--color-terracotta)', pointerEvents: 'none' }}
+                        initial={{ scale: 1, opacity: 0.5 }}
+                        animate={{ scale: 2, opacity: 0 }}
+                        exit={{}}
+                        transition={{ duration: 0.5 }}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={generateInterp}
+                  whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.875rem', borderRadius: '9999px', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-muted)', border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}
+                >
+                  <ArrowCounterClockwise size={14} />
+                  Ver desde otro ángulo
+                </motion.button>
+              </div>
+
+              <motion.button
+                type="button"
+                onClick={() => onAdvance(explorationRecord!, fullInterpretation ?? { text: '', groundingSources: [] })}
+                initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
+              >
+                Cerrar esta exploración →
+              </motion.button>
+            </>
+          )}
         </motion.div>
       )}
 

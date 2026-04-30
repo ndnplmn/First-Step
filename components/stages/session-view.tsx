@@ -78,8 +78,8 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
     });
   };
 
-  const handleStage3Advance = (record: ExplorationRecord) => {
-    advanceStage({ explorationRecord: record });
+  const handleStage3Advance = (record: ExplorationRecord, interpretation: Interpretation) => {
+    advanceStage({ explorationRecord: record, interpretation }, 6);
   };
 
 
