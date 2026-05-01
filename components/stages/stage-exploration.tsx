@@ -10,6 +10,7 @@ import { AICard } from '@/components/ai/ai-card';
 import { VoiceMicButton } from '@/components/ui/voice-mic-button';
 import { useVoice } from '@/hooks/use-voice';
 import { useAIStream } from '@/hooks/use-ai-stream';
+import { useLanguage } from '@/contexts/language-context';
 
 type Message = { role: 'patient' | 'therapist'; text: string; isInsight?: boolean };
 
@@ -37,19 +38,22 @@ const FRAMEWORK_NAMES: Record<Stage3Type, string> = {
   exposure: 'Terapia Conductual',
 };
 
-const PHASE_LABELS: Record<ExplorationPhase, string> = {
-  exploring: 'Explorando',
-  deepening: 'Profundizando',
-  pattern_linking: 'Conectando patrones',
-  challenging: 'Examinando creencias',
-  insight: 'Algo emergió',
-  consolidating: 'Integrando',
-};
 
 const MIN_TURNS_TO_END = 3;
 
 export function StageExploration({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
+
+  const PHASE_LABELS: Record<ExplorationPhase, string> = {
+    exploring: t('stage3.phase.exploring'),
+    deepening: t('stage3.phase.deepening'),
+    pattern_linking: t('stage3.phase.pattern_linking'),
+    challenging: t('stage3.phase.challenging'),
+    insight: t('stage3.phase.insight'),
+    consolidating: t('stage3.phase.consolidating'),
+  };
+
   const stage3Type = (session.stage3Type ?? 'memories') as Stage3Type;
   const frameworkKey = STAGE3_TO_FRAMEWORK[stage3Type];
   const frameworkName = session.frameworkMatches[0]?.name ?? FRAMEWORK_NAMES[stage3Type];
@@ -257,7 +261,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
       <div style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', margin: 0 }}>
-            Etapa 3 — {frameworkName}
+            {t('stage3.label')} — {frameworkName}
           </p>
           {synthesisState === 'idle' && (
             <AnimatePresence mode="wait">
@@ -280,7 +284,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           )}
         </div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 4.5vw, 42px)', color: 'var(--color-deep)', lineHeight: 1.1, margin: 0 }}>
-          Exploración
+          {t('stage3.title')}
         </h2>
       </div>
 
@@ -294,7 +298,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           {lastActionCommitment && (
             <div style={{ padding: '0.75rem 1rem', background: 'rgba(107,94,158,0.08)', borderBottom: '1px solid rgba(107,94,158,0.12)' }}>
               <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Tu compromiso de la sesión anterior
+                {t('stage3.prior.commitment')}
               </p>
               <p style={{ color: 'var(--color-deep)', fontSize: '0.875rem', fontStyle: 'italic', margin: 0, lineHeight: 1.5 }}>
                 "{lastActionCommitment}"
@@ -304,7 +308,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           {lastExploration.insights.length > 0 && (
             <div style={{ padding: '0.75rem 1rem' }}>
               <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.7rem', fontWeight: 500, margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Lo explorado en la sesión {lastExploration.sessionNumber}
+                {t('stage3.prior.explored')} {lastExploration.sessionNumber}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.375rem' }}>
                 {lastExploration.insights.map(i => (
@@ -324,7 +328,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
       {/* Synthesis loading */}
       {synthesisState === 'loading' && (
         <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '2rem' }}>
-          <AIThinking phrases={['Integrando lo explorado...', 'Encontrando los hilos...', 'Construyendo el mapa terapéutico...']} />
+          <AIThinking phrases={[t('stage3.synthesis.loading.1'), t('stage3.synthesis.loading.2'), t('stage3.synthesis.loading.3')]} />
         </motion.div>
       )}
 
@@ -338,7 +342,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         >
           <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lo que emergió en esta exploración
+              {t('stage3.synthesis.label')}
             </p>
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.05rem', lineHeight: 1.6, margin: 0 }}>
               {explorationRecord.aiReflection}
@@ -360,14 +364,14 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                   ))}
                 </div>
                 <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0 }}>
-                  Estas piezas se acumulan sesión a sesión para que la IA te entienda mejor
+                  {t('stage3.synthesis.sessions.note')}
                 </p>
               </div>
             )}
             {explorationRecord.actionCommitment && (
               <div style={{ paddingTop: '0.75rem', borderTop: '1px solid rgba(107,94,158,0.15)' }}>
                 <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Tu compromiso para esta semana
+                  {t('stage3.synthesis.commitment.label')}
                 </p>
                 <p style={{ color: 'var(--color-deep)', fontSize: '0.9375rem', fontStyle: 'italic', margin: 0, lineHeight: 1.5 }}>
                   "{explorationRecord.actionCommitment}"
@@ -382,7 +386,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
               style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)', alignSelf: 'stretch', textAlign: 'center' }}
             >
-              Recibir la interpretación →
+              {t('stage3.interp.receive')}
             </motion.button>
           )}
         </motion.div>
@@ -397,17 +401,17 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           style={{ padding: '1.5rem', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', gap: '1rem' }}
         >
           <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.0625rem', lineHeight: 1.5, margin: 0 }}>
-            He escuchado toda tu exploración. Tengo algo para ti antes de cerrar.
+            {t('stage3.interp.consent.title')}
           </p>
           <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>
-            Es una interpretación de lo que veo en tu historia de hoy. ¿La lees?
+            {t('stage3.interp.consent.subtitle')}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.25rem' }}>
             <motion.button type="button" onClick={generateInterp} whileTap={shouldReduce ? {} : { scale: 0.97 }} style={{ padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
-              Quiero leerla
+              {t('stage3.interp.consent.yes')}
             </motion.button>
             <motion.button type="button" onClick={() => setInterpretationPhase('pause')} whileTap={shouldReduce ? {} : { scale: 0.98 }} style={{ padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-inner)', background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer' }}>
-              Dame un momento
+              {t('stage3.interp.consent.wait')}
             </motion.button>
           </div>
         </motion.div>
@@ -421,10 +425,10 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           style={{ padding: '1.5rem', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}
         >
           <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>
-            Tómate el tiempo que necesites. Aquí estaré.
+            {t('stage3.interp.pause')}
           </p>
           <motion.button type="button" onClick={generateInterp} whileTap={shouldReduce ? {} : { scale: 0.97 }} style={{ padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
-            Cuando quieras
+            {t('stage3.interp.pause.ready')}
           </motion.button>
         </motion.div>
       )}
@@ -432,7 +436,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
       {/* Interpretation — generating */}
       {synthesisState === 'done' && interpretationPhase === 'generating' && (
         <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '0.5rem' }}>
-          <AIThinking phrases={['Escuchando todo lo que compartiste...', 'Conectando perspectivas...', 'Formulando algo para ti...']} />
+          <AIThinking phrases={[t('stage3.interp.loading.1'), t('stage3.interp.loading.2'), t('stage3.interp.loading.3')]} />
         </motion.div>
       )}
 
@@ -446,7 +450,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         >
           <div>
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Tu historia vista con claridad
+              {t('stage3.interp.label')}
             </p>
             <AICard sources={[]}>
               <p style={{ lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
@@ -476,7 +480,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                     <motion.span animate={resonated && !shouldReduce ? { scale: [1, 1.4, 1] } : { scale: 1 }} transition={{ duration: 0.4 }}>
                       <Heart size={14} weight={resonated ? 'fill' : 'regular'} />
                     </motion.span>
-                    {resonated ? 'Me resuena' : 'Esto me resuena'}
+                    {resonated ? t('stage3.interp.resonated') : t('stage3.interp.resonate')}
                   </motion.button>
                   <AnimatePresence>
                     {showRing && !shouldReduce && (
@@ -497,7 +501,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                   style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.875rem', borderRadius: '9999px', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-muted)', border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}
                 >
                   <ArrowCounterClockwise size={14} />
-                  Ver desde otro ángulo
+                  {t('stage3.interp.reframe')}
                 </motion.button>
               </div>
 
@@ -509,7 +513,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
               >
-                Cerrar esta exploración →
+                {t('stage3.close')}
               </motion.button>
             </>
           )}
@@ -563,7 +567,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                     </p>
                     {msg.isInsight && msg.role === 'therapist' && (
                       <p style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', marginTop: '0.375rem', fontWeight: 600 }}>
-                        ✦ Algo emergió
+                        {t('stage3.insight.label')}
                       </p>
                     )}
                   </div>
@@ -599,7 +603,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                     </p>
                     {lastMessage.isInsight && (
                       <p style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', marginTop: '0.375rem', fontWeight: 600 }}>
-                        ✦ Algo emergió
+                        {t('stage3.insight.label')}
                       </p>
                     )}
                   </div>
@@ -634,7 +638,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                           color: 'white',
                           boxShadow: 'var(--shadow-card)', border: 'none', cursor: 'pointer',
                         }}
-                        aria-label="Desactivar modo de voz"
+                        aria-label={t('stage3.voice.deactivate')}
                         aria-pressed={true}
                       >
                         <SpeakerHigh size={18} aria-hidden />
@@ -655,7 +659,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                       key={`input-${messages.length}`}
                       value={currentInput}
                       onChange={e => setCurrentInput(e.target.value)}
-                      placeholder={lastMessage.isInsight ? 'Tómate el tiempo que necesites...' : 'Escribe lo que surge...'}
+                      placeholder={lastMessage.isInsight ? t('stage3.input.insight') : t('stage3.input.placeholder')}
                       rows={4}
                       style={textareaStyle}
                       onFocus={e => (e.target.style.borderColor = lastMessage.isInsight ? 'var(--color-violet)' : 'var(--color-sage)')}
@@ -679,7 +683,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                           color: 'var(--color-muted)',
                           boxShadow: 'var(--shadow-card)', border: 'none', cursor: 'pointer',
                         }}
-                        aria-label="Activar modo de voz"
+                        aria-label={t('stage3.voice.activate')}
                         aria-pressed={false}
                       >
                         <SpeakerSlash size={18} aria-hidden />
@@ -718,7 +722,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           {/* AI thinking */}
           {isThinking && (
             <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '0.5rem' }}>
-              <AIThinking phrases={['Escuchando...', 'Procesando lo que compartiste...', 'Preparando la siguiente pregunta...']} />
+              <AIThinking phrases={[t('stage3.thinking.1'), t('stage3.thinking.2'), t('stage3.thinking.3')]} />
             </motion.div>
           )}
 
@@ -736,7 +740,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                   onClick={handleEndEarly}
                   style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.5rem 1rem', textDecoration: 'underline', textUnderlineOffset: '3px' }}
                 >
-                  Siento que llegué a algo — quiero integrar aquí
+                  {t('stage3.end.early')}
                 </button>
               </motion.div>
             )}
@@ -756,20 +760,20 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           >
             <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}>
               <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Un paso concreto
+                {t('stage3.action.title')}
               </p>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: '0 0 0.5rem' }}>
                 Dado lo que notaste hoy sobre <em>{workCard.title.toLowerCase()}</em>, ¿hay algo concreto y pequeño que quieras intentar esta semana?
               </p>
               <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
-                No tiene que ser un gran cambio — un experimento que puedas observar.
+                {t('stage3.action.subtitle')}
               </p>
             </div>
 
             <textarea
               value={actionInput}
               onChange={e => setActionInput(e.target.value)}
-              placeholder="Esta semana voy a..."
+              placeholder={t('stage3.action.placeholder')}
               autoFocus
               rows={3}
               style={textareaStyle}
@@ -789,7 +793,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                     whileTap={shouldReduce ? {} : { scale: 0.97 }}
                     style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '0.9375rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
                   >
-                    Me comprometo a intentarlo →
+                    {t('stage3.action.commit')}
                   </motion.button>
                 )}
               </AnimatePresence>
@@ -798,7 +802,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                 onClick={handleSkipAction}
                 style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center' }}
               >
-                Continuar sin compromiso
+                {t('stage3.action.skip')}
               </button>
             </div>
           </motion.div>

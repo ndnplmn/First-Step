@@ -47,6 +47,7 @@ export default function Home() {
   const [activeSession, setActiveSession] = useState<PatientSession | null>(null);
   const [recordSessions, setRecordSessions] = useState<PatientSession[]>([]);
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+  const [preSettingsView, setPreSettingsView] = useState<AppView>('DASHBOARD');
 
   const initApp = async () => {
     const supabase = createClient();
@@ -158,6 +159,7 @@ export default function Home() {
   };
 
   const handleViewSettings = () => {
+    setPreSettingsView(view);
     setView('SETTINGS');
   };
 
@@ -364,7 +366,7 @@ export default function Home() {
   if (view === 'SETTINGS') {
     return (
       <Settings
-        onBack={() => setView('DASHBOARD')}
+        onBack={() => setView(preSettingsView)}
         onSignOut={handleSignOut}
       />
     );

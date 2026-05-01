@@ -9,20 +9,7 @@ import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowCounterClockwise, Users, ArrowsClockwise, House } from '@phosphor-icons/react';
-
-const THINKING_PHRASES = [
-  'Escribiendo algo para ti...',
-  'Destilando lo esencial...',
-  'Encontrando las palabras...',
-];
-
-const WELLBEING_OPTIONS = [
-  { value: 1, label: 'Muy mal' },
-  { value: 2, label: 'Mal' },
-  { value: 3, label: 'Regular' },
-  { value: 4, label: 'Bien' },
-  { value: 5, label: 'Muy bien' },
-];
+import { useLanguage } from '@/contexts/language-context';
 
 type ClosureAction = 'dashboard' | 'record' | 'new-session';
 
@@ -35,6 +22,22 @@ interface StageClosureProps {
 }
 
 export function StageClosure({ session, patient, priorSessions = [], onComplete, onUpdate }: StageClosureProps) {
+  const { t } = useLanguage();
+
+  const THINKING_PHRASES = [
+    t('stage6.thinking.1'),
+    t('stage6.thinking.2'),
+    t('stage6.thinking.3'),
+  ];
+
+  const WELLBEING_OPTIONS = [
+    { value: 1, label: t('stage6.wellbeing.1') },
+    { value: 2, label: t('stage6.wellbeing.2') },
+    { value: 3, label: t('stage6.wellbeing.3') },
+    { value: 4, label: t('stage6.wellbeing.4') },
+    { value: 5, label: t('stage6.wellbeing.5') },
+  ];
+
   const [fullClosure, setFullClosure] = useState<Closure | null>(session.closure ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -113,7 +116,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     <div className="space-y-8 pb-48">
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Etapa 6 — Cierre
+          {t('stage6.label')}
         </p>
         <h2
           className="leading-tight breathe"
@@ -123,10 +126,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             color: 'var(--color-deep)',
           }}
         >
-          Una carta para ti
+          {t('stage6.title')}
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Escribí algo para ti.
+          {t('stage6.subtitle')}
         </p>
       </div>
 
@@ -138,7 +141,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
           style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Hubo un problema al generar el cierre.
+            {t('stage6.error')}
           </p>
           <button
             type="button"
@@ -147,7 +150,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             style={{ color: 'var(--color-sage)' }}
           >
             <ArrowCounterClockwise size={14} />
-            Intentar de nuevo
+            {t('stage6.retry')}
           </button>
         </div>
       )}
@@ -184,7 +187,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)' }}
             >
-              Actividad experiencial
+              {t('stage6.gestalt.label')}
             </p>
             <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
               {session.gestaltActivity.title}
@@ -218,7 +221,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
             >
-              Estrategias para tu día a día
+              {t('stage6.strategies.label')}
             </p>
             <div className="space-y-4">
               {strategies.map((s, i) => (
@@ -257,10 +260,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
             >
-              Antes de irte
+              {t('stage6.wellbeing.label')}
             </p>
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              ¿Cómo te sientes ahora?
+              {t('stage6.wellbeing.question')}
             </p>
             <div className="flex gap-3 flex-wrap">
               {WELLBEING_OPTIONS.map(opt => (
@@ -298,7 +301,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             className="text-center py-4"
           >
             <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-              Gracias por compartir. ♡
+              {t('stage6.thanks')}
             </p>
           </motion.div>
         )}
@@ -317,7 +320,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
             >
-              ¿Qué quieres hacer ahora?
+              {t('stage6.actions.label')}
             </p>
 
             {/* Tarjeta: Ver mi resumen */}
@@ -337,10 +340,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                  Ver mi resumen
+                  {t('stage6.actions.record.title')}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                  Revisa todo lo que exploraste en esta sesión
+                  {t('stage6.actions.record.subtitle')}
                 </p>
               </div>
             </motion.button>
@@ -362,10 +365,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                  Iniciar nuevo proceso
+                  {t('stage6.actions.new.title')}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                  Explora otro conflicto con una nueva sesión
+                  {t('stage6.actions.new.subtitle')}
                 </p>
               </div>
             </motion.button>
@@ -379,7 +382,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               style={{ color: 'var(--color-muted)' }}
             >
               <House size={15} />
-              Volver al inicio
+              {t('stage6.actions.home')}
             </motion.button>
           </motion.div>
         )}

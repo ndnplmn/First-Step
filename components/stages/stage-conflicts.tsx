@@ -12,12 +12,7 @@ import { useVoice } from '@/hooks/use-voice';
 import { VoiceMicButton } from '@/components/ui/voice-mic-button';
 import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
-
-const STARTER_PROMPTS = [
-  'Algo con mi familia me preocupa',
-  'El trabajo me está agobiando mucho',
-  'No sé qué hacer con mi vida',
-];
+import { useLanguage } from '@/contexts/language-context';
 
 const SOFT_CAP = 5;
 
@@ -35,6 +30,7 @@ interface StageConflictsProps {
 
 function UnmappedSection({ unmapped }: { unmapped: string[] }) {
   const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
@@ -43,7 +39,7 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
       <button type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-3 text-left">
         <span className="text-xs font-medium" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-          Pendiente de análisis ({unmapped.length})
+          {t('stage2.unmapped.label')} ({unmapped.length})
         </span>
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} style={{ color: 'var(--color-muted)' }}>▾</motion.span>
       </button>
@@ -53,7 +49,7 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
             exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
             <div className="px-4 pb-4 space-y-2">
               <p className="text-xs mb-3" style={{ color: 'var(--color-muted)' }}>
-                Estas frases no encajaron claramente en un patrón. Puedes explorarlas más adelante.
+                {t('stage2.unmapped.description')}
               </p>
               {unmapped.map((phrase, i) => (
                 <p key={i} className="text-sm px-3 py-2 rounded-lg italic"
@@ -72,7 +68,14 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
 
 export function StageConflicts({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
   const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
+
+  const STARTER_PROMPTS = [
+    t('stage2.starter.1'),
+    t('stage2.starter.2'),
+    t('stage2.starter.3'),
+  ];
 
   const {
     isVoiceMode, isRecording, isTranscribing, isSpeaking, transcribedText, voiceError,
@@ -257,7 +260,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
       onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
       setShowValidation(true);
     } catch {
-      setError('Hubo un problema al analizar. Intenta de nuevo.');
+      setError(t('stage2.error'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -332,7 +335,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
       {/* Header */}
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Etapa 2 — Apertura
+          {t('stage2.label')}
         </p>
         <AnimatePresence mode="wait">
           {!showAnalysis && (
@@ -340,12 +343,10 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
               initial={shouldReduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
               <h2 className="text-[40px] leading-tight breathe" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
-                {hasStarted ? 'Cuéntame más' : '¿Qué te trajo\naquí hoy?'}
+                {hasStarted ? t('stage2.title.continuing') : t('stage2.title.opening')}
               </h2>
               <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                {hasStarted
-                  ? 'Necesito entenderte mejor para poder ayudarte como mereces.'
-                  : 'Descríbelo con tus propias palabras. Puedes escribir tanto como quieras.'}
+                {hasStarted ? t('stage2.subtitle.continuing') : t('stage2.subtitle.opening')}
               </p>
             </motion.div>
           )}
@@ -354,12 +355,10 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
               initial={shouldReduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
               <h2 className="text-[40px] leading-tight breathe" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
-                Lo que escuché
+                {t('stage2.title.analysis')}
               </h2>
               <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                {showValidation
-                  ? '¿Reconoces esto en lo que compartiste?'
-                  : 'Esto es lo que percibo en todo lo que compartiste.'}
+                {showValidation ? t('stage2.analysis.subtitle.validate') : t('stage2.analysis.subtitle.default')}
               </p>
             </motion.div>
           )}
@@ -368,11 +367,11 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
               initial={shouldReduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
               <h2 className="text-[40px] leading-tight breathe" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
-                {isLoadingCards ? 'Preparando la sesión' : '¿Qué trabajamos hoy?'}
+                {isLoadingCards ? t('stage2.cards.loading_title') : t('stage2.title.cards')}
               </h2>
               {!isLoadingCards && (
                 <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                  Elige el tema que más resonó. Lo exploraremos juntos ahora.
+                  {t('stage2.cards.subtitle')}
                 </p>
               )}
             </motion.div>
@@ -455,7 +454,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         {isAnalyzing ? 'Analizando todo lo que compartiste' : ''}
       </div>
       {isEvaluating && (
-        <AIThinking phrases={['Procesando lo que compartiste...', 'Decidiendo si necesito saber más...', 'Un momento...']} />
+        <AIThinking phrases={[t('stage2.thinking.1'), t('stage2.thinking.2'), t('stage2.thinking.3')]} />
       )}
 
       {/* ─── Input: texto o voz (siempre visible mientras no estamos en análisis) ─── */}
@@ -485,7 +484,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                     handleSend(input);
                   }
                 }}
-                placeholder={hasStarted ? 'Escribe tu respuesta aquí…' : 'Escribe lo que sientes, lo que te pasa…'}
+                placeholder={hasStarted ? t('stage2.input.reply') : t('stage2.input.initial')}
                 rows={hasStarted ? 3 : 4}
                 autoFocus
                 className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
@@ -508,7 +507,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
             initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }}
             className="space-y-6">
             {isAnalyzing && (
-              <AIThinking phrases={['Leyendo entre líneas...', 'Identificando patrones...', 'Conectando con tu historia...']} />
+              <AIThinking phrases={[t('stage2.analyzing.1'), t('stage2.analyzing.2'), t('stage2.analyzing.3')]} />
             )}
             {error && !isAnalyzing && (
               <p className="text-sm text-center" style={{ color: 'var(--color-muted)' }}>{error}</p>
@@ -518,7 +517,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                 <AICard>
                   <div className="space-y-4">
                     <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                      Esto es lo que escucho en lo que describes:
+                      {t('stage2.analysis.intro')}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {result.conflicts.map(c => (
@@ -555,13 +554,13 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                       className="text-xs font-medium tracking-wide uppercase"
                       style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
                     >
-                      ¿Lo reconoces?
+                      {t('stage2.analysis.recognize')}
                     </p>
                     <p
                       className="text-base leading-relaxed"
                       style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
                     >
-                      ¿Es así como lo sientes, o hay algo que quieras matizar o agregar?
+                      {t('stage2.analysis.confirm')}
                     </p>
                   </motion.div>
                 )}
@@ -581,7 +580,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
             className="space-y-3"
           >
             {isLoadingCards && (
-              <AIThinking phrases={['Pensando en lo que más importa ahora...', 'Eligiendo los hilos más vivos...', 'Preparando algo concreto para ti...']} />
+              <AIThinking phrases={[t('stage2.cards.loading.1'), t('stage2.cards.loading.2'), t('stage2.cards.loading.3')]} />
             )}
             {!isLoadingCards && sessionCards.map((card, i) => (
               <motion.button
@@ -606,7 +605,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                   {card.subtitle}
                 </p>
                 <p className="text-xs font-medium mt-2" style={{ color: 'var(--color-sage)' }}>
-                  Trabajar esto →
+                  {t('stage2.cards.cta')}
                 </p>
               </motion.button>
             ))}
@@ -629,7 +628,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                     whileTap={shouldReduce ? {} : { scale: 0.97 }}
                     className="flex-1 py-4 rounded-2xl font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 tracking-wide"
                     style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
-                    {hasStarted ? <>Responder <ArrowRight size={16} /></> : 'Compartir →'}
+                    {hasStarted ? <>{t('stage2.reply')} <ArrowRight size={16} /></> : t('stage2.send')}
                   </motion.button>
                 )}
                 {isVoiceMode && (
@@ -645,7 +644,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                     color: isVoiceMode ? 'white' : 'var(--color-muted)',
                     boxShadow: 'var(--shadow-card)',
                   }}
-                  aria-label={isVoiceMode ? 'Desactivar modo de voz' : 'Activar modo de voz'}
+                  aria-label={isVoiceMode ? t('stage2.voice.deactivate') : t('stage2.voice.activate')}
                   aria-pressed={isVoiceMode}
                 >
                   {isVoiceMode ? <SpeakerHigh size={18} aria-hidden="true" /> : <SpeakerSlash size={18} aria-hidden="true" />}
@@ -655,7 +654,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                 <button type="button" onClick={handleSkip}
                   className="w-full py-2 text-sm text-center hover:opacity-70 transition-opacity"
                   style={{ color: 'var(--color-muted)' }}>
-                  → Prefiero no responder esto
+                  {t('stage2.skip')}
                 </button>
               )}
             </>
@@ -671,7 +670,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                 className="w-full py-4 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 tracking-wide"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
               >
-                Estoy listo/a para continuar <ArrowRight size={16} />
+                {t('stage2.ready')} <ArrowRight size={16} />
               </motion.button>
               <button
                 type="button"
@@ -679,7 +678,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                 className="w-full py-2 text-sm text-center hover:opacity-70 transition-opacity"
                 style={{ color: 'var(--color-muted)' }}
               >
-                → Quiero profundizar en algo
+                {t('stage2.want_to_deepen')}
               </button>
             </>
           )}
@@ -694,7 +693,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                 className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide flex items-center justify-center gap-2"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
               >
-                Sí, eso es lo que siento <ArrowRight size={16} />
+                {t('stage2.confirm')} <ArrowRight size={16} />
               </motion.button>
               <button
                 type="button"
@@ -702,7 +701,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                 className="w-full py-2 text-sm text-center hover:opacity-70 transition-opacity"
                 style={{ color: 'var(--color-muted)' }}
               >
-                → Quiero agregar algo
+                {t('stage2.want_to_add')}
               </button>
             </>
           )}
@@ -716,7 +715,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
               className="w-full py-2.5 rounded-xl text-sm font-medium"
               style={{ color: 'var(--color-sage)', border: '1px solid var(--color-sage)' }}
             >
-              Re-analizar
+              {t('stage2.reanalyze')}
             </motion.button>
           )}
         </div>
