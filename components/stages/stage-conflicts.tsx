@@ -68,7 +68,7 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
 
 export function StageConflicts({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
 
   const STARTER_PROMPTS = [
@@ -176,6 +176,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         sessionIntention: session.sessionIntention,
         forceClose: questionsAsked.length >= SOFT_CAP - 1,
         priorSessions,
+        locale,
       });
 
       if (done || !question) {
@@ -223,6 +224,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         sessionIntention: session.sessionIntention,
         forceClose: questionsAsked.length >= SOFT_CAP - 1,
         priorSessions,
+        locale,
       });
       if (done || !question) {
         if (bridgeMsg) {
@@ -255,7 +257,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
     setIsAnalyzing(true);
     setError('');
     try {
-      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention, priorSessions);
+      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention, priorSessions, locale);
       setResult(data);
       onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
       setShowValidation(true);
@@ -274,6 +276,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
       const cards = await generateSessionWorkCards({
         conflicts: result.conflicts,
         frameworkMatches: result.frameworkMatches,
+        locale,
       });
       setSessionCards(cards);
     } catch {

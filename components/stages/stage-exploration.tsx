@@ -43,7 +43,7 @@ const MIN_TURNS_TO_END = 3;
 
 export function StageExploration({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const PHASE_LABELS: Record<ExplorationPhase, string> = {
     exploring: t('stage3.phase.exploring'),
@@ -155,6 +155,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         stage3Type,
         currentPhase,
         priorSessions,
+        locale,
       });
 
       setCurrentPhase(result.nextPhase);
@@ -201,6 +202,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         rawData, patient, conflicts: session.conflicts,
         frameworkKey, frameworkName, stage3Type,
         sessionNumber: session.sessionNumber, priorExplorations,
+        locale,
       });
       setExplorationRecord({ ...record, actionCommitment: commitment || undefined });
       setSynthesisState('done');
@@ -225,6 +227,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         lifeChanges: session.lifeChanges,
         explorationRecord: explorationRecord ?? undefined,
         priorSessions,
+        locale,
       });
       setFullInterpretation(result);
       startStream(result.text);

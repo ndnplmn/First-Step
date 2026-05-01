@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession, ExplorationRecord } from '@/lib/types';
 import { synthesizeExploration } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
+import { useLanguage } from '@/contexts/language-context';
 
 type Props = {
   session: PatientSession;
@@ -16,6 +17,7 @@ type Props = {
 
 export function StageBodywork({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
+  const { locale } = useLanguage();
   const [step, setStep] = useState(0);
 
   // Step 1 state
@@ -93,6 +95,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
         stage3Type: 'bodywork',
         sessionNumber: session.sessionNumber,
         priorExplorations,
+        locale,
       });
       setExplorationRecord(record);
       setSynthesisState('done');

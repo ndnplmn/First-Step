@@ -7,6 +7,7 @@ import { generateReflectionQuestions, generateWorkCards, getDeepWorkResponse } f
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowRight, ArrowCounterClockwise } from '@phosphor-icons/react';
+import { useLanguage } from '@/contexts/language-context';
 
 const LOADING_PHRASES = [
   'Pensando en lo que más importa ahora...',
@@ -31,6 +32,7 @@ interface StageDeepWorkProps {
 
 export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDeepWorkProps) {
   const shouldReduce = useReducedMotion();
+  const { locale } = useLanguage();
 
   const [view, setView] = useState<DeepWorkView>(() => {
     if (session.deepWork?.synthesis) return 'done';
@@ -73,6 +75,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
           conflicts: session.conflicts,
           frameworkMatches: session.frameworkMatches,
           closure: session.interpretation?.text ?? '',
+          locale,
         });
         onUpdate({ reflectionQuestions: questions });
       }
@@ -82,6 +85,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
         frameworkMatches: session.frameworkMatches,
         reflectionQuestions: questions,
         interpretation: session.interpretation?.text ?? '',
+        locale,
       });
 
       setCards(workCards);
@@ -124,6 +128,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
         frameworkMatches: session.frameworkMatches,
         interpretation: session.interpretation?.text ?? '',
         patient,
+        locale,
       });
 
       const therapistMsg = { role: 'therapist' as const, text: result.response };

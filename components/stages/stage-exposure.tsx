@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession, ExplorationRecord } from '@/lib/types';
 import { synthesizeExploration } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
+import { useLanguage } from '@/contexts/language-context';
 
 type Props = {
   session: PatientSession;
@@ -24,6 +25,7 @@ const MUSCLE_GROUPS = ['hombros', 'manos', 'rostro', 'abdomen'] as const;
 
 export function StageExposure({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
+  const { locale } = useLanguage();
   const [step, setStep] = useState(0);
 
   // Step 0 state
@@ -122,6 +124,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
         stage3Type: 'exposure',
         sessionNumber: session.sessionNumber,
         priorExplorations,
+        locale,
       });
       setExplorationRecord(record);
       setSynthesisState('done');

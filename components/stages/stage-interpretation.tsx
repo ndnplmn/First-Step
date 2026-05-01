@@ -9,6 +9,7 @@ import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { Heart, ArrowCounterClockwise, ArrowSquareOut } from '@phosphor-icons/react';
+import { useLanguage } from '@/contexts/language-context';
 
 const THINKING_PHRASES = [
   'Escuchando todo lo que compartiste...',
@@ -25,6 +26,7 @@ interface StageInterpretationProps {
 }
 
 export function StageInterpretation({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageInterpretationProps) {
+  const { locale } = useLanguage();
   const [fullInterpretation, setFullInterpretation] = useState<Interpretation | null>(
     session.interpretation ?? null
   );
@@ -68,6 +70,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
         lifeChanges: session.lifeChanges,
         stage3Notes: session.stage3Notes,
         priorSessions,
+        locale,
       });
       setFullInterpretation(result);
       onUpdate({ interpretation: result });

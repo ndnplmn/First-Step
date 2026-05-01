@@ -7,6 +7,7 @@ import { extractMemoryKeywords, synthesizeExploration } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { generateId } from '@/lib/id';
+import { useLanguage } from '@/contexts/language-context';
 
 interface StageMemoriesProps {
   session: PatientSession;
@@ -31,6 +32,7 @@ function formatFrameworks(matches: FrameworkMatch[]): string {
 
 export function StageMemories({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageMemoriesProps) {
   const shouldReduce = useReducedMotion();
+  const { locale } = useLanguage();
   const [memories, setMemories] = useState<Memory[]>(session.memories);
   const [form, setForm] = useState<MemoryForm>(EMPTY_FORM);
   const [formStep, setFormStep] = useState(0);
@@ -57,7 +59,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
     setIsExtracting(true);
     try {
       const frameworksStr = formatFrameworks(session.frameworkMatches);
-      const keywords = await extractMemoryKeywords(form, frameworksStr);
+      const keywords = await extractMemoryKeywords(form, frameworksStr, locale);
       const memory: Memory = {
         id: generateId(),
         raw: form.raw,
@@ -103,6 +105,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
         stage3Type: 'memories',
         sessionNumber: session.sessionNumber,
         priorExplorations,
+        locale,
       });
       setExplorationRecord(record);
       setSynthesisState('done');

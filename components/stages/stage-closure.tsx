@@ -22,7 +22,7 @@ interface StageClosureProps {
 }
 
 export function StageClosure({ session, patient, priorSessions = [], onComplete, onUpdate }: StageClosureProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const THINKING_PHRASES = [
     t('stage6.thinking.1'),
@@ -84,6 +84,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         patient,
         deepWorkSynthesis: session.deepWork?.synthesis,
         priorSessions,
+        locale,
       });
       setFullClosure(result);
       onUpdate({ closure: result });
@@ -95,6 +96,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         interpretation: session.interpretation!.text,
         gestaltActivity: session.gestaltActivity!,
         patient,
+        locale,
       });
       setStrategies(strats);
       const closureWithStrategies = { ...result, strategies: strats };

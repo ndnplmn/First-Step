@@ -18,6 +18,7 @@ import type {
 import { generateId } from '@/lib/id';
 import { db } from '@/lib/db';
 import { synthesizeConflicts } from '@/actions/ai';
+import { useLanguage } from '@/contexts/language-context';
 import { VoiceFillButton } from '@/components/ui/voice-fill-button';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
@@ -336,6 +337,7 @@ function TextArea({
 
 export function Intake({ onComplete, onBack }: IntakeProps) {
   const shouldReduce = useReducedMotion();
+  const { locale } = useLanguage();
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<IntakeValues>(INITIAL_VALUES);
@@ -437,6 +439,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
         undefined,
         undefined,
         [],
+        locale,
       );
       setIntakeSynthesis(result);
       setIntakeProcessing('ready');

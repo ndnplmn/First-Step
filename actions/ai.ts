@@ -50,6 +50,13 @@ function handleAIError(error: unknown): never {
   throw new Error('El servicio de IA no está disponible en este momento.');
 }
 
+function getLanguageInstruction(locale?: string): string {
+  const langMap: Record<string, string> = { es: 'Spanish', en: 'English', ru: 'Russian' };
+  const lang = langMap[locale ?? 'es'] ?? 'Spanish';
+  if (lang === 'Spanish') return '';
+  return `\n\nIMPORTANT: You MUST respond entirely in ${lang}. All therapeutic content, questions, reflections, analysis, letters, strategies, and any other output must be written in ${lang}. This is non-negotiable.`;
+}
+
 function formatFrameworks(matches: FrameworkMatch[]): string {
   return matches.map((m, i) => `${i === 0 ? 'Marco primario' : 'Marco secundario'}: ${m.name} — ${m.focus}`).join('\n');
 }
@@ -97,7 +104,8 @@ export async function synthesizeConflicts(
   patient: Patient,
   lifeChanges?: LifeChanges,
   sessionIntention?: string,
-  priorSessions?: PatientSession[]
+  priorSessions?: PatientSession[],
+  locale?: string
 ): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity | null; stage3Type: Stage3Type; unmappedPhrases: string[]; narrativeSummary: string }> {
   const frameworksDesc = Object.entries(FRAMEWORKS_DICTIONARY)
     .map(([key, fw]) => `- ${key}: ${fw.name} — ${fw.description}`)
@@ -153,7 +161,7 @@ ${sessionHistory ? `${sessionHistory}\n    Nota: Si algún conflicto actual es r
       "unmappedPhrases": ["..."],
       "narrativeSummary": "..."
     }
-  `;
+  ${getLanguageInstruction(locale)}`;
 
   let content: string;
   try {
@@ -192,7 +200,8 @@ ${sessionHistory ? `${sessionHistory}\n    Nota: Si algún conflicto actual es r
 // --- ACTION 2: Extraer keywords de un recuerdo ---
 export async function extractMemoryKeywords(
   memory: { raw: string; feelingThen: string; feelingNow: string },
-  frameworks: string
+  frameworks: string,
+  locale?: string
 ): Promise<string[]> {
   const prompt = `
     Un paciente ha descrito el siguiente recuerdo en el contexto del siguiente marco terapéutico:
@@ -206,7 +215,7 @@ export async function extractMemoryKeywords(
     Extrae 3-5 palabras clave emocionales o temáticas del recuerdo que sean relevantes para el marco terapéutico del caso.
 
     Responde SOLO con un objeto JSON: { "keywords": ["palabra1", "palabra2", ...] }
-  `;
+  ${getLanguageInstruction(locale)}`;
 
   let content: string;
   try {
@@ -235,6 +244,7 @@ export async function generateInterpretation(params: {
   stage3Notes?: string;
   explorationRecord?: ExplorationRecord;
   priorSessions?: PatientSession[];
+  locale?: string;
 }): Promise<Interpretation> {
   const { conflicts, frameworkMatches, memories } = params;
 
@@ -279,7 +289,7 @@ ${stage3Section}${sessionHistory}
     - Cada párrafo: máximo 4 oraciones. Ve directo al punto — sin preámbulos ni rodeos.
     - Sé empático, no juzgues
     - NO nombres las teorías por su nombre técnico — habla desde ellas, no sobre ellas
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let text: string;
   try {
@@ -306,6 +316,7 @@ export async function synthesizeExploration(params: {
   stage3Type: Stage3Type;
   sessionNumber: number;
   priorExplorations: ExplorationRecord[];
+  locale?: string;
 }): Promise<ExplorationRecord> {
   const { rawData, patient, conflicts, frameworkKey, frameworkName, stage3Type, sessionNumber, priorExplorations } = params;
 
@@ -347,7 +358,7 @@ Responde SOLO con JSON:
   "insights": [{"theme": "...", "observation": "..."}],
   "aiReflection": "..."
 }
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
@@ -386,9 +397,14 @@ export async function generateClosure(params: {
   patient: Patient;
   deepWorkSynthesis?: string;
   priorSessions?: PatientSession[];
+  locale?: string;
 }): Promise<Closure> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
   const closureHistory = buildSessionHistory(params.priorSessions ?? []);
+  const greetingMap: Record<string, string> = { es: `Querido/a`, en: `Dear`, ru: `Дорогой/ая` };
+  const closingMap: Record<string, string> = { es: `Con cariño,\n    Tend`, en: `With love,\n    Tend`, ru: `С теплом,\n    Tend` };
+  const greeting = greetingMap[params.locale ?? 'es'] ?? greetingMap.es;
+  const closing = closingMap[params.locale ?? 'es'] ?? closingMap.es;
 
   const prompt = `
     Eres un psicoterapeuta magistral.
@@ -412,7 +428,7 @@ ${params.deepWorkSynthesis
     Ahora genera una CARTA PERSONAL al paciente. El formato es epistolar — como una carta íntima de alguien que realmente lo escuchó.
 
     FORMATO:
-    - Empieza con "Querido/a ${params.patient.name},"
+    - Empieza con "${greeting} ${params.patient.name},"
     - Escribe en primera persona como el terapeuta
     - 3 párrafos separados por una línea en blanco:
 
@@ -428,11 +444,10 @@ ${params.deepWorkSynthesis
       : 'Hazle saber que este es apenas el primer paso. Que cada sesión profundizará más. Que volver es parte de cuidarse.'}
 
     - Cierra con una línea en blanco y luego exactamente:
-    Con cariño,
-    Tend
+    ${closing}
 
     NO expliques teorías. Habla al corazón.
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let text: string;
   try {
@@ -454,6 +469,7 @@ export async function generateReflectionQuestions(params: {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
   closure: string;
+  locale?: string;
 }): Promise<string[]> {
   const { conflicts, frameworkMatches, closure } = params;
 
@@ -477,7 +493,7 @@ export async function generateReflectionQuestions(params: {
     - Tener entre 10 y 25 palabras cada una
 
     Responde SOLO con un objeto JSON: { "questions": ["...", "...", "..."] }
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
@@ -500,6 +516,7 @@ export async function generateReflectionQuestions(params: {
 export async function generateSessionWorkCards(params: {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
+  locale?: string;
 }): Promise<WorkCard[]> {
   const { conflicts, frameworkMatches } = params;
 
@@ -517,7 +534,7 @@ Genera exactamente 3 tarjetas de enfoque de sesión, cada una representando un �
 Las tarjetas son puntos de entrada a la exploración, no conclusiones. Deben sentirse alcanzables en una sesión.
 
 Responde SOLO con JSON: { "cards": [{ "id": "1", "title": "...", "subtitle": "...", "openingLine": "..." }, { "id": "2", ... }, { "id": "3", ... }] }
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
@@ -542,6 +559,7 @@ export async function generateWorkCards(params: {
   frameworkMatches: FrameworkMatch[];
   reflectionQuestions: string[];
   interpretation: string;
+  locale?: string;
 }): Promise<WorkCard[]> {
   const { conflicts, frameworkMatches, reflectionQuestions, interpretation } = params;
 
@@ -564,7 +582,7 @@ Para cada pregunta de reflexión, genera una tarjeta de trabajo activo con:
 - "openingLine": primera frase del terapeuta al abrir este hilo de trabajo. Cálida, directa, invita a hablar. Máximo 20 palabras. Segunda persona singular. NO empieces con "¡"
 
 Responde SOLO con JSON: { "cards": [ { "id": "1", "title": "...", "subtitle": "...", "openingLine": "..." }, ... ] }
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
@@ -594,6 +612,7 @@ export async function getExplorationResponse(params: {
   stage3Type: Stage3Type;
   currentPhase: ExplorationPhase;
   priorSessions?: PatientSession[];
+  locale?: string;
 }): Promise<{ done: boolean; response: string; nextPhase: ExplorationPhase; insightDetected: boolean }> {
   const { selectedCard, messages, conflicts, frameworkMatches, patient, stage3Type, currentPhase, priorSessions = [] } = params;
 
@@ -765,7 +784,7 @@ Responde SOLO con este JSON:
   "nextPhase": "exploring | deepening | pattern_linking | challenging | insight | consolidating",
   "insightDetected": false
 }
-`;
+${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
@@ -802,6 +821,7 @@ export async function getDeepWorkResponse(params: {
   frameworkMatches: FrameworkMatch[];
   interpretation: string;
   patient: Patient;
+  locale?: string;
 }): Promise<{ done: boolean; response: string; synthesis?: string }> {
   const { selectedCard, messages, conflicts, frameworkMatches, interpretation, patient } = params;
 
@@ -834,7 +854,7 @@ ${forceClose
 }
 
 Responde SOLO con JSON con esa estructura exacta.
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
@@ -864,6 +884,7 @@ export async function generateStrategies(params: {
   interpretation: string;
   gestaltActivity: GestaltActivity | null;
   patient: Patient;
+  locale?: string;
 }): Promise<{ title: string; description: string }[]> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
 
@@ -894,7 +915,7 @@ export async function generateStrategies(params: {
     - Relacionarse directamente con los conflictos específicos del paciente
 
     Responde SOLO con un objeto JSON: { "strategies": [{ "title": "...", "description": "..." }, ...] }
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
@@ -924,6 +945,7 @@ export async function getNextTherapistQuestion(params: {
   sessionIntention?: string;
   forceClose?: boolean;
   priorSessions?: PatientSession[];
+  locale?: string;
 }): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
   const questionHistory = buildSessionHistory(params.priorSessions ?? []);
@@ -1016,7 +1038,7 @@ Responde: { "done": false, "question": "...", "reflection": "...", "bridgeMessag
 ─────────────────────────────────────────────────────────────
 Responde SOLO con un objeto JSON con esa estructura exacta.
 ─────────────────────────────────────────────────────────────
-  `;
+  ${getLanguageInstruction(params.locale)}`;
 
   let content: string;
   try {
