@@ -8,10 +8,11 @@ import { generateId } from '@/lib/id';
 import { ArrowLeft, Plus, X } from '@phosphor-icons/react';
 import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
+import { useLanguage } from '@/contexts/language-context';
 
 /* ── constants ─────────────────────────────────────────── */
 
-const EMOTIONS: DiaryEmotion[] = [
+const EMOTIONS_ES: DiaryEmotion[] = [
   'Alegría', 'Tristeza', 'Ansiedad', 'Calma',
   'Enojo', 'Miedo', 'Esperanza', 'Frustración',
   'Gratitud', 'Soledad', 'Confusión', 'Alivio',
@@ -32,24 +33,7 @@ const EMOTION_COLORS: Record<DiaryEmotion, string> = {
   'Alivio': 'var(--color-sage)',
 };
 
-const INTENSITY_LABELS = ['Muy leve', 'Leve', 'Moderada', 'Intensa', 'Muy intensa'];
-
-const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
-
 /* ── helpers ───────────────────────────────────────────── */
-
-function formatRelativeTime(timestamp: number): string {
-  const diff = Date.now() - timestamp;
-  if (diff <= 0) return 'ahora';
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return mins <= 1 ? 'hace un momento' : `hace ${mins} min`;
-  const hours = Math.floor(diff / 3_600_000);
-  if (hours < 24) return `hace ${hours}h`;
-  const days = Math.floor(diff / 86_400_000);
-  if (days === 1) return 'ayer';
-  return `hace ${days} días`;
-}
 
 function getWeekDays(date: Date): Date[] {
   const d = new Date(date);
@@ -71,8 +55,9 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function formatMonthYear(date: Date): string {
-  return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+function formatMonthYear(date: Date, locale: string): string {
+  const localeMap: Record<string, string> = { es: 'es-ES', en: 'en-US', ru: 'ru-RU' };
+  return date.toLocaleDateString(localeMap[locale] ?? 'es-ES', { month: 'long', year: 'numeric' });
 }
 
 /* ── component ─────────────────────────────────────────── */
@@ -84,7 +69,30 @@ interface DiaryProps {
 
 export function Diary({ patient, onBack }: DiaryProps) {
   const shouldReduce = useReducedMotion();
+  const { t, locale } = useLanguage();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+
+  const INTENSITY_LABELS = [
+    t('diary.intensity.1'),
+    t('diary.intensity.2'),
+    t('diary.intensity.3'),
+    t('diary.intensity.4'),
+    t('diary.intensity.5'),
+  ];
+
+  const WEEKDAY_LABELS = t('diary.weekdays').split(',');
+
+  function formatRelativeTime(timestamp: number): string {
+    const diff = Date.now() - timestamp;
+    if (diff <= 0) return t('diary.time.now');
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 60) return mins <= 1 ? t('diary.time.moment') : t('diary.time.mins').replace('{n}', String(mins));
+    const hours = Math.floor(diff / 3_600_000);
+    if (hours < 24) return t('diary.time.hours').replace('{n}', String(hours));
+    const days = Math.floor(diff / 86_400_000);
+    if (days === 1) return t('diary.time.yesterday');
+    return t('diary.time.days').replace('{n}', String(days));
+  }
 
   useEffect(() => {
     db.getDiaryEntries().then(setEntries);
@@ -182,10 +190,10 @@ export function Diary({ patient, onBack }: DiaryProps) {
         return (
           <div className="space-y-4">
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              ¿Qué emoción describe mejor cómo te sientes?
+              {t('diary.form.step0')}
             </p>
             <div className="flex flex-wrap gap-2">
-              {EMOTIONS.map(em => (
+              {EMOTIONS_ES.map(em => (
                 <motion.button
                   key={em}
                   type="button"
@@ -209,7 +217,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
         return (
           <div className="space-y-4">
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              ¿Qué tan intensa es esta emoción?
+              {t('diary.form.step1')}
             </p>
             <div className="flex flex-wrap gap-2">
               {INTENSITY_LABELS.map((label, i) => {
@@ -239,12 +247,12 @@ export function Diary({ patient, onBack }: DiaryProps) {
         return (
           <div className="space-y-4">
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              ¿Qué crees que lo provocó?
+              {t('diary.form.step2')}
             </p>
             <textarea
               value={draft.triggers || ''}
               onChange={e => setDraft(d => ({ ...d, triggers: e.target.value }))}
-              placeholder="Opcional — escribe lo que quieras"
+              placeholder={t('diary.form.placeholder2')}
               rows={3}
               className="w-full rounded-[var(--radius-inner)] px-4 py-3 text-sm resize-none"
               style={{
@@ -261,12 +269,12 @@ export function Diary({ patient, onBack }: DiaryProps) {
         return (
           <div className="space-y-4">
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              ¿Quieres agregar algo más?
+              {t('diary.form.step3')}
             </p>
             <textarea
               value={draft.note || ''}
               onChange={e => setDraft(d => ({ ...d, note: e.target.value }))}
-              placeholder="Opcional — una nota libre para ti"
+              placeholder={t('diary.form.placeholder3')}
               rows={3}
               className="w-full rounded-[var(--radius-inner)] px-4 py-3 text-sm resize-none"
               style={{
@@ -280,6 +288,12 @@ export function Diary({ patient, onBack }: DiaryProps) {
         );
     }
   };
+
+  const entryCountLabel = entries.length === 0
+    ? t('diary.empty.count')
+    : entries.length === 1
+      ? t('diary.count.one')
+      : t('diary.count.many').replace('{n}', String(entries.length));
 
   /* ── main render ── */
 
@@ -308,7 +322,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
             style={{ color: 'var(--color-muted)' }}
           >
             <ArrowLeft size={16} />
-            <span className="text-sm">Mis sesiones</span>
+            <span className="text-sm">{t('diary.back')}</span>
           </motion.button>
           <p
             className="text-sm font-medium"
@@ -330,12 +344,10 @@ export function Diary({ patient, onBack }: DiaryProps) {
               color: 'var(--color-deep)',
             }}
           >
-            Mi diario
+            {t('diary.title')}
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--color-muted)' }}>
-            {entries.length === 0
-              ? 'Registra cómo te sientes entre sesiones'
-              : `${entries.length} ${entries.length === 1 ? 'registro' : 'registros'}`}
+            {entryCountLabel}
           </p>
         </div>
 
@@ -349,7 +361,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
               className="text-xs font-medium uppercase tracking-widest mb-3"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
             >
-              Últimos 30 días
+              {t('diary.trend.label')}
             </p>
             <div className="space-y-2.5">
               {topEmotions.map(([emotion, count]) => (
@@ -394,7 +406,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
               whileTap={shouldReduce ? {} : { scale: 0.95 }}
               className="text-sm px-2 py-1"
               style={{ color: 'var(--color-muted)' }}
-              aria-label="Semana anterior"
+              aria-label={t('diary.week.prev')}
             >
               <span aria-hidden="true">←</span>
             </motion.button>
@@ -404,7 +416,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
               aria-live="polite"
               aria-atomic="true"
             >
-              {formatMonthYear(weekDays[0])}
+              {formatMonthYear(weekDays[0], locale)}
             </p>
             <motion.button
               type="button"
@@ -413,7 +425,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
               className="text-sm px-2 py-1"
               style={{ color: weekOffset >= 0 ? 'var(--color-border)' : 'var(--color-muted)' }}
               disabled={weekOffset >= 0}
-              aria-label="Semana siguiente"
+              aria-label={t('diary.week.next')}
               aria-disabled={weekOffset >= 0}
             >
               <span aria-hidden="true">→</span>
@@ -502,7 +514,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
                     className="px-4 py-2.5 rounded-[var(--radius-inner)] text-sm"
                     style={{ color: 'var(--color-muted)' }}
                   >
-                    Atrás
+                    {t('diary.form.back')}
                   </motion.button>
                 )}
                 <motion.button
@@ -517,7 +529,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
                     opacity: canProceed() ? 1 : 0.4,
                   }}
                 >
-                  {addStep === 3 ? 'Guardar' : 'Siguiente'}
+                  {addStep === 3 ? t('diary.form.save') : t('diary.form.next')}
                 </motion.button>
               </div>
             </motion.div>
@@ -584,10 +596,10 @@ export function Diary({ patient, onBack }: DiaryProps) {
         {entries.length === 0 && !isAdding && (
           <div className="text-center pt-12 space-y-3">
             <p style={{ color: 'var(--color-muted)' }}>
-              Aún no tienes registros
+              {t('diary.empty.title')}
             </p>
             <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-              Tu diario es un espacio seguro para explorar cómo te sientes entre sesiones
+              {t('diary.empty.body')}
             </p>
           </div>
         )}
@@ -604,7 +616,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
           whileTap={shouldReduce ? {} : { scale: 0.9 }}
           className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center text-white z-50"
           style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
-          aria-label="Registrar cómo me siento"
+          aria-label={t('diary.fab.aria')}
         >
           <Plus size={24} weight="bold" />
         </motion.button>

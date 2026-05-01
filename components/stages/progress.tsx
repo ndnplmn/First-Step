@@ -8,12 +8,7 @@ import {
   PHQ9_SEVERITY_LABELS, PHQ9_SEVERITY_COLORS,
   GAD7_SEVERITY_LABELS, GAD7_SEVERITY_COLORS,
 } from '@/lib/clinical';
-
-/* ── constants ─────────────────────────────────────────── */
-
-const WELLBEING_LABELS: Record<number, string> = {
-  1: 'Muy mal', 2: 'Mal', 3: 'Regular', 4: 'Bien', 5: 'Muy bien',
-};
+import { useLanguage } from '@/contexts/language-context';
 
 const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
   freudiano:    { bg: 'rgba(122,110,158,0.12)', text: 'var(--color-violet)' },
@@ -25,8 +20,9 @@ const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
 
 /* ── helpers ───────────────────────────────────────────── */
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('es-ES', {
+function formatDate(timestamp: number, locale: string): string {
+  const localeMap: Record<string, string> = { es: 'es-ES', en: 'en-US', ru: 'ru-RU' };
+  return new Date(timestamp).toLocaleDateString(localeMap[locale] ?? 'es-ES', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
 }
@@ -41,7 +37,16 @@ interface ProgressProps {
 
 export function Progress({ patient, sessions, onBack }: ProgressProps) {
   const shouldReduce = useReducedMotion();
+  const { t, locale } = useLanguage();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const WELLBEING_LABELS: Record<number, string> = {
+    1: t('progress.wellbeing.1'),
+    2: t('progress.wellbeing.2'),
+    3: t('progress.wellbeing.3'),
+    4: t('progress.wellbeing.4'),
+    5: t('progress.wellbeing.5'),
+  };
 
   // Sort sessions most recent first
   const sorted = [...sessions].sort((a, b) => b.createdAt - a.createdAt);
@@ -79,7 +84,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
             style={{ color: 'var(--color-muted)' }}
           >
             <ArrowLeft size={16} />
-            <span className="text-sm">Mis sesiones</span>
+            <span className="text-sm">{t('progress.back')}</span>
           </motion.button>
           <p
             className="text-sm font-medium"
@@ -101,14 +106,14 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
               color: 'var(--color-deep)',
             }}
           >
-            Tu camino
+            {t('progress.title')}
           </h1>
           <p
             className="mt-1"
             style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-muted)' }}
           >
-            {sorted.length} {sorted.length === 1 ? 'sesión' : 'sesiones'}
-            {avgLabel ? ` · Promedio: ${avgLabel}` : ''}
+            {sorted.length === 1 ? t('progress.sessions.one') : t('progress.sessions.many').replace('{n}', String(sorted.length))}
+            {avgLabel ? ` ${t('progress.avg').replace('{label}', avgLabel)}` : ''}
           </p>
         </div>
 
@@ -129,7 +134,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                     className="text-[10px] font-medium uppercase tracking-wider"
                     style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
                   >
-                    PHQ-9 · Depresión
+                    {t('progress.clinical.phq9')}
                   </p>
                   <p className="text-3xl font-semibold leading-none" style={{ color: c.text }}>
                     {latestPHQ9.score}
@@ -155,7 +160,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                     className="text-[10px] font-medium uppercase tracking-wider"
                     style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
                   >
-                    GAD-7 · Ansiedad
+                    {t('progress.clinical.gad7')}
                   </p>
                   <p className="text-3xl font-semibold leading-none" style={{ color: c.text }}>
                     {latestGAD7.score}
@@ -173,9 +178,9 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
         {/* Timeline */}
         {sorted.length === 0 ? (
           <div className="text-center pt-12 space-y-3">
-            <p style={{ color: 'var(--color-muted)' }}>Aún no tienes sesiones completadas</p>
+            <p style={{ color: 'var(--color-muted)' }}>{t('progress.empty.title')}</p>
             <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-              Cada sesión será un paso en tu camino
+              {t('progress.empty.body')}
             </p>
           </div>
         ) : (
@@ -227,13 +232,13 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                           className="text-sm font-medium"
                           style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)' }}
                         >
-                          Sesión {session.sessionNumber}
+                          {t('progress.session.label').replace('{n}', String(session.sessionNumber))}
                         </p>
                         <p
                           className="text-xs"
                           style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
                         >
-                          {formatDate(session.createdAt)}
+                          {formatDate(session.createdAt, locale)}
                         </p>
                       </div>
                     </motion.button>
@@ -323,7 +328,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                               <div>
                                 <p className="text-xs font-medium uppercase tracking-widest mb-1"
                                   style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                                  Resumen
+                                  {t('progress.section.summary')}
                                 </p>
                                 <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
                                   {session.narrativeSummary}
@@ -334,7 +339,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                               <div>
                                 <p className="text-xs font-medium uppercase tracking-widest mb-1"
                                   style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                                  Interpretación
+                                  {t('progress.section.interpretation')}
                                 </p>
                                 <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
                                   {session.interpretation.text.length > 200
@@ -347,7 +352,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                               <div>
                                 <p className="text-xs font-medium uppercase tracking-widest mb-1"
                                   style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                                  Reflexiones
+                                  {t('progress.section.reflections')}
                                 </p>
                                 {session.reflectionQuestions.map((q, qi) => (
                                   <p key={qi} className="text-sm leading-relaxed pl-3 mt-1"
@@ -362,7 +367,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                               <div>
                                 <p className="text-xs font-medium uppercase tracking-widest mb-2"
                                   style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                                  Evaluación clínica
+                                  {t('progress.section.clinical')}
                                 </p>
                                 <div className="grid grid-cols-2 gap-2">
                                   {session.phq9 && (() => {
@@ -371,7 +376,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                                       <div className="p-3 rounded-xl" style={{ background: c.bg }}>
                                         <p className="text-[10px] font-medium uppercase tracking-wider mb-0.5"
                                           style={{ color: c.text, fontFamily: 'var(--font-mono)' }}>
-                                          PHQ-9 · Depresión
+                                          {t('progress.clinical.phq9')}
                                         </p>
                                         <p className="text-xl font-semibold" style={{ color: c.text }}>
                                           {session.phq9.score}
@@ -389,7 +394,7 @@ export function Progress({ patient, sessions, onBack }: ProgressProps) {
                                       <div className="p-3 rounded-xl" style={{ background: c.bg }}>
                                         <p className="text-[10px] font-medium uppercase tracking-wider mb-0.5"
                                           style={{ color: c.text, fontFamily: 'var(--font-mono)' }}>
-                                          GAD-7 · Ansiedad
+                                          {t('progress.clinical.gad7')}
                                         </p>
                                         <p className="text-xl font-semibold" style={{ color: c.text }}>
                                           {session.gad7.score}

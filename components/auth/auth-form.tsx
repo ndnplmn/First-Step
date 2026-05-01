@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { TendLogo } from '@/components/ui/logo';
 import { db } from '@/lib/db';
+import { useLanguage } from '@/contexts/language-context';
 
 // Inline SVGs for OAuth provider logos — avoids external image dependency
 function GoogleLogo() {
@@ -124,6 +125,7 @@ function ConfirmationScreen({
 
 export function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const reduced = useReducedMotion();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<Mode>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -149,7 +151,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     setError('');
     const { error: err } = await db.signInWithOAuth(provider);
     if (err) {
-      setError('No se pudo iniciar el proceso. Intenta de nuevo.');
+      setError(t('auth.error.oauth'));
       setOauthLoading(null);
     }
     // On success, Supabase redirects — no state update needed here
@@ -163,7 +165,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
       try {
         const { error: err } = await db.resetPassword(email.trim());
         if (err) {
-          setError('No pudimos enviar el correo. Verifica el email ingresado.');
+          setError(t('auth.error.forgot'));
         } else {
           setMode('forgot-sent');
         }
@@ -174,19 +176,19 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     }
 
     if (mode === 'register') {
-      if (password !== confirmPassword) { setError('Las contraseñas no coinciden.'); return; }
-      if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
+      if (password !== confirmPassword) { setError(t('auth.error.passwords')); return; }
+      if (password.length < 6) { setError(t('auth.error.short')); return; }
     }
 
     setLoading(true);
     try {
       if (mode === 'login') {
         const { error: err } = await db.signIn(email, password);
-        if (err) { setError('Email o contraseña incorrectos.'); }
+        if (err) { setError(t('auth.error.login')); }
         else { onAuthSuccess(); }
       } else {
         const { error: err } = await db.signUp(email, password);
-        if (err) { setError(err.message ?? 'No se pudo crear la cuenta.'); }
+        if (err) { setError(err.message ?? t('auth.error.register')); }
         else { setMode('forgot-sent'); }
       }
     } finally {
@@ -199,12 +201,10 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
     return (
       <ConfirmationScreen
         icon="✉️"
-        title="Revisa tu correo"
-        body={isRegFlow
-          ? 'Te enviamos un enlace de confirmación a'
-          : 'Te enviamos un enlace para restablecer tu contraseña a'}
+        title={t('auth.confirm.title')}
+        body={isRegFlow ? t('auth.confirm.body.register') : t('auth.confirm.body.forgot')}
         detail={email}
-        linkLabel="Volver al inicio de sesión"
+        linkLabel={t('auth.confirm.link')}
         onLink={() => reset('login')}
       />
     );
@@ -227,10 +227,10 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
             className="text-[1.75rem] leading-tight mb-2"
             style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', color: 'var(--color-deep)' }}
           >
-            Restablecer contraseña
+            {t('auth.forgot.title')}
           </h2>
           <p className="text-[0.9375rem] leading-snug mb-8" style={{ color: 'var(--color-muted)' }}>
-            Ingresa tu email y te enviamos un enlace para crear una nueva contraseña.
+            {t('auth.forgot.body')}
           </p>
         </>
       ) : (
@@ -239,20 +239,20 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
           className="flex gap-6 mb-8 border-b"
           style={{ borderColor: 'var(--color-border)' }}
         >
-          {(['login', 'register'] as const).map(t => (
+          {(['login', 'register'] as const).map(tab => (
             <button
-              key={t}
+              key={tab}
               role="tab"
-              aria-selected={mode === t}
-              onClick={() => reset(t)}
+              aria-selected={mode === tab}
+              onClick={() => reset(tab)}
               className="bg-transparent border-none pb-3 text-[0.9375rem] cursor-pointer transition-all -mb-px"
               style={{
-                fontWeight: mode === t ? 600 : 400,
-                color: mode === t ? 'var(--color-deep)' : 'var(--color-muted)',
-                borderBottom: mode === t ? '2px solid var(--color-sage)' : '2px solid transparent',
+                fontWeight: mode === tab ? 600 : 400,
+                color: mode === tab ? 'var(--color-deep)' : 'var(--color-muted)',
+                borderBottom: mode === tab ? '2px solid var(--color-sage)' : '2px solid transparent',
               }}
             >
-              {t === 'login' ? 'Entrar' : 'Crear cuenta'}
+              {tab === 'login' ? t('auth.tab.login') : t('auth.tab.register')}
             </button>
           ))}
         </div>
@@ -267,14 +267,14 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
           transition={{ duration: 0.18 }}
         >
           {mode === 'register' && (
-            <Field label="Nombre" type="text" value={name} onChange={setName} placeholder="Tu nombre" />
+            <Field label={t('auth.field.name')} type="text" value={name} onChange={setName} placeholder={t('auth.placeholder.name')} />
           )}
-          <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="tu@email.com" />
+          <Field label={t('auth.field.email')} type="email" value={email} onChange={setEmail} placeholder={t('auth.placeholder.email')} />
           {!isForgot && (
-            <Field label="Contraseña" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
+            <Field label={t('auth.field.password')} type="password" value={password} onChange={setPassword} placeholder={t('auth.placeholder.password')} />
           )}
           {mode === 'register' && (
-            <Field label="Confirmar contraseña" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="••••••••" />
+            <Field label={t('auth.field.confirm')} type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder={t('auth.placeholder.password')} />
           )}
 
           {mode === 'login' && (
@@ -283,7 +283,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
               className="bg-transparent border-none p-0 text-[0.8125rem] cursor-pointer underline block -mt-3 mb-4"
               style={{ color: 'var(--color-muted)' }}
             >
-              ¿Olvidaste tu contraseña?
+              {t('auth.forgot.link')}
             </button>
           )}
 
@@ -293,7 +293,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
               className="bg-transparent border-none p-0 text-[0.8125rem] cursor-pointer underline block mb-4"
               style={{ color: 'var(--color-muted)' }}
             >
-              ← Volver
+              {t('auth.back')}
             </button>
           )}
         </motion.div>
@@ -314,7 +314,7 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
               className="text-xs"
               style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}
             >
-              o continuar con
+              {t('auth.oauth.divider')}
             </span>
             <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
           </div>
@@ -333,11 +333,11 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
               }}
             >
               {oauthLoading === 'google' ? (
-                <span style={{ color: 'var(--color-muted)' }}>Redirigiendo...</span>
+                <span style={{ color: 'var(--color-muted)' }}>{t('auth.oauth.redirecting')}</span>
               ) : (
                 <>
                   <GoogleLogo />
-                  Entrar con Google
+                  {t('auth.oauth.google')}
                 </>
               )}
             </motion.button>
@@ -354,11 +354,11 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
               }}
             >
               {oauthLoading === 'apple' ? (
-                <span style={{ opacity: 0.7 }}>Redirigiendo...</span>
+                <span style={{ opacity: 0.7 }}>{t('auth.oauth.redirecting')}</span>
               ) : (
                 <>
                   <AppleLogo />
-                  Entrar con Apple
+                  {t('auth.oauth.apple')}
                 </>
               )}
             </motion.button>
@@ -380,10 +380,10 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
           }}
         >
           {loading
-            ? 'Un momento...'
+            ? t('auth.submit.loading')
             : isForgot
-              ? 'Enviar enlace'
-              : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+              ? t('auth.submit.forgot')
+              : mode === 'login' ? t('auth.submit.login') : t('auth.submit.register')}
         </motion.button>
       </FloatingBar>
     </div>

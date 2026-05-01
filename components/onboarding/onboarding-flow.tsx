@@ -2,63 +2,65 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useLanguage } from '@/contexts/language-context';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
-const screens = [
-  {
-    title: '¿Qué es Tend?',
-    icon: '🌿',
-    body: 'Un espacio terapéutico guiado por IA, diseñado para ayudarte a explorar y entender lo que sientes. No es un diagnóstico — es un proceso de autoconocimiento.',
-    cta: 'Siguiente',
-  },
-  {
-    title: 'Cómo funciona',
-    icon: null,
-    body: null,
-    cta: 'Siguiente',
-  },
-  {
-    title: 'Tu privacidad',
-    icon: '🔒',
-    body: 'Todo lo que compartas se guarda de forma segura, vinculado únicamente a tu cuenta. Nadie más tiene acceso a tu proceso.',
-    cta: 'Siguiente',
-  },
-  {
-    title: 'Estás listo/a',
-    icon: '✦',
-    body: 'Antes de tu primera sesión, te haremos algunas preguntas para conocerte mejor. Solo una vez.',
-    cta: 'Comenzar →',
-  },
-];
-
-const steps = [
-  {
-    icon: '💬',
-    title: 'Cuéntanos lo que sientes',
-    desc: 'Describe tu conflicto en tus propias palabras. La IA escucha sin juzgar.',
-    preview: { role: 'ai', text: '¿Cuándo empezaste a sentirte así?' },
-  },
-  {
-    icon: '🧭',
-    title: 'Elegimos el enfoque',
-    desc: 'Mapeamos tu situación entre 5 enfoques terapéuticos clásicos.',
-    chips: ['Gestalt', 'Freudiano', 'Adleriano', 'Bioenergético', 'Conductual'],
-  },
-  {
-    icon: '✦',
-    title: 'Trabajo profundo + cierre',
-    desc: 'Una sesión completa: exploración, interpretación personalizada y carta de cierre.',
-    preview: { role: 'letter', text: 'Querida Carmen,\nLo que describes no es debilidad...' },
-  },
-];
-
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const reduced = useReducedMotion();
+  const { t } = useLanguage();
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+
+  const screens = [
+    {
+      title: t('onboarding.screen.0.title'),
+      icon: '🌿',
+      body: t('onboarding.screen.0.body'),
+      cta: t('onboarding.cta.next'),
+    },
+    {
+      title: t('onboarding.screen.1.title'),
+      icon: null,
+      body: null,
+      cta: t('onboarding.cta.next'),
+    },
+    {
+      title: t('onboarding.screen.2.title'),
+      icon: '🔒',
+      body: t('onboarding.screen.2.body'),
+      cta: t('onboarding.cta.next'),
+    },
+    {
+      title: t('onboarding.screen.3.title'),
+      icon: '✦',
+      body: t('onboarding.screen.3.body'),
+      cta: t('onboarding.cta.start'),
+    },
+  ];
+
+  const steps = [
+    {
+      icon: '💬',
+      title: t('onboarding.step.0.title'),
+      desc: t('onboarding.step.0.desc'),
+      preview: { role: 'ai', text: t('onboarding.step.0.preview') },
+    },
+    {
+      icon: '🧭',
+      title: t('onboarding.step.1.title'),
+      desc: t('onboarding.step.1.desc'),
+      chips: ['Gestalt', 'Freudiano', 'Adleriano', 'Bioenergético', 'Conductual'],
+    },
+    {
+      icon: '✦',
+      title: t('onboarding.step.2.title'),
+      desc: t('onboarding.step.2.desc'),
+      preview: { role: 'letter', text: t('onboarding.step.2.preview') },
+    },
+  ];
 
   const advance = () => {
     if (index < screens.length - 1) {
@@ -200,7 +202,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {/* Screen 2 — Privacy note */}
             {index === 2 && (
               <p className="mt-4 text-[0.8125rem] opacity-75" style={{ color: 'var(--color-muted)' }}>
-                Puedes exportar o eliminar tus datos en cualquier momento.
+                {t('onboarding.screen.2.note')}
               </p>
             )}
           </motion.div>

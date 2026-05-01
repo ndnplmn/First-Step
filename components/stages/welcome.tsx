@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { TendMark, TendLogo } from '@/components/ui/logo';
+import { useLanguage } from '@/contexts/language-context';
 
 interface WelcomeProps {
   hasExistingPatients: boolean;
@@ -12,6 +13,7 @@ interface WelcomeProps {
 
 export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomeProps) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
 
   return (
     <div
@@ -40,7 +42,7 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
           fontSize: 'var(--text-body)',
         }}
       >
-        Un espacio íntimo para cuidarte. Guiado, profundo y tuyo.
+        {t('welcome.tagline')}
       </motion.p>
 
       {/* Crisis resources */}
@@ -51,8 +53,7 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
         className="mt-16 text-xs leading-relaxed"
         style={{ color: 'var(--color-muted-soft)', maxWidth: 340 }}
       >
-        Tend no es un servicio de emergencias.
-        Si estás en crisis, llama a una línea de ayuda:{' '}
+        {t('welcome.crisis')}{' '}
         <span style={{ color: 'var(--color-muted)' }}>
           España 024 · México 800 290 0024 · Argentina 135
         </span>
@@ -69,7 +70,7 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
             boxShadow: 'var(--shadow-glow-sage)',
           }}
         >
-          Comenzar sesión
+          {t('welcome.start')}
         </motion.button>
 
         {hasExistingPatients && (
@@ -84,7 +85,7 @@ export function Welcome({ hasExistingPatients, onStart, onContinue }: WelcomePro
               background: 'var(--color-surface)',
             }}
           >
-            Mis sesiones
+            {t('welcome.continue')}
           </motion.button>
         )}
       </FloatingBar>

@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ArrowLeft, SignOut, Trash, Lock, EnvelopeSimple, CheckCircle, Bell, BellSlash } from '@phosphor-icons/react';
 import { db } from '@/lib/db';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { useLanguage } from '@/contexts/language-context';
 
 interface SettingsProps {
   onBack: () => void;
@@ -15,6 +16,7 @@ type FeedbackState = { type: 'success' | 'error'; message: string } | null;
 
 export function Settings({ onBack, onSignOut }: SettingsProps) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
   const [email, setEmail] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -50,28 +52,28 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
     const { error } = await db.resetPassword(email);
     setPasswordLoading(false);
     if (error) {
-      setFeedback({ type: 'error', message: 'No se pudo enviar el enlace. Intenta de nuevo.' });
+      setFeedback({ type: 'error', message: t('settings.password.error') });
     } else {
-      setFeedback({ type: 'success', message: 'Te enviamos un enlace a tu correo para cambiar tu contraseña.' });
+      setFeedback({ type: 'success', message: t('settings.password.success') });
     }
   };
 
   const handleNotificationToggle = async () => {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') {
-      setFeedback({ type: 'success', message: 'Los recordatorios ya están activados. Puedes desactivarlos en los ajustes de tu navegador.' });
+      setFeedback({ type: 'success', message: t('settings.notif.already') });
       return;
     }
     const permission = await Notification.requestPermission();
     setNotifPermission(permission);
     if (permission === 'granted') {
       new Notification('Tend', {
-        body: 'Los recordatorios están activados. Te avisaremos para cuidarte.',
+        body: t('settings.notif.granted'),
         icon: '/favicon.svg',
       });
-      setFeedback({ type: 'success', message: 'Recordatorios activados. Te cuidaremos.' });
+      setFeedback({ type: 'success', message: t('settings.notif.granted') });
     } else {
-      setFeedback({ type: 'error', message: 'Permiso denegado. Puedes activarlo desde los ajustes de tu navegador.' });
+      setFeedback({ type: 'error', message: t('settings.notif.denied') });
     }
   };
 
@@ -80,7 +82,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
     const { error } = await db.deleteAccount();
     if (error) {
       setDeleteLoading(false);
-      setFeedback({ type: 'error', message: 'No se pudo eliminar la cuenta. Intenta de nuevo.' });
+      setFeedback({ type: 'error', message: t('settings.delete.error') });
       setShowDeleteConfirm(false);
     } else {
       onSignOut();
@@ -108,13 +110,13 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
             style={{ color: 'var(--color-muted)' }}
           >
             <ArrowLeft size={16} />
-            <span className="text-sm">Volver</span>
+            <span className="text-sm">{t('settings.back')}</span>
           </motion.button>
           <p
             className="text-sm font-medium"
             style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)' }}
           >
-            Ajustes
+            {t('settings.title')}
           </p>
         </div>
       </header>
@@ -130,7 +132,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               lineHeight: 1.1,
             }}
           >
-            Tu cuenta
+            {t('settings.account')}
           </h1>
         </div>
 
@@ -163,7 +165,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
             className="text-xs font-medium uppercase tracking-widest mb-3"
             style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
           >
-            Idioma
+            {t('settings.language')}
           </p>
           <div
             className="rounded-[var(--radius-card)] overflow-hidden"
@@ -171,7 +173,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
           >
             <div className="px-5 py-4 flex items-center justify-between gap-3">
               <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                Idioma de la aplicación
+                {t('settings.language.label')}
               </p>
               <LanguageSwitcher />
             </div>
@@ -193,7 +195,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                Correo electrónico
+                {t('settings.email')}
               </p>
               <p className="text-sm font-medium truncate" style={{ color: 'var(--color-deep)' }}>
                 {email ?? '—'}
@@ -218,10 +220,10 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                {passwordLoading ? 'Enviando...' : 'Cambiar contraseña'}
+                {passwordLoading ? t('settings.password.sending') : t('settings.password.button')}
               </p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                Te enviaremos un enlace por correo
+                {t('settings.password.subtitle')}
               </p>
             </div>
           </motion.button>
@@ -240,7 +242,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               <SignOut size={16} />
             </div>
             <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-              Cerrar sesión
+              {t('settings.signout')}
             </p>
           </motion.button>
         </div>
@@ -252,7 +254,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               className="text-xs font-medium uppercase tracking-widest mb-3"
               style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
             >
-              Recordatorios
+              {t('settings.notifications')}
             </p>
             <div
               className="rounded-[var(--radius-card)] overflow-hidden"
@@ -276,12 +278,12 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                    {notifPermission === 'granted' ? 'Recordatorios activados' : 'Activar recordatorios'}
+                    {notifPermission === 'granted' ? t('settings.notif.on') : t('settings.notif.off')}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
                     {notifPermission === 'granted'
-                      ? 'Recibirás avisos para cuidarte'
-                      : 'Te avisamos cuando sea hora de tu sesión'}
+                      ? t('settings.notif.on.subtitle')
+                      : t('settings.notif.off.subtitle')}
                   </p>
                 </div>
                 <div
@@ -304,7 +306,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
             className="text-xs font-medium uppercase tracking-widest mb-3"
             style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
           >
-            Zona de riesgo
+            {t('settings.danger')}
           </p>
           <div
             className="rounded-[var(--radius-card)] overflow-hidden"
@@ -324,10 +326,10 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium" style={{ color: 'var(--color-terracotta)' }}>
-                  Eliminar mi cuenta
+                  {t('settings.delete.button')}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                  Borra todos tus datos permanentemente
+                  {t('settings.delete.subtitle')}
                 </p>
               </div>
             </motion.button>
@@ -337,10 +339,10 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
         {/* Legal */}
         <div className="pt-2 space-y-1 text-center">
           <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            Tend · Espacio de cuidado personal
+            {t('settings.footer')}
           </p>
           <p className="text-xs" style={{ color: 'var(--color-muted-soft)' }}>
-            Al usar Tend aceptas que no es un sustituto de la terapia profesional.
+            {t('settings.disclaimer')}
           </p>
         </div>
       </main>
@@ -373,11 +375,10 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
                 className="text-lg font-semibold mb-2"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
               >
-                ¿Estás seguro/a?
+                {t('settings.delete.confirm.title')}
               </p>
               <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                Esta acción eliminará permanentemente tu cuenta, sesiones, diario y todo tu progreso.
-                No se puede deshacer.
+                {t('settings.delete.confirm.body')}
               </p>
               <div className="space-y-3">
                 <motion.button
@@ -388,7 +389,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
                   className="w-full py-4 rounded-2xl font-semibold text-white"
                   style={{ background: 'var(--color-terracotta)', opacity: deleteLoading ? 0.6 : 1 }}
                 >
-                  {deleteLoading ? 'Eliminando...' : 'Sí, eliminar mi cuenta'}
+                  {deleteLoading ? t('settings.delete.confirm.deleting') : t('settings.delete.confirm.yes')}
                 </motion.button>
                 <motion.button
                   type="button"
@@ -398,7 +399,7 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
                   className="w-full py-4 rounded-2xl font-medium text-sm"
                   style={{ border: '1px solid var(--color-border)', color: 'var(--color-muted)' }}
                 >
-                  Cancelar
+                  {t('settings.delete.confirm.cancel')}
                 </motion.button>
               </div>
             </motion.div>
