@@ -24,9 +24,10 @@ interface SessionViewProps {
   priorSessions?: PatientSession[];
   onSessionUpdate: (session: PatientSession) => void;
   onComplete: (action: 'dashboard' | 'record' | 'new-session') => void;
+  onViewSettings?: () => void;
 }
 
-export function SessionView({ patient, session, priorSessions = [], onSessionUpdate, onComplete }: SessionViewProps) {
+export function SessionView({ patient, session, priorSessions = [], onSessionUpdate, onComplete, onViewSettings }: SessionViewProps) {
   const [pendingUpdates, setPendingUpdates] = useState<Partial<PatientSession> | null>(null);
   const [showTransition, setShowTransition] = useState(false);
   const [targetStage, setTargetStage] = useState<number>(session.stage);
@@ -91,7 +92,7 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
         transition: 'background 0.8s ease',
       }}
     >
-      <SessionHeader patient={patient} session={session} />
+      <SessionHeader patient={patient} session={session} onSettings={onViewSettings} />
 
       <main className="flex-1 max-w-[680px] mx-auto w-full px-6 py-8 pb-48">
         {session.stage === 2 && (

@@ -5,7 +5,8 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { VoiceFillButton } from '@/components/ui/voice-fill-button';
-import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { TendLogo } from '@/components/ui/logo';
+import { Gear } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
 const TOTAL_STEPS = 2;
@@ -16,6 +17,7 @@ interface CheckInProps {
   patient: Patient;
   session: PatientSession;
   onComplete: (session: PatientSession) => void;
+  onViewSettings: () => void;
 }
 
 /* ── chip subcomponent ─────────────────────────────────── */
@@ -51,7 +53,7 @@ function Chip({
 
 /* ── main component ────────────────────────────────────── */
 
-export function CheckIn({ patient, session, onComplete }: CheckInProps) {
+export function CheckIn({ patient, session, onComplete, onViewSettings }: CheckInProps) {
   const shouldReduce = useReducedMotion();
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
@@ -142,12 +144,32 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-6 pb-48">
-      {/* Language switcher */}
-      <div className="flex justify-end mb-4">
-        <LanguageSwitcher />
-      </div>
+    <div className="min-h-dvh flex flex-col">
+      {/* Sticky glass header — matches Dashboard */}
+      <header
+        className="sticky top-0 z-40 border-b"
+        style={{
+          background: 'var(--color-glass-heavy)',
+          backdropFilter: 'blur(24px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
+          borderColor: 'var(--color-border)',
+        }}
+      >
+        <div className="max-w-[680px] mx-auto flex items-center justify-between px-6 py-3">
+          <TendLogo size={26} />
+          <motion.button
+            type="button"
+            onClick={onViewSettings}
+            whileTap={shouldReduce ? {} : { scale: 0.97 }}
+            aria-label="Ajustes"
+            style={{ color: 'var(--color-muted)', padding: '0.5rem' }}
+          >
+            <Gear size={18} aria-hidden="true" />
+          </motion.button>
+        </div>
+      </header>
 
+      <div className="flex-1 flex flex-col max-w-[680px] mx-auto w-full px-6 pt-6 pb-48">
       {/* Progress bar */}
       <div className="flex gap-0.5 mb-8">
         {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -301,6 +323,7 @@ export function CheckIn({ patient, session, onComplete }: CheckInProps) {
           )}
         </div>
       </FloatingBar>
+      </div>
     </div>
   );
 }

@@ -302,6 +302,7 @@ export default function Home() {
         patient={activePatient}
         session={activeSession}
         onComplete={handleCheckInComplete}
+        onViewSettings={handleViewSettings}
       />
     );
   }
@@ -326,6 +327,7 @@ export default function Home() {
         priorSessions={priorSessions}
         onSessionUpdate={handleSessionUpdate}
         onComplete={handleComplete}
+        onViewSettings={handleViewSettings}
       />
     );
   }

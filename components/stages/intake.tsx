@@ -84,57 +84,43 @@ const INITIAL_VALUES: IntakeValues = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Wellbeing scale                                                    */
-/* ------------------------------------------------------------------ */
-
-const WELLBEING_OPTIONS = [
-  { value: 1, label: 'Muy mal' },
-  { value: 2, label: 'Mal' },
-  { value: 3, label: 'Regular' },
-  { value: 4, label: 'Bien' },
-  { value: 5, label: 'Muy bien' },
-];
-
-/* ------------------------------------------------------------------ */
 /*  Step definitions                                                   */
 /* ------------------------------------------------------------------ */
 
 // Step order (0-indexed):
-// 0: wellbeing
-// 1: consultationReason  ← first real question (before demographics)
-// 2: name
-// 3: age
-// 4: gender
-// 5: maritalStatus
-// 6: children
-// 7: livingSituation
-// 8: employment
-// 9: supportNetwork
-// 10: previousTherapy
-// 11: medication
-// 12: specificEvents     ← new: structured event narration
-// 13: feelingsSensations ← new: feelings & bodily sensations
+// 0: consultationReason  ← first question (no wellbeing gate)
+// 1: name
+// 2: age
+// 3: gender
+// 4: maritalStatus
+// 5: children
+// 6: livingSituation
+// 7: employment
+// 8: supportNetwork
+// 9: previousTherapy
+// 10: medication
+// 11: specificEvents     ← structured event narration
+// 12: feelingsSensations ← feelings & bodily sensations
 
-const TOTAL_STEPS = 14;
+const TOTAL_STEPS = 13;
 
 function getStepQuestion(step: number, values: IntakeValues): string {
   switch (step) {
-    case 0: return 'Antes de comenzar, ¿cómo te sientes hoy?';
-    case 1: return '¿Qué te trae aquí hoy?';
-    case 2: return '¿Cómo te llamas?';
-    case 3: return values.name ? `¿Cuántos años tienes, ${values.name}?` : '¿Cuántos años tienes?';
-    case 4: return '¿Cómo te identificas?';
-    case 5: return '¿Cuál es tu estado civil?';
-    case 6: return '¿Tienes hijos?';
-    case 7: return '¿Con quién vives?';
-    case 8: return '¿A qué te dedicas?';
-    case 9: return '¿Tienes personas de confianza con quienes puedas hablar?';
-    case 10: return '¿Has ido a terapia antes?';
-    case 11: return '¿Tomas algún medicamento, ya sea psiquiátrico o de cualquier otro tipo?';
-    case 12: return values.name
+    case 0: return '¿Qué te trae aquí hoy?';
+    case 1: return '¿Cómo te llamas?';
+    case 2: return values.name ? `¿Cuántos años tienes, ${values.name}?` : '¿Cuántos años tienes?';
+    case 3: return '¿Cómo te identificas?';
+    case 4: return '¿Cuál es tu estado civil?';
+    case 5: return '¿Tienes hijos?';
+    case 6: return '¿Con quién vives?';
+    case 7: return '¿A qué te dedicas?';
+    case 8: return '¿Tienes personas de confianza con quienes puedas hablar?';
+    case 9: return '¿Has ido a terapia antes?';
+    case 10: return '¿Tomas algún medicamento, ya sea psiquiátrico o de cualquier otro tipo?';
+    case 11: return values.name
       ? `${values.name}, ¿puedes contarme una situación concreta o momento específico relacionado con lo que te trajo aquí?`
       : '¿Puedes contarme una situación concreta o momento específico relacionado con lo que te trajo aquí?';
-    case 13: return values.name
+    case 12: return values.name
       ? `¿Qué sentimientos o sensaciones surgen en tu cuerpo cuando piensas en eso, ${values.name}?`
       : '¿Qué sentimientos o sensaciones surgen en tu cuerpo cuando piensas en eso?';
     default: return '';
@@ -144,52 +130,50 @@ function getStepQuestion(step: number, values: IntakeValues): string {
 function getStepAnswer(
   step: number,
   values: IntakeValues,
-  wellbeing: number | null,
   specificEvents: string,
   feelingsSensations: string,
 ): string | null {
   switch (step) {
-    case 0: return wellbeing ? WELLBEING_OPTIONS.find(o => o.value === wellbeing)?.label ?? null : null;
-    case 1: return values.consultationReason.trim() || null;
-    case 2: return values.name.trim() || null;
-    case 3: return values.age || null;
-    case 4: return values.gender;
-    case 5: return values.maritalStatus;
-    case 6: {
+    case 0: return values.consultationReason.trim() || null;
+    case 1: return values.name.trim() || null;
+    case 2: return values.age || null;
+    case 3: return values.gender;
+    case 4: return values.maritalStatus;
+    case 5: {
       if (values.hasChildren === null) return null;
       if (!values.hasChildren) return 'No';
       return values.childrenCount ? `Sí, ${values.childrenCount}` : 'Sí';
     }
-    case 7: {
+    case 6: {
       if (values.livingSituation === 'Otro' && values.livingSituationDetail.trim()) {
         return values.livingSituationDetail.trim();
       }
       return values.livingSituation;
     }
-    case 8: {
+    case 7: {
       const parts: string[] = [values.employment];
       if (values.occupation.trim()) parts.push(values.occupation.trim());
       return parts.join(' · ');
     }
-    case 9: {
+    case 8: {
       if (values.hasSupportNetwork === null) return null;
       if (!values.hasSupportNetwork) return 'No';
       return values.supportDescription.trim() ? `Sí — ${values.supportDescription.trim()}` : 'Sí';
     }
-    case 10: {
+    case 9: {
       if (values.previousTherapy === null) return null;
       if (!values.previousTherapy) return 'No';
       return values.previousTherapyDetail.trim() ? `Sí — ${values.previousTherapyDetail.trim()}` : 'Sí';
     }
-    case 11: {
+    case 10: {
       if (values.takingMedication === null) return null;
       if (!values.takingMedication) return 'No';
       return values.medicationDetail.trim() ? `Sí — ${values.medicationDetail.trim()}` : 'Sí';
     }
-    case 12: return specificEvents
+    case 11: return specificEvents
       ? specificEvents.slice(0, 80) + (specificEvents.length > 80 ? '...' : '')
       : null;
-    case 13: return feelingsSensations
+    case 12: return feelingsSensations
       ? feelingsSensations.slice(0, 80) + (feelingsSensations.length > 80 ? '...' : '')
       : null;
     default: return null;
@@ -199,25 +183,23 @@ function getStepAnswer(
 function canProceed(
   step: number,
   values: IntakeValues,
-  wellbeing: number | null,
   specificEvents: string,
   feelingsSensations: string,
 ): boolean {
   switch (step) {
-    case 0: return wellbeing !== null;
-    case 1: return values.consultationReason.trim().length > 0;
-    case 2: return values.name.trim().length > 0;
-    case 3: { const n = parseInt(values.age); return n >= 18 && n < 120; }
+    case 0: return values.consultationReason.trim().length > 0;
+    case 1: return values.name.trim().length > 0;
+    case 2: { const n = parseInt(values.age); return n >= 18 && n < 120; }
+    case 3: return true;
     case 4: return true;
-    case 5: return true;
-    case 6: return values.hasChildren !== null;
-    case 7: return values.livingSituation !== 'Otro' || values.livingSituationDetail.trim().length > 0;
-    case 8: return true;
-    case 9: return values.hasSupportNetwork !== null;
-    case 10: return values.previousTherapy !== null;
-    case 11: return values.takingMedication !== null;
-    case 12: return specificEvents.trim().length >= 20;
-    case 13: return feelingsSensations.trim().length >= 10;
+    case 5: return values.hasChildren !== null;
+    case 6: return values.livingSituation !== 'Otro' || values.livingSituationDetail.trim().length > 0;
+    case 7: return true;
+    case 8: return values.hasSupportNetwork !== null;
+    case 9: return values.previousTherapy !== null;
+    case 10: return values.takingMedication !== null;
+    case 11: return specificEvents.trim().length >= 20;
+    case 12: return feelingsSensations.trim().length >= 10;
     default: return false;
   }
 }
@@ -357,13 +339,10 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<IntakeValues>(INITIAL_VALUES);
-  const [wellbeing, setWellbeing] = useState<number | null>(null);
 
-  // New steps state
   const [specificEvents, setSpecificEvents] = useState('');
   const [feelingsSensations, setFeelingsSensations] = useState('');
 
-  // AI synthesis state
   const [intakeProcessing, setIntakeProcessing] = useState<'idle' | 'loading' | 'ready'>('idle');
   const [intakeSynthesis, setIntakeSynthesis] = useState<IntakeSynthesis | null>(null);
 
@@ -378,7 +357,6 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
     setValues(prev => ({ ...prev, [key]: val }));
   };
 
-  // Scroll to bottom when step changes to show latest question
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -386,9 +364,8 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   }, [step, intakeProcessing]);
 
   const handleNext = () => {
-    if (!canProceed(step, values, wellbeing, specificEvents, feelingsSensations)) return;
+    if (!canProceed(step, values, specificEvents, feelingsSensations)) return;
     if (step === TOTAL_STEPS - 1) {
-      // Step 13: trigger AI synthesis instead of direct submit
       handleIntakeAISynthesis();
     } else {
       setStep(s => s + 1);
@@ -397,12 +374,11 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
 
   const handleBack = () => {
     if (intakeProcessing === 'ready') {
-      // From result card, go back to step 13
       setIntakeProcessing('idle');
-      setStep(13);
+      setStep(12);
       return;
     }
-    if (intakeProcessing === 'loading') return; // block during loading
+    if (intakeProcessing === 'loading') return;
     if (step === 0) {
       onBack();
     } else {
@@ -451,7 +427,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   };
 
   const handleIntakeAISynthesis = async () => {
-    setStep(14); // advance past all form steps so step 13 renders as a bubble
+    setStep(13); // advance past all form steps so step 12 renders as a bubble
     setIntakeProcessing('loading');
     try {
       const patient = await buildPatient();
@@ -465,9 +441,8 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       setIntakeSynthesis(result);
       setIntakeProcessing('ready');
     } catch {
-      // Fallback: proceed without pre-synthesized conflicts
       setIntakeProcessing('idle');
-      setStep(13);
+      setStep(12);
       handleSubmitWithSynthesis(null);
     }
   };
@@ -494,7 +469,6 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       interpretation: null,
       closure: null,
       unmappedPhrases,
-      wellbeingBefore: wellbeing ?? undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -523,7 +497,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
     );
   }
 
-  const isReady = canProceed(step, values, wellbeing, specificEvents, feelingsSensations);
+  const isReady = canProceed(step, values, specificEvents, feelingsSensations);
 
   return (
     <div className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-6 pb-48">
@@ -561,7 +535,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto">
         {/* Previous answered steps as bubbles */}
         {Array.from({ length: Math.min(step, TOTAL_STEPS) }).map((_, i) => {
-          const answer = getStepAnswer(i, values, wellbeing, specificEvents, feelingsSensations);
+          const answer = getStepAnswer(i, values, specificEvents, feelingsSensations);
           if (!answer) return null;
           return (
             <motion.div
@@ -594,6 +568,17 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
               transition={{ type: 'spring', stiffness: 280, damping: 22 }}
               className="space-y-5"
             >
+              {/* Welcome message shown only on first step */}
+              {step === 0 && (
+                <p
+                  className="text-sm leading-relaxed"
+                  style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-display)' }}
+                >
+                  Bienvenido/a. Este es un espacio seguro, sin juicios.{' '}
+                  No hay respuestas correctas ni incorrectas.
+                </p>
+              )}
+
               <p
                 className="text-xl leading-snug"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
@@ -604,9 +589,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
               <StepInput
                 step={step}
                 values={values}
-                wellbeing={wellbeing}
                 set={set}
-                setWellbeing={setWellbeing}
                 reduce={shouldReduce}
                 specificEvents={specificEvents}
                 setSpecificEvents={setSpecificEvents}
@@ -634,7 +617,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           </motion.div>
         )}
 
-        {/* AI Result — Camino A */}
+        {/* AI Result */}
         {intakeProcessing === 'ready' && intakeSynthesis && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
@@ -642,7 +625,6 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
             transition={{ duration: 0.5 }}
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '1rem' }}
           >
-            {/* Narrative summary card */}
             <div
               style={{
                 padding: '1.5rem',
@@ -695,7 +677,6 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
               )}
             </div>
 
-            {/* CTA */}
             <p
               style={{
                 fontFamily: 'var(--font-display)',
@@ -729,7 +710,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
             </motion.button>
             <button
               type="button"
-              onClick={() => { setIntakeProcessing('idle'); setStep(13); }}
+              onClick={() => { setIntakeProcessing('idle'); setStep(12); }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -759,7 +740,6 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
         </motion.button>
       </FloatingBar>
 
-      {/* Chapter transition overlay */}
       <AnimatePresence>
         {showTransition && (
           <ChapterTransition
@@ -779,9 +759,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
 function StepInput({
   step,
   values,
-  wellbeing,
   set,
-  setWellbeing,
   reduce,
   specificEvents,
   setSpecificEvents,
@@ -790,9 +768,7 @@ function StepInput({
 }: {
   step: number;
   values: IntakeValues;
-  wellbeing: number | null;
   set: <K extends keyof IntakeValues>(key: K, val: IntakeValues[K]) => void;
-  setWellbeing: (v: number) => void;
   reduce: boolean | null;
   specificEvents: string;
   setSpecificEvents: (v: string) => void;
@@ -807,21 +783,6 @@ function StepInput({
   switch (step) {
     case 0:
       return (
-        <div className="flex flex-wrap gap-3">
-          {WELLBEING_OPTIONS.map(opt => (
-            <Chip
-              key={opt.value}
-              label={opt.label}
-              active={wellbeing === opt.value}
-              onClick={() => setWellbeing(opt.value)}
-              reduce={reduce}
-            />
-          ))}
-        </div>
-      );
-
-    case 1:
-      return (
         <TextArea
           value={values.consultationReason}
           onChange={v => set('consultationReason', v)}
@@ -831,7 +792,7 @@ function StepInput({
         />
       );
 
-    case 2:
+    case 1:
       return (
         <TextInput
           value={values.name}
@@ -841,7 +802,7 @@ function StepInput({
         />
       );
 
-    case 3: {
+    case 2: {
       const ageNum = parseInt(values.age);
       const isTooYoung = values.age.length > 0 && !isNaN(ageNum) && ageNum < 18;
       return (
@@ -870,7 +831,7 @@ function StepInput({
       );
     }
 
-    case 4:
+    case 3:
       return (
         <div className="flex flex-wrap gap-3">
           {genders.map(g => (
@@ -879,7 +840,7 @@ function StepInput({
         </div>
       );
 
-    case 5:
+    case 4:
       return (
         <div className="flex flex-wrap gap-3">
           {statuses.map(s => (
@@ -888,7 +849,7 @@ function StepInput({
         </div>
       );
 
-    case 6:
+    case 5:
       return (
         <div className="space-y-3">
           <YesNo value={values.hasChildren} onChange={v => set('hasChildren', v)} reduce={reduce} />
@@ -915,7 +876,7 @@ function StepInput({
         </div>
       );
 
-    case 7:
+    case 6:
       return (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-3">
@@ -944,7 +905,7 @@ function StepInput({
         </div>
       );
 
-    case 8:
+    case 7:
       return (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-3">
@@ -960,7 +921,7 @@ function StepInput({
         </div>
       );
 
-    case 9:
+    case 8:
       return (
         <div className="space-y-3">
           <YesNo value={values.hasSupportNetwork} onChange={v => set('hasSupportNetwork', v)} reduce={reduce} />
@@ -985,7 +946,7 @@ function StepInput({
         </div>
       );
 
-    case 10:
+    case 9:
       return (
         <div className="space-y-3">
           <YesNo value={values.previousTherapy} onChange={v => set('previousTherapy', v)} reduce={reduce} />
@@ -1010,7 +971,7 @@ function StepInput({
         </div>
       );
 
-    case 11:
+    case 10:
       return (
         <div className="space-y-3">
           <YesNo value={values.takingMedication} onChange={v => set('takingMedication', v)} reduce={reduce} />
@@ -1035,7 +996,7 @@ function StepInput({
         </div>
       );
 
-    case 12:
+    case 11:
       return (
         <TextArea
           value={specificEvents}
@@ -1046,7 +1007,7 @@ function StepInput({
         />
       );
 
-    case 13:
+    case 12:
       return (
         <TextArea
           value={feelingsSensations}

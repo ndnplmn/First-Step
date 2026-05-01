@@ -1,12 +1,19 @@
+'use client';
+
+import { motion, useReducedMotion } from 'motion/react';
+import { Gear } from '@phosphor-icons/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { ChapterProgress } from './chapter-progress';
 
 interface SessionHeaderProps {
   patient: Patient;
   session: PatientSession;
+  onSettings?: () => void;
 }
 
-export function SessionHeader({ patient, session }: SessionHeaderProps) {
+export function SessionHeader({ patient, session, onSettings }: SessionHeaderProps) {
+  const shouldReduce = useReducedMotion();
+
   return (
     <header
       className="sticky top-0 z-40"
@@ -24,7 +31,29 @@ export function SessionHeader({ patient, session }: SessionHeaderProps) {
         >
           {patient.name}
         </p>
-        <ChapterProgress currentStage={session.stage} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <ChapterProgress currentStage={session.stage} />
+          {onSettings && (
+            <motion.button
+              type="button"
+              onClick={onSettings}
+              whileTap={shouldReduce ? {} : { scale: 0.92 }}
+              aria-label="Ajustes"
+              style={{
+                color: 'var(--color-muted)',
+                padding: '0.25rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.6,
+              }}
+            >
+              <Gear size={15} aria-hidden="true" />
+            </motion.button>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -157,6 +157,27 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
           </AnimatePresence>
         </div>
 
+        {/* Language section — first because it affects reading everything else */}
+        <div>
+          <p
+            className="text-xs font-medium uppercase tracking-widest mb-3"
+            style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+          >
+            Idioma
+          </p>
+          <div
+            className="rounded-[var(--radius-card)] overflow-hidden"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <div className="px-5 py-4 flex items-center justify-between gap-3">
+              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                Idioma de la aplicación
+              </p>
+              <LanguageSwitcher />
+            </div>
+          </div>
+        </div>
+
         {/* Account section */}
         <div
           className="rounded-[var(--radius-card)] overflow-hidden"
@@ -222,27 +243,6 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
               Cerrar sesión
             </p>
           </motion.button>
-        </div>
-
-        {/* Language section */}
-        <div>
-          <p
-            className="text-xs font-medium uppercase tracking-widest mb-3"
-            style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
-          >
-            Idioma
-          </p>
-          <div
-            className="rounded-[var(--radius-card)] overflow-hidden"
-            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-          >
-            <div className="px-5 py-4 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                Idioma de la aplicación
-              </p>
-              <LanguageSwitcher />
-            </div>
-          </div>
         </div>
 
         {/* Notifications section */}
