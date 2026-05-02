@@ -1,7 +1,8 @@
 'use client';
 
-import { motion, useReducedMotion } from 'motion/react';
-import { Eye, BookOpen, Path, Plus, SignOut, Gear, Flame } from '@phosphor-icons/react';
+import { useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import { Eye, BookOpen, Path, Plus, SignOut, Gear, Flame, Trash } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
 import { TendLogo } from '@/components/ui/logo';
 import { computeStreak, streakLabel } from '@/lib/streak';
@@ -19,6 +20,7 @@ interface DashboardProps {
   onNew: () => void;
   onSignOut: () => void;
   onViewSettings: () => void;
+  onDeleteSession?: (sessionId: string) => void;
   showMigrationPrompt?: boolean;
   onMigrate?: () => void;
   onDismissMigration?: () => void;
@@ -35,12 +37,14 @@ export function Dashboard({
   onNew,
   onSignOut,
   onViewSettings,
+  onDeleteSession,
   showMigrationPrompt,
   onMigrate,
   onDismissMigration,
 }: DashboardProps) {
   const shouldReduce = useReducedMotion();
   const { t } = useLanguage();
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const STAGE_NAMES: Record<number, string> = {
     1: t('dashboard.stage.1'),
@@ -271,35 +275,89 @@ export function Dashboard({
             <p className="text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
               {t('dashboard.in_progress')}
             </p>
-            <motion.div
-              role="button"
-              tabIndex={0}
-              onClick={onStartSession}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStartSession(); } }}
-              whileHover={shouldReduce ? {} : { y: -2 }}
-              whileTap={shouldReduce ? {} : { scale: 0.99 }}
-              className="w-full p-5 rounded-[var(--radius-card)] text-left cursor-pointer"
+            <div
+              className="w-full rounded-[var(--radius-card)]"
               style={{
                 background: 'var(--color-surface)',
                 boxShadow: 'var(--shadow-card)',
                 borderLeft: '3px solid var(--color-sage)',
               }}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium" style={{ color: 'var(--color-deep)', fontSize: '1rem' }}>
-                    {t('dashboard.session').replace('{n}', String(activeSession.sessionNumber))}
-                  </p>
-                  <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                    {STAGE_NAMES[activeSession.stage] ?? t('dashboard.stage.ongoing')} · {formatRelativeTime(activeSession.updatedAt)}
-                  </p>
+              <motion.div
+                role="button"
+                tabIndex={0}
+                onClick={onStartSession}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStartSession(); } }}
+                whileHover={shouldReduce ? {} : { y: -1 }}
+                whileTap={shouldReduce ? {} : { scale: 0.99 }}
+                className="w-full p-5 text-left cursor-pointer"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium" style={{ color: 'var(--color-deep)', fontSize: '1rem' }}>
+                      {t('dashboard.session').replace('{n}', String(activeSession.sessionNumber))}
+                    </p>
+                    <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                      {STAGE_NAMES[activeSession.stage] ?? t('dashboard.stage.ongoing')} · {formatRelativeTime(activeSession.updatedAt)}
+                    </p>
+                  </div>
+                  <ChapterProgress currentStage={activeSession.stage} />
                 </div>
-                <ChapterProgress currentStage={activeSession.stage} />
-              </div>
-              <p className="text-sm mt-3 font-medium" style={{ color: 'var(--color-sage)' }}>
-                {t('dashboard.continue')}
-              </p>
-            </motion.div>
+                <p className="text-sm mt-3 font-medium" style={{ color: 'var(--color-sage)' }}>
+                  {t('dashboard.continue')}
+                </p>
+              </motion.div>
+
+              {/* Delete row */}
+              <AnimatePresence>
+                {confirmDeleteId === activeSession.id ? (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex items-center justify-between px-5 py-3 border-t"
+                    style={{ borderColor: 'var(--color-border)' }}
+                  >
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                      {t('dashboard.delete.confirm')}
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="text-xs px-3 py-1 rounded-lg"
+                        style={{ color: 'var(--color-muted)', background: 'var(--color-border)' }}
+                      >
+                        No
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { onDeleteSession?.(activeSession.id); setConfirmDeleteId(null); }}
+                        className="text-xs px-3 py-1 rounded-lg text-white"
+                        style={{ background: 'var(--color-terracotta)' }}
+                      >
+                        {t('dashboard.delete.aria')}
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    type="button"
+                    onClick={() => setConfirmDeleteId(activeSession.id)}
+                    className="w-full flex items-center gap-2 px-5 py-2.5 border-t"
+                    style={{
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-muted)',
+                      background: 'none',
+                    }}
+                    aria-label={t('dashboard.delete.aria')}
+                  >
+                    <Trash size={13} />
+                    <span className="text-xs">{t('dashboard.delete.aria')}</span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
 

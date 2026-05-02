@@ -151,6 +151,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'dashboard.quick.diary': 'Mi diario',
     'dashboard.quick.progress': 'Tu camino',
     'dashboard.history': 'Historial',
+    'dashboard.delete.aria': 'Eliminar sesión',
+    'dashboard.delete.confirm': '¿Eliminar esta sesión incompleta?',
     'dashboard.session': 'Sesión {n}',
     'dashboard.time.moment': 'hace un momento',
     'dashboard.time.hours': 'hace {n} horas',
@@ -192,6 +194,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'auth.error.register': 'No se pudo crear la cuenta.',
 
     // Onboarding
+    'onboarding.lang.title': 'Elige tu idioma',
+    'onboarding.lang.subtitle': 'Puedes cambiarlo después en ajustes',
     'onboarding.screen.0.title': '¿Qué es Tend?',
     'onboarding.screen.0.body': 'Un espacio terapéutico guiado por IA, diseñado para ayudarte a explorar y entender lo que sientes. No es un diagnóstico — es un proceso de autoconocimiento.',
     'onboarding.screen.1.title': 'Cómo funciona',
@@ -509,6 +513,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'dashboard.quick.diary': 'My diary',
     'dashboard.quick.progress': 'Your journey',
     'dashboard.history': 'History',
+    'dashboard.delete.aria': 'Delete session',
+    'dashboard.delete.confirm': 'Delete this incomplete session?',
     'dashboard.session': 'Session {n}',
     'dashboard.time.moment': 'just now',
     'dashboard.time.hours': '{n} hours ago',
@@ -550,6 +556,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'auth.error.register': 'Could not create the account.',
 
     // Onboarding
+    'onboarding.lang.title': 'Choose your language',
+    'onboarding.lang.subtitle': 'You can change it later in settings',
     'onboarding.screen.0.title': 'What is Tend?',
     'onboarding.screen.0.body': 'An AI-guided therapeutic space designed to help you explore and understand what you feel. It\'s not a diagnosis — it\'s a journey of self-discovery.',
     'onboarding.screen.1.title': 'How it works',
@@ -867,6 +875,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'dashboard.quick.diary': 'Мой дневник',
     'dashboard.quick.progress': 'Ваш путь',
     'dashboard.history': 'История',
+    'dashboard.delete.aria': 'Удалить сессию',
+    'dashboard.delete.confirm': 'Удалить эту незавершённую сессию?',
     'dashboard.session': 'Сессия {n}',
     'dashboard.time.moment': 'только что',
     'dashboard.time.hours': '{n} часа назад',
@@ -908,6 +918,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'auth.error.register': 'Не удалось создать аккаунт.',
 
     // Onboarding
+    'onboarding.lang.title': 'Выберите язык',
+    'onboarding.lang.subtitle': 'Вы можете изменить его позже в настройках',
     'onboarding.screen.0.title': 'Что такое Tend?',
     'onboarding.screen.0.body': 'Терапевтическое пространство под руководством ИИ, созданное чтобы помочь вам исследовать и понять свои чувства. Это не диагностика — это путь самопознания.',
     'onboarding.screen.1.title': 'Как это работает',

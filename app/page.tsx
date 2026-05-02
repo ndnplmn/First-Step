@@ -245,6 +245,12 @@ export default function Home() {
     }
   };
 
+  const handleDeleteSession = async (sessionId: string) => {
+    await db.deleteSession(sessionId);
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (activeSession?.id === sessionId) setActiveSession(null);
+  };
+
   const handleSignOut = async () => {
     await db.signOut();
   };
@@ -282,6 +288,7 @@ export default function Home() {
         onViewSettings={handleViewSettings}
         onNew={() => handlePatientSelect(activePatient)}
         onSignOut={handleSignOut}
+        onDeleteSession={handleDeleteSession}
         showMigrationPrompt={showMigrationPrompt}
         onMigrate={handleMigrate}
         onDismissMigration={() => setShowMigrationPrompt(false)}

@@ -3,14 +3,22 @@
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useLanguage } from '@/contexts/language-context';
+import type { Locale } from '@/lib/i18n';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
+const LANGUAGE_OPTIONS: { locale: Locale; label: string; native: string; flag: string }[] = [
+  { locale: 'es', label: 'Español',  native: 'Spanish', flag: '🇪🇸' },
+  { locale: 'en', label: 'English',  native: 'English', flag: '🇬🇧' },
+  { locale: 'ru', label: 'Русский',  native: 'Russian', flag: '🇷🇺' },
+];
+
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const reduced = useReducedMotion();
-  const { t } = useLanguage();
+  const { t, locale, setLocale } = useLanguage();
+  const [langChosen, setLangChosen] = useState(false);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
 
@@ -62,6 +70,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     },
   ];
 
+  const handlePickLanguage = (picked: Locale) => {
+    setLocale(picked);
+    setTimeout(() => setLangChosen(true), 180);
+  };
+
   const advance = () => {
     if (index < screens.length - 1) {
       setDirection(1);
@@ -73,6 +86,78 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const screen = screens[index];
 
+  // ── Language picker screen ──────────────────────────────
+  if (!langChosen) {
+    return (
+      <div
+        className="min-h-dvh max-w-[680px] mx-auto px-6 flex flex-col justify-center"
+        style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(61,107,71,0.08) 0%, transparent 60%)' }}
+      >
+        <motion.div
+          initial={reduced ? {} : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <p
+            className="text-[2rem] leading-tight mb-2"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontStyle: 'italic',
+              color: 'var(--color-deep)',
+            }}
+          >
+            {/* Always shown in the three languages since the user hasn't chosen yet */}
+            Elige tu idioma
+          </p>
+          <p className="text-sm mb-10" style={{ color: 'var(--color-muted)' }}>
+            Choose your language · Выберите язык
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {LANGUAGE_OPTIONS.map(opt => (
+              <motion.button
+                key={opt.locale}
+                type="button"
+                onClick={() => handlePickLanguage(opt.locale)}
+                whileTap={reduced ? {} : { scale: 0.98 }}
+                className="flex items-center gap-4 px-5 py-4 rounded-[var(--radius-card)] text-left transition-all"
+                style={{
+                  background: locale === opt.locale ? 'rgba(107,127,110,0.12)' : 'var(--color-surface)',
+                  boxShadow: locale === opt.locale ? 'var(--shadow-glow-sage)' : 'var(--shadow-card)',
+                  border: locale === opt.locale ? '1.5px solid var(--color-sage)' : '1.5px solid transparent',
+                }}
+              >
+                <span className="text-2xl leading-none">{opt.flag}</span>
+                <div>
+                  <p className="font-semibold text-base" style={{ color: 'var(--color-deep)' }}>
+                    {opt.label}
+                  </p>
+                </div>
+                {locale === opt.locale && (
+                  <div
+                    className="ml-auto w-2 h-2 rounded-full"
+                    style={{ background: 'var(--color-sage)' }}
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
+
+          <motion.button
+            type="button"
+            onClick={() => setLangChosen(true)}
+            whileTap={reduced ? {} : { scale: 0.97 }}
+            className="w-full mt-8 py-4 rounded-2xl font-semibold text-white tracking-wide"
+            style={{ background: 'var(--color-deep)' }}
+          >
+            {t('onboarding.cta.next')}
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── Main onboarding screens ─────────────────────────────
   return (
     <div
       className="min-h-dvh max-w-[680px] mx-auto px-6 flex flex-col"

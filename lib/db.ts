@@ -157,6 +157,11 @@ export const db = {
     });
   },
 
+  async deleteSession(sessionId: string): Promise<void> {
+    const supabase = createClient();
+    await supabase.from('sessions').delete().eq('id', sessionId);
+  },
+
   async getActiveSession(): Promise<PatientSession | null> {
     const sessions = await this.getSessions();
     return sessions.find(s => s.stage < 6) ?? null;
