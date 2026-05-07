@@ -60,7 +60,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       icon: '🧭',
       title: t('onboarding.step.1.title'),
       desc: t('onboarding.step.1.desc'),
-      chips: ['Gestalt', 'Freudiano', 'Adleriano', 'Bioenergético', 'Conductual'],
+      chips: t('onboarding.frameworks').split(','),
     },
     {
       icon: '✦',

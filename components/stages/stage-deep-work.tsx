@@ -9,17 +9,6 @@ import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowRight, ArrowCounterClockwise } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
-const LOADING_PHRASES = [
-  'Pensando en lo que más importa ahora...',
-  'Eligiendo los hilos más vivos...',
-  'Preparando algo concreto para ti...',
-];
-
-const WORKING_PHRASES = [
-  'Escuchando...',
-  'Pensando contigo...',
-  'Un momento...',
-];
 
 type DeepWorkView = 'loading' | 'selecting' | 'working' | 'done';
 
@@ -32,7 +21,18 @@ interface StageDeepWorkProps {
 
 export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDeepWorkProps) {
   const shouldReduce = useReducedMotion();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
+
+  const LOADING_PHRASES = [
+    t('stage2.cards.loading.1'),
+    t('stage2.cards.loading.2'),
+    t('stage2.cards.loading.3'),
+  ];
+  const WORKING_PHRASES = [
+    t('stage3.thinking.1'),
+    t('stage3.thinking.2'),
+    t('stage3.thinking.3'),
+  ];
 
   const [view, setView] = useState<DeepWorkView>(() => {
     if (session.deepWork?.synthesis) return 'done';
@@ -162,12 +162,45 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
     onAdvance({ selectedCard, messages, synthesis });
   };
 
+  const handleEarlyClose = async () => {
+    if (!selectedCard || isThinking) return;
+    setIsThinking(true);
+    try {
+      const result = await getDeepWorkResponse({
+        selectedCard,
+        messages,
+        conflicts: session.conflicts,
+        frameworkMatches: session.frameworkMatches,
+        interpretation: session.interpretation?.text ?? '',
+        patient,
+        locale,
+        earlyClose: true,
+      });
+      if (result.synthesis) {
+        setSynthesis(result.synthesis);
+        const deepWork: DeepWorkSession = {
+          selectedCard,
+          messages,
+          synthesis: result.synthesis,
+        };
+        onUpdate({ deepWork });
+        setView('done');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  const patientTurns = messages.filter(m => m.role === 'patient').length;
+
   return (
     <div className="space-y-8 pb-48">
       {/* Header */}
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Fase 3 — Integración
+          {t('stage3.label')} — {t('stage3.title')}
         </p>
         <AnimatePresence mode="wait">
           {view === 'loading' && (
@@ -176,7 +209,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
               exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <h2 className="text-[40px] leading-tight breathe"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
-                Preparando el trabajo
+                {t('stage2.cards.loading_title')}
               </h2>
             </motion.div>
           )}
@@ -186,10 +219,10 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
               exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
               <h2 className="text-[40px] leading-tight breathe"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
-                ¿Qué quieres resolver hoy?
+                {t('stage2.title.cards')}
               </h2>
               <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                Elige uno. Lo trabajaremos juntos ahora mismo.
+                {t('stage2.cards.subtitle')}
               </p>
             </motion.div>
           )}
@@ -220,13 +253,13 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
         <div className="rounded-[var(--radius-card)] p-5 text-center space-y-3"
           style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Hubo un problema al preparar el trabajo.
+            {t('stage6.error')}
           </p>
           <button type="button" onClick={loadCards}
             className="flex items-center gap-2 mx-auto text-sm font-medium"
             style={{ color: 'var(--color-sage)' }}>
             <ArrowCounterClockwise size={14} />
-            Intentar de nuevo
+            {t('stage6.retry')}
           </button>
         </div>
       )}
@@ -259,7 +292,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
                   {card.subtitle}
                 </p>
                 <p className="text-xs font-medium mt-2" style={{ color: 'var(--color-sage)' }}>
-                  Trabajar esto →
+                  {t('stage2.cards.cta')}
                 </p>
               </motion.button>
             ))}
@@ -315,7 +348,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
             }}>
             <p className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)' }}>
-              Lo que veo en lo que exploraste
+              {t('stage3.synthesis.label')}
             </p>
             <p className="text-base leading-relaxed"
               style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}>
@@ -342,7 +375,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
                   handleSend();
                 }
               }}
-              placeholder="Escribe tu respuesta aquí…"
+              placeholder={t('stage2.input.reply')}
               rows={3}
               className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
@@ -357,14 +390,24 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
       <FloatingBar visible={true}>
         <div className="space-y-3">
           {view === 'working' && !isThinking && (
-            <motion.button type="button"
-              onClick={handleSend}
-              disabled={input.trim().length < 2}
-              whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 tracking-wide"
-              style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
-              Responder <ArrowRight size={16} />
-            </motion.button>
+            <>
+              <motion.button type="button"
+                onClick={handleSend}
+                disabled={input.trim().length < 2}
+                whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                className="w-full py-4 rounded-2xl font-semibold text-white disabled:opacity-40 flex items-center justify-center gap-2 tracking-wide"
+                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
+                {t('stage3.send')} <ArrowRight size={16} />
+              </motion.button>
+              {patientTurns >= 3 && (
+                <button type="button"
+                  onClick={handleEarlyClose}
+                  className="w-full py-2.5 text-sm text-center"
+                  style={{ color: 'var(--color-muted)' }}>
+                  {t('stage3.end.early')}
+                </button>
+              )}
+            </>
           )}
           {view === 'done' && synthesis && (
             <motion.button type="button"
@@ -372,7 +415,7 @@ export function StageDeepWork({ session, patient, onAdvance, onUpdate }: StageDe
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
               className="w-full py-4 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 tracking-wide"
               style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}>
-              Continuar al cierre <ArrowRight size={16} />
+              {t('stage3.close')} <ArrowRight size={16} />
             </motion.button>
           )}
         </div>

@@ -25,7 +25,14 @@ const MUSCLE_GROUPS = ['hombros', 'manos', 'rostro', 'abdomen'] as const;
 
 export function StageExposure({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
+
+  const MUSCLE_GROUP_LABELS = [
+    t('exposure.muscle.shoulders'),
+    t('exposure.muscle.hands'),
+    t('exposure.muscle.face'),
+    t('exposure.muscle.abdomen'),
+  ];
   const [step, setStep] = useState(0);
 
   // Step 0 state
@@ -139,7 +146,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
         <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
-          Fase 3 — Terapia Conductual
+          {t('exposure.label')}
         </p>
         <h2
           style={{
@@ -150,7 +157,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
             margin: 0,
           }}
         >
-          Exposición Gradual
+          {t('exposure.title')}
         </h2>
       </div>
 
@@ -162,7 +169,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
           style={{ marginBottom: '1.5rem', padding: '1rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
         >
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.5rem' }}>
-            Lo que exploramos en la sesión {lastExploration.sessionNumber}
+            {t('exposure.prior.title').replace('{n}', String(lastExploration.sessionNumber))}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
             {lastExploration.insights.map(i => (
@@ -180,7 +187,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
       {/* Synthesis states */}
       {synthesisState === 'loading' && (
         <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '2rem' }}>
-          <AIThinking phrases={['Integrando lo explorado...', 'Cartografiando el conflicto...', 'Construyendo el mapa...']} />
+          <AIThinking phrases={[t('exposure.synthesis.loading.1'), t('exposure.synthesis.loading.2'), t('exposure.synthesis.loading.3')]} />
         </motion.div>
       )}
       {synthesisState === 'done' && explorationRecord && (
@@ -192,7 +199,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
         >
           <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lo que emergió en esta exploración
+              {t('exposure.synthesis.emerged')}
             </p>
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.05rem', lineHeight: 1.6, margin: 0 }}>
               {explorationRecord.aiReflection}
@@ -214,7 +221,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                   ))}
                 </div>
                 <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0 }}>
-                  Estas piezas se acumulan sesión a sesión para que la IA te entienda mejor
+                  {t('exposure.synthesis.accumulate')}
                 </p>
               </div>
             )}
@@ -225,7 +232,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
             style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)', alignSelf: 'stretch', textAlign: 'center' }}
           >
-            Continuar a la interpretación →
+            {t('exposure.advance')}
           </motion.button>
         </motion.div>
       )}
@@ -259,10 +266,10 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              Preparándonos juntos
+              {t('exposure.step0.title')}
             </h3>
             <p style={{ color: 'var(--color-muted)', margin: 0, lineHeight: 1.6 }}>
-              Antes de explorar las situaciones que te generan ansiedad, vamos a aprender a relajarte profundamente.
+              {t('exposure.step0.intro')}
             </p>
 
             {/* Muscle group exercises */}
@@ -299,10 +306,12 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                     ))}
                   </div>
                   <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0 }}>
-                    Grupo {muscleGroupIndex + 1} de {MUSCLE_GROUPS.length}
+                    {t('exposure.muscle.group').replace('{n}', String(muscleGroupIndex + 1)).replace('{total}', String(MUSCLE_GROUPS.length))}
                   </p>
                   <p style={{ color: 'var(--color-deep)', fontSize: '1.125rem', lineHeight: 1.6, margin: 0 }}>
-                    Tensa tus <strong>{MUSCLE_GROUPS[muscleGroupIndex]}</strong> durante 5 segundos... ahora suéltalos.
+                    {t('exposure.muscle.tense').split('{muscle}')[0]}
+                    <strong>{MUSCLE_GROUP_LABELS[muscleGroupIndex]}</strong>
+                    {t('exposure.muscle.tense').split('{muscle}')[1]}
                   </p>
                   <motion.button
                     type="button"
@@ -310,7 +319,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                     whileTap={shouldReduce ? {} : { scale: 0.97 }}
                     style={btnStyle}
                   >
-                    {muscleGroupIndex < MUSCLE_GROUPS.length - 1 ? 'Siguiente grupo' : 'Finalizar ejercicio'}
+                    {muscleGroupIndex < MUSCLE_GROUPS.length - 1 ? t('exposure.muscle.next') : t('exposure.muscle.finish')}
                   </motion.button>
                 </motion.div>
               ) : (
@@ -321,7 +330,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                   style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
                 >
                   <p style={{ color: 'var(--color-deep)', fontWeight: 500, margin: 0 }}>
-                    ¿Cómo te sientes ahora? ¿En qué nivel de relajación (1-5)?
+                    {t('exposure.relax.q')}
                   </p>
                   <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
                     {[1, 2, 3, 4, 5].map(n => {
@@ -363,7 +372,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 style={btnStyle}
               >
-                Continuar
+                {t('exposure.continue')}
               </motion.button>
             )}
           </motion.div>
@@ -381,10 +390,10 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              Situaciones que generan ansiedad
+              {t('exposure.step1.title')}
             </h3>
             <p style={{ color: 'var(--color-muted)', margin: 0, lineHeight: 1.6 }}>
-              Pensemos en situaciones relacionadas con tu conflicto que te generen ansiedad, de menor a mayor.
+              {t('exposure.step1.intro')}
             </p>
 
             {/* Add situation input */}
@@ -395,7 +404,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                   value={newSituation}
                   onChange={e => setNewSituation(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSituation(); } }}
-                  placeholder="Describe una situación..."
+                  placeholder={t('exposure.situation.placeholder')}
                   style={{
                     flex: 1,
                     background: 'transparent',
@@ -430,7 +439,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  + Añadir
+                  {t('exposure.situation.add')}
                 </motion.button>
               </div>
             )}
@@ -467,7 +476,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: 'var(--color-muted)', fontSize: '0.8125rem' }}>Nivel de ansiedad</span>
+                      <span style={{ color: 'var(--color-muted)', fontSize: '0.8125rem' }}>{t('exposure.situation.anxiety')}</span>
                       <span style={{
                         color: 'var(--color-sage)',
                         fontWeight: 600,
@@ -492,7 +501,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
 
             {situations.length < 2 && (
               <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', margin: 0, fontStyle: 'italic' }}>
-                Añade al menos 2 situaciones para continuar
+                {t('exposure.situation.min')}
               </p>
             )}
 
@@ -508,7 +517,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Continuar
+              {t('exposure.continue')}
             </motion.button>
           </motion.div>
         )}
@@ -525,7 +534,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              Primera exposición imaginaria
+              {t('exposure.step2.title')}
             </h3>
 
             {lowestAnxietySituation && (
@@ -539,7 +548,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                 }}
               >
                 <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: '0 0 0.5rem' }}>
-                  Situación con menor ansiedad ({lowestAnxietySituation.level}/10)
+                  {t('exposure.step2.lowest').replace('{n}', String(lowestAnxietySituation.level))}
                 </p>
                 <p style={{ color: 'var(--color-deep)', margin: 0, lineHeight: 1.6 }}>
                   {lowestAnxietySituation.text}
@@ -548,13 +557,13 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
             )}
 
             <p style={{ color: 'var(--color-deep)', margin: 0, lineHeight: 1.6 }}>
-              Cierra los ojos e imagina que estás en esa situación. Cuando lo hayas hecho, cuéntame:
+              {t('exposure.step2.instruction')}
             </p>
 
             <textarea
               value={exposureReflection}
               onChange={e => setExposureReflection(e.target.value)}
-              placeholder="¿Qué observaste? ¿Qué pasó con tu ansiedad?"
+              placeholder={t('exposure.step2.placeholder')}
               autoFocus
               rows={6}
               style={textareaStyle}
@@ -574,7 +583,7 @@ export function StageExposure({ session, patient, priorSessions = [], onAdvance,
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Completar
+              {t('exposure.complete')}
             </motion.button>
           </motion.div>
         )}

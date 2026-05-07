@@ -283,9 +283,9 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
       // Fallback: advance directly if card generation fails
       const fallbackCard: WorkCard = {
         id: 'fallback',
-        title: 'Explorar lo que siento hoy',
-        subtitle: '¿Qué aspecto de todo lo que compartiste quieres profundizar ahora?',
-        openingLine: 'Cuéntame qué es lo que más te pesa de todo lo que hablamos.',
+        title: t('stage2.fallback.title'),
+        subtitle: t('stage2.fallback.subtitle'),
+        openingLine: t('stage2.fallback.opening'),
       };
       onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmappedPhrases, result.narrativeSummary, result.stage3Type, fallbackCard);
     } finally {

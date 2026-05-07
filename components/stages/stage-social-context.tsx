@@ -15,16 +15,16 @@ type Props = {
   onUpdate: (session: PatientSession) => void;
 };
 
-const SIBLING_OPTIONS = [
-  'Hijo/a único/a',
-  'El/la mayor',
-  'Intermedio/a',
-  'El/la menor',
-] as const;
-
 export function StageSocialContext({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
+
+  const SIBLING_OPTIONS = [
+    t('social.sibling.only'),
+    t('social.sibling.oldest'),
+    t('social.sibling.middle'),
+    t('social.sibling.youngest'),
+  ];
   const [step, setStep] = useState(0);
 
   // Step 0 state
@@ -118,7 +118,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
         <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
-          Fase 3 — Psicología Adleriana
+          {t('social.label')}
         </p>
         <h2
           style={{
@@ -129,7 +129,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
             margin: 0,
           }}
         >
-          Contexto Social
+          {t('social.title')}
         </h2>
       </div>
 
@@ -141,7 +141,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
           style={{ marginBottom: '1.5rem', padding: '1rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
         >
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.5rem' }}>
-            Lo que exploramos en la sesión {lastExploration.sessionNumber}
+            {t('social.prior.title').replace('{n}', String(lastExploration.sessionNumber))}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
             {lastExploration.insights.map(i => (
@@ -159,7 +159,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
       {/* Synthesis states */}
       {synthesisState === 'loading' && (
         <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '2rem' }}>
-          <AIThinking phrases={['Integrando lo explorado...', 'Encontrando los hilos...', 'Construyendo el mapa...']} />
+          <AIThinking phrases={[t('social.synthesis.loading.1'), t('social.synthesis.loading.2'), t('social.synthesis.loading.3')]} />
         </motion.div>
       )}
       {synthesisState === 'done' && explorationRecord && (
@@ -171,7 +171,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
         >
           <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lo que emergió en esta exploración
+              {t('social.synthesis.emerged')}
             </p>
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.05rem', lineHeight: 1.6, margin: 0 }}>
               {explorationRecord.aiReflection}
@@ -193,7 +193,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
                   ))}
                 </div>
                 <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0 }}>
-                  Estas piezas se acumulan sesión a sesión para que la IA te entienda mejor
+                  {t('social.synthesis.accumulate')}
                 </p>
               </div>
             )}
@@ -204,7 +204,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
             style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)', alignSelf: 'stretch', textAlign: 'center' }}
           >
-            Continuar a la interpretación →
+            {t('social.advance')}
           </motion.button>
         </motion.div>
       )}
@@ -238,16 +238,16 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              Tu historia social
+              {t('social.step0.title')}
             </h3>
             <p style={{ color: 'var(--color-muted)', margin: 0, lineHeight: 1.6 }}>
-              Para entender tu situación, me ayudaría conocer un poco de tu historia social y familiar.
+              {t('social.step0.intro')}
             </p>
 
             {/* Radio group */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ color: 'var(--color-deep)', fontWeight: 500, margin: 0 }}>
-                ¿Cuál es tu lugar entre tus hermanos?
+                {t('social.step0.sibling.q')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {SIBLING_OPTIONS.map(option => {
@@ -291,12 +291,12 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ color: 'var(--color-deep)', fontWeight: 500, margin: 0 }}>
-                ¿Cómo describías tu papel en tu familia de origen?
+                {t('social.step0.role.q')}
               </p>
               <textarea
                 value={familyRole}
                 onChange={e => setFamilyRole(e.target.value)}
-                placeholder="Describe tu rol en la familia..."
+                placeholder={t('social.step0.role.placeholder')}
                 rows={4}
                 style={textareaStyle}
                 onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
@@ -316,7 +316,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Continuar
+              {t('social.continue')}
             </motion.button>
           </motion.div>
         )}
@@ -333,17 +333,17 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              El sentimiento de pertenencia
+              {t('social.step1.title')}
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ color: 'var(--color-deep)', fontWeight: 500, margin: 0 }}>
-                ¿En qué momentos de tu vida te has sentido más inferior o menos capaz que los demás?
+                {t('social.step1.q1')}
               </p>
               <textarea
                 value={inferiorityMoments}
                 onChange={e => setInferiorityMoments(e.target.value)}
-                placeholder="Describe esos momentos..."
+                placeholder={t('social.step1.q1.placeholder')}
                 autoFocus
                 rows={5}
                 style={textareaStyle}
@@ -354,12 +354,12 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ color: 'var(--color-deep)', fontWeight: 500, margin: 0 }}>
-                ¿Cómo compensaste ese sentimiento? ¿Qué estrategias desarrollaste?
+                {t('social.step1.q2')}
               </p>
               <textarea
                 value={compensationStrategy}
                 onChange={e => setCompensationStrategy(e.target.value)}
-                placeholder="Describe tus estrategias..."
+                placeholder={t('social.step1.q2.placeholder')}
                 rows={5}
                 style={textareaStyle}
                 onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
@@ -379,7 +379,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Continuar
+              {t('social.continue')}
             </motion.button>
           </motion.div>
         )}
@@ -396,17 +396,17 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              Lo que te impulsa
+              {t('social.step2.title')}
             </h3>
 
             <p style={{ color: 'var(--color-deep)', fontWeight: 500, margin: 0 }}>
-              ¿Qué te impulsa en la vida? ¿Qué quieres demostrar o lograr?
+              {t('social.step2.q')}
             </p>
 
             <textarea
               value={motivation}
               onChange={e => setMotivation(e.target.value)}
-              placeholder="Lo que me impulsa es..."
+              placeholder={t('social.step2.placeholder')}
               autoFocus
               rows={6}
               style={textareaStyle}
@@ -426,7 +426,7 @@ export function StageSocialContext({ session, patient, priorSessions = [], onAdv
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Completar
+              {t('social.complete')}
             </motion.button>
           </motion.div>
         )}

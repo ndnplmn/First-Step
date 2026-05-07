@@ -51,10 +51,12 @@ function handleAIError(error: unknown): never {
 }
 
 function getLanguageInstruction(locale?: string): string {
-  const langMap: Record<string, string> = { es: 'Spanish', en: 'English', ru: 'Russian' };
-  const lang = langMap[locale ?? 'es'] ?? 'Spanish';
-  if (lang === 'Spanish') return '';
-  return `\n\nIMPORTANT: You MUST respond entirely in ${lang}. All therapeutic content, questions, reflections, analysis, letters, strategies, and any other output must be written in ${lang}. This is non-negotiable.`;
+  const toneMap: Record<string, string> = {
+    es: '',
+    en: '\n\nIMPORTANT: You MUST respond entirely in English. Use empathetic, clear, and warm English. All therapeutic content, questions, reflections, analysis, letters, strategies, and any other output must be written in English. This is non-negotiable.',
+    ru: '\n\nВАЖНО: Вы ОБЯЗАНЫ отвечать исключительно на русском языке. Используйте тёплый, рефлексивный и сочувственный тон на русском. Всё терапевтическое содержание — вопросы, размышления, анализ, письма, стратегии и любой другой текст — должно быть написано на русском языке. Это обязательное требование.',
+  };
+  return toneMap[locale ?? 'es'] ?? toneMap.en;
 }
 
 function formatFrameworks(matches: FrameworkMatch[]): string {
@@ -822,11 +824,12 @@ export async function getDeepWorkResponse(params: {
   interpretation: string;
   patient: Patient;
   locale?: string;
+  earlyClose?: boolean;
 }): Promise<{ done: boolean; response: string; synthesis?: string }> {
   const { selectedCard, messages, conflicts, frameworkMatches, interpretation, patient } = params;
 
   const patientTurns = messages.filter(m => m.role === 'patient').length;
-  const forceClose = patientTurns >= 2;
+  const forceClose = params.earlyClose === true || patientTurns >= 5;
 
   const history = messages.map(m =>
     `${m.role === 'therapist' ? 'Terapeuta' : 'Paciente'}: ${m.text}`

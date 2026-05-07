@@ -8,14 +8,7 @@ import {
   PHQ9_SEVERITY_LABELS, PHQ9_SEVERITY_COLORS,
   GAD7_SEVERITY_LABELS, GAD7_SEVERITY_COLORS,
 } from '@/lib/clinical';
-
-const WELLBEING_LABELS: Record<number, string> = {
-  1: 'Muy mal',
-  2: 'Mal',
-  3: 'Regular',
-  4: 'Bien',
-  5: 'Muy bien',
-};
+import { useLanguage } from '@/contexts/language-context';
 
 const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
   freudiano:    { bg: 'rgba(122,110,158,0.12)', text: 'var(--color-violet)' },
@@ -25,8 +18,9 @@ const FRAMEWORK_COLORS: Record<string, { bg: string; text: string }> = {
   conductual:   { bg: 'rgba(107,94,82,0.1)', text: 'var(--color-deep)' },
 };
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('es-ES', {
+function formatDate(timestamp: number, locale: string): string {
+  const localeMap: Record<string, string> = { es: 'es-ES', en: 'en-US', ru: 'ru-RU' };
+  return new Date(timestamp).toLocaleDateString(localeMap[locale] ?? 'es-ES', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
 }
@@ -56,61 +50,78 @@ interface PatientRecordProps {
   onBack: () => void;
 }
 
-const WELLBEING_EXPORT_LABELS: Record<number, string> = {
-  1: 'Muy mal', 2: 'Mal', 3: 'Regular', 4: 'Bien', 5: 'Muy bien',
-};
-
-function buildExportText(patient: Patient, session: PatientSession): string {
+function buildExportText(
+  patient: Patient,
+  session: PatientSession,
+  labels: {
+    wellbeing: Record<number, string>;
+    share_title: string;
+    section_focus: string;
+    section_wellbeing: string;
+    wellbeing_before: string;
+    wellbeing_after: string;
+    section_conflicts: string;
+    section_interpretation: string;
+    section_closure: string;
+    section_reflections: string;
+    section_clinical: string;
+    locale: string;
+  }
+): string {
+  const localeMap: Record<string, string> = { es: 'es-ES', en: 'en-US', ru: 'ru-RU' };
+  const fmtLocale = localeMap[labels.locale] ?? 'es-ES';
   const lines: string[] = [];
-  lines.push(`Tend — Mi resumen de sesión`);
-  lines.push(`${patient.name} · ${new Date(session.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`);
+  lines.push(labels.share_title);
+  lines.push(`${patient.name} · ${new Date(session.createdAt).toLocaleDateString(fmtLocale, { day: 'numeric', month: 'long', year: 'numeric' })}`);
   lines.push('');
 
   if (session.narrativeSummary) {
-    lines.push('ENFOQUE');
+    lines.push(labels.section_focus.toUpperCase());
     lines.push(session.narrativeSummary);
     lines.push('');
   }
   if (session.wellbeingBefore || session.wellbeingAfter) {
-    lines.push('BIENESTAR');
-    if (session.wellbeingBefore) lines.push(`Al inicio: ${WELLBEING_EXPORT_LABELS[session.wellbeingBefore]}`);
-    if (session.wellbeingAfter) lines.push(`Al final: ${WELLBEING_EXPORT_LABELS[session.wellbeingAfter]}`);
+    lines.push(labels.section_wellbeing.toUpperCase());
+    if (session.wellbeingBefore) lines.push(`${labels.wellbeing_before}: ${labels.wellbeing[session.wellbeingBefore]}`);
+    if (session.wellbeingAfter) lines.push(`${labels.wellbeing_after}: ${labels.wellbeing[session.wellbeingAfter]}`);
     lines.push('');
   }
   if (session.conflicts.length > 0) {
-    lines.push('LO QUE TRAJE A SESIÓN');
+    lines.push(labels.section_conflicts.toUpperCase());
     session.conflicts.forEach(c => lines.push(`· ${c.synthesized}`));
     lines.push('');
   }
   if (session.interpretation?.text) {
-    lines.push('INTERPRETACIÓN');
+    lines.push(labels.section_interpretation.toUpperCase());
     lines.push(session.interpretation.text);
     lines.push('');
   }
   if (session.closure?.text) {
-    lines.push('CARTA DE CIERRE');
+    lines.push(labels.section_closure.toUpperCase());
     lines.push(session.closure.text);
     lines.push('');
   }
   if (session.reflectionQuestions && session.reflectionQuestions.length > 0) {
-    lines.push('PARA LLEVAR CONMIGO');
+    lines.push(labels.section_reflections.toUpperCase());
     session.reflectionQuestions.forEach(q => lines.push(`· ${q}`));
     lines.push('');
   }
   if (session.phq9 || session.gad7) {
-    lines.push('EVALUACIÓN CLÍNICA');
+    lines.push(labels.section_clinical.toUpperCase());
     if (session.phq9) {
-      lines.push(`PHQ-9 (depresión): ${session.phq9.score}/27 — ${PHQ9_SEVERITY_LABELS[session.phq9.severity]}`);
+      lines.push(`PHQ-9: ${session.phq9.score}/27 — ${PHQ9_SEVERITY_LABELS[session.phq9.severity]}`);
     }
     if (session.gad7) {
-      lines.push(`GAD-7 (ansiedad): ${session.gad7.score}/21 — ${GAD7_SEVERITY_LABELS[session.gad7.severity]}`);
+      lines.push(`GAD-7: ${session.gad7.score}/21 — ${GAD7_SEVERITY_LABELS[session.gad7.severity]}`);
     }
     lines.push('');
   }
   return lines.join('\n');
 }
 
-function buildTherapistReport(patient: Patient, sessions: PatientSession[]): string {
+function buildTherapistReport(patient: Patient, sessions: PatientSession[], locale: string): string {
+  const localeMap: Record<string, string> = { es: 'es-ES', en: 'en-US', ru: 'ru-RU' };
+  const fmtLocale = localeMap[locale] ?? 'es-ES';
   const completed = sessions.filter(s => s.stage >= 6).sort((a, b) => a.createdAt - b.createdAt);
   const frameworks = Array.from(new Set(
     sessions.flatMap(s => s.frameworkMatches.map(f => f.name))
@@ -123,11 +134,14 @@ function buildTherapistReport(patient: Patient, sessions: PatientSession[]): str
     ? (wellbeingTrend.reduce((a, b) => a + b, 0) / wellbeingTrend.length).toFixed(1)
     : null;
 
+  const isEs = locale === 'es';
+  const isRu = locale === 'ru';
+
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${locale}">
 <head>
 <meta charset="UTF-8" />
-<title>Informe — ${patient.name} — Tend</title>
+<title>${isRu ? 'Отчёт' : isEs ? 'Informe' : 'Report'} — ${patient.name} — Tend</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Georgia, serif; font-size: 11pt; color: #19160F; padding: 48px; max-width: 700px; margin: 0 auto; }
@@ -143,32 +157,32 @@ function buildTherapistReport(patient: Patient, sessions: PatientSession[]): str
 </style>
 </head>
 <body>
-  <h1>Informe de proceso — ${patient.name}</h1>
-  <p class="subtitle">Generado con Tend · ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+  <h1>${isRu ? 'Отчёт о процессе' : isEs ? 'Informe de proceso' : 'Process report'} — ${patient.name}</h1>
+  <p class="subtitle">${isRu ? 'Создано с помощью Tend' : 'Generated with Tend'} · ${new Date().toLocaleDateString(fmtLocale, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 
-  <h2>Datos del paciente</h2>
-  <p><strong>Nombre:</strong> ${patient.name} · <strong>Edad:</strong> ${patient.age} años · <strong>Género:</strong> ${patient.gender}</p>
-  <p><strong>Estado civil:</strong> ${patient.maritalStatus} · <strong>Situación:</strong> ${patient.livingSituation}</p>
-  <p><strong>Terapia previa:</strong> ${patient.previousTherapy ? `Sí${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}` : 'No'}</p>
-  <p><strong>Medicación:</strong> ${patient.takingMedication ? `Sí${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}` : 'No'}</p>
+  <h2>${isRu ? 'Данные пациента' : isEs ? 'Datos del paciente' : 'Patient data'}</h2>
+  <p><strong>${isRu ? 'Имя' : isEs ? 'Nombre' : 'Name'}:</strong> ${patient.name} · <strong>${isRu ? 'Возраст' : isEs ? 'Edad' : 'Age'}:</strong> ${patient.age} · <strong>${isRu ? 'Пол' : isEs ? 'Género' : 'Gender'}:</strong> ${patient.gender}</p>
+  <p><strong>${isRu ? 'Семейное положение' : isEs ? 'Estado civil' : 'Marital status'}:</strong> ${patient.maritalStatus} · <strong>${isRu ? 'Ситуация' : isEs ? 'Situación' : 'Situation'}:</strong> ${patient.livingSituation}</p>
+  <p><strong>${isRu ? 'Предыдущая терапия' : isEs ? 'Terapia previa' : 'Prior therapy'}:</strong> ${patient.previousTherapy ? `${isRu ? 'Да' : isEs ? 'Sí' : 'Yes'}${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}` : (isRu ? 'Нет' : isEs ? 'No' : 'No')}</p>
+  <p><strong>${isRu ? 'Медикаменты' : isEs ? 'Medicación' : 'Medication'}:</strong> ${patient.takingMedication ? `${isRu ? 'Да' : isEs ? 'Sí' : 'Yes'}${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}` : (isRu ? 'Нет' : isEs ? 'No' : 'No')}</p>
 
-  <h2>Motivo de consulta</h2>
+  <h2>${isRu ? 'Причина обращения' : isEs ? 'Motivo de consulta' : 'Reason for consultation'}</h2>
   <p>${patient.consultationReason}</p>
 
-  ${frameworks ? `<h2>Enfoques terapéuticos utilizados</h2><p>${frameworks}</p>` : ''}
-  ${avgWellbeing ? `<h2>Bienestar promedio (escala 1-5)</h2><p>${avgWellbeing} / 5 — basado en ${wellbeingTrend.length} sesión${wellbeingTrend.length !== 1 ? 'es' : ''}</p>` : ''}
+  ${frameworks ? `<h2>${isRu ? 'Использованные терапевтические подходы' : isEs ? 'Enfoques terapéuticos utilizados' : 'Therapeutic frameworks used'}</h2><p>${frameworks}</p>` : ''}
+  ${avgWellbeing ? `<h2>${isRu ? 'Среднее самочувствие (шкала 1-5)' : isEs ? 'Bienestar promedio (escala 1-5)' : 'Average wellbeing (scale 1-5)'}</h2><p>${avgWellbeing} / 5</p>` : ''}
 
-  <h2>Sesiones completadas (${completed.length})</h2>
+  <h2>${isRu ? 'Завершённые сессии' : isEs ? 'Sesiones completadas' : 'Completed sessions'} (${completed.length})</h2>
   ${completed.map(s => `
   <div class="session-block">
-    <p><strong>Sesión ${s.sessionNumber}</strong> · ${new Date(s.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+    <p><strong>${isRu ? 'Сессия' : isEs ? 'Sesión' : 'Session'} ${s.sessionNumber}</strong> · ${new Date(s.createdAt).toLocaleDateString(fmtLocale, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
     ${s.wellbeingBefore || s.wellbeingAfter
-      ? `<p class="wellbeing">Bienestar: ${s.wellbeingBefore ?? '—'} → ${s.wellbeingAfter ?? '—'}</p>`
+      ? `<p class="wellbeing">${isRu ? 'Самочувствие' : isEs ? 'Bienestar' : 'Wellbeing'}: ${s.wellbeingBefore ?? '—'} → ${s.wellbeingAfter ?? '—'}</p>`
       : ''}
     ${s.phq9 ? `<p class="wellbeing">PHQ-9: ${s.phq9.score}/27 (${s.phq9.severity})</p>` : ''}
     ${s.gad7 ? `<p class="wellbeing">GAD-7: ${s.gad7.score}/21 (${s.gad7.severity})</p>` : ''}
     ${s.conflicts.length > 0
-      ? `<p style="margin-top:6px"><strong>Conflictos:</strong> ${s.conflicts.map(c => c.synthesized).join(' · ')}</p>`
+      ? `<p style="margin-top:6px"><strong>${isRu ? 'Конфликты' : isEs ? 'Conflictos' : 'Conflicts'}:</strong> ${s.conflicts.map(c => c.synthesized).join(' · ')}</p>`
       : ''}
     ${s.interpretation?.text
       ? `<p style="margin-top:6px;font-style:italic;color:#555">${s.interpretation.text.slice(0, 300)}${s.interpretation.text.length > 300 ? '…' : ''}</p>`
@@ -176,21 +190,32 @@ function buildTherapistReport(patient: Patient, sessions: PatientSession[]): str
   </div>
   `).join('')}
 
-  <p class="footer">Este informe fue generado automáticamente por Tend. No constituye un diagnóstico clínico. La información aquí contenida es de uso exclusivo del profesional de salud mental designado por el paciente.</p>
+  <p class="footer">${isRu
+    ? 'Этот отчёт создан автоматически приложением Tend. Он не является клиническим диагнозом.'
+    : isEs
+    ? 'Este informe fue generado automáticamente por Tend. No constituye un diagnóstico clínico.'
+    : 'This report was generated automatically by Tend. It does not constitute a clinical diagnosis.'
+  }</p>
 </body>
 </html>`;
 }
 
 export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps) {
+  const { t, locale } = useLanguage();
   const [activeSessionIdx, setActiveSessionIdx] = useState(sessions.length > 0 ? sessions.length - 1 : 0);
   const [copied, setCopied] = useState(false);
   const session = sessions[activeSessionIdx];
+
+  const WELLBEING_LABELS: Record<number, string> = {
+    1: t('record.wellbeing.1'), 2: t('record.wellbeing.2'), 3: t('record.wellbeing.3'),
+    4: t('record.wellbeing.4'), 5: t('record.wellbeing.5'),
+  };
 
   const primaryFramework = session?.frameworkMatches?.[0];
   const primaryColor = primaryFramework ? FRAMEWORK_COLORS[primaryFramework.key] : null;
 
   const handleTherapistHandoff = () => {
-    const html = buildTherapistReport(patient, sessions);
+    const html = buildTherapistReport(patient, sessions, locale);
     const win = window.open('', '_blank');
     if (!win) return;
     win.document.write(html);
@@ -201,10 +226,24 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
   const handleExport = async () => {
     if (!session) return;
-    const text = buildExportText(patient, session);
+    const exportLabels = {
+      wellbeing: WELLBEING_LABELS,
+      share_title: t('record.share.title'),
+      section_focus: t('record.section.approach'),
+      section_wellbeing: t('record.section.wellbeing'),
+      wellbeing_before: t('record.section.wellbeing.before'),
+      wellbeing_after: t('record.section.wellbeing.after'),
+      section_conflicts: t('record.section.conflicts'),
+      section_interpretation: t('record.section.interpretation'),
+      section_closure: t('record.section.closure'),
+      section_reflections: t('record.section.reflections'),
+      section_clinical: t('record.section.clinical'),
+      locale,
+    };
+    const text = buildExportText(patient, session, exportLabels);
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Mi resumen — Tend', text });
+        await navigator.share({ title: t('record.share.title'), text });
         return;
       } catch {
         // fall through to clipboard
@@ -217,7 +256,6 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
 
   return (
     <div className="min-h-dvh" style={{ background: 'var(--color-base)' }}>
-      {/* Sticky header */}
       <header
         className="sticky top-0 z-40 px-6 py-4 flex items-center gap-4"
         style={{
@@ -235,7 +273,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
           style={{ color: 'var(--color-muted)' }}
         >
           <ArrowLeft size={16} />
-          Mis sesiones
+          {t('record.back')}
         </motion.button>
 
         <div className="flex-1">
@@ -264,10 +302,10 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                 boxShadow: 'var(--shadow-card)',
                 border: '1px solid var(--color-border)',
               }}
-              aria-label="Generar informe para terapeuta"
+              aria-label={t('record.therapist.aria')}
             >
               <Printer size={14} aria-hidden="true" />
-              Terapeuta
+              {t('record.therapist.btn')}
             </motion.button>
             {session && (
               <motion.button
@@ -281,11 +319,11 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   boxShadow: 'var(--shadow-card)',
                   border: '1px solid var(--color-border)',
                 }}
-                aria-label={copied ? 'Sesión copiada al portapapeles' : 'Compartir resumen de sesión'}
+                aria-label={copied ? t('record.copied.aria') : t('record.share.aria')}
                 aria-live="polite"
               >
                 {copied ? <Check size={14} weight="bold" aria-hidden="true" /> : <Export size={14} aria-hidden="true" />}
-                {copied ? 'Copiado' : 'Compartir'}
+                {copied ? t('record.copied') : t('record.share.btn')}
               </motion.button>
             )}
           </div>
@@ -293,11 +331,10 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
       </header>
 
       <main className="max-w-[680px] mx-auto px-6 py-8 space-y-8">
-        {/* Patient info chips */}
         <div className="flex flex-wrap gap-3">
           {[
-            { icon: <User size={13} />, label: `${patient.age} años, ${patient.gender}` },
-            { icon: <Clock size={13} />, label: formatDate(patient.createdAt) },
+            { icon: <User size={13} />, label: t('record.age').replace('{n}', String(patient.age)) + ', ' + patient.gender },
+            { icon: <Clock size={13} />, label: formatDate(patient.createdAt, locale) },
           ].map((item, i) => (
             <div
               key={i}
@@ -310,7 +347,6 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
           ))}
         </div>
 
-        {/* Session tabs — only if multiple sessions */}
         {sessions.length > 1 && (
           <div className="flex gap-2 flex-wrap">
             {sessions.map((s, i) => (
@@ -325,35 +361,33 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   boxShadow: 'var(--shadow-card)',
                 }}
               >
-                Proceso {s.sessionNumber}
+                {t('record.process').replace('{n}', String(s.sessionNumber))}
               </button>
             ))}
           </div>
         )}
 
         {!session && (
-          <p style={{ color: 'var(--color-muted)' }}>Aún no has completado ningún proceso.</p>
+          <p style={{ color: 'var(--color-muted)' }}>{t('record.empty')}</p>
         )}
 
         {session && (
           <div className="space-y-6">
-            {/* Enfoque del proceso */}
             {session.narrativeSummary && (
-              <Section label="Enfoque de tu proceso">
+              <Section label={t('record.section.approach')}>
                 <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
                   {session.narrativeSummary}
                 </p>
               </Section>
             )}
 
-            {/* Bienestar */}
             {(session.wellbeingBefore || session.wellbeingAfter) && (
-              <Section label="Tu bienestar">
+              <Section label={t('record.section.wellbeing')}>
                 <div className="flex gap-6">
                   {session.wellbeingBefore && (
                     <div>
                       <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                        Al inicio
+                        {t('record.section.wellbeing.before')}
                       </p>
                       <p className="text-lg font-medium" style={{ color: 'var(--color-deep)' }}>
                         {WELLBEING_LABELS[session.wellbeingBefore] ?? session.wellbeingBefore}
@@ -363,7 +397,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   {session.wellbeingAfter && (
                     <div>
                       <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                        Al final
+                        {t('record.section.wellbeing.after')}
                       </p>
                       <p className="text-lg font-medium" style={{ color: 'var(--color-deep)' }}>
                         {WELLBEING_LABELS[session.wellbeingAfter] ?? session.wellbeingAfter}
@@ -374,9 +408,8 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
               </Section>
             )}
 
-            {/* Conflictos */}
             {session.conflicts.length > 0 && (
-              <Section label="Lo que trajiste a sesión">
+              <Section label={t('record.section.conflicts')}>
                 <div className="space-y-2">
                   {session.conflicts.map((c) => (
                     <div
@@ -396,14 +429,13 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                     </div>
                   ))}
 
-                  {/* Frases sin mapear */}
                   {session.unmappedPhrases.length > 0 && (
                     <div
                       className="p-4 rounded-[var(--radius-inner)]"
                       style={{ border: '1px dashed var(--color-border)' }}
                     >
                       <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                        Pendiente de análisis
+                        {t('record.section.unmapped')}
                       </p>
                       {session.unmappedPhrases.map((u, i) => (
                         <p key={i} className="text-sm" style={{ color: 'var(--color-muted)', fontStyle: 'italic' }}>
@@ -416,9 +448,8 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
               </Section>
             )}
 
-            {/* Recuerdos */}
             {session.memories.length > 0 && (
-              <Section label="Recuerdos que exploraste">
+              <Section label={t('record.section.memories')}>
                 <div className="space-y-3">
                   {session.memories.map((m) => (
                     <div
@@ -432,13 +463,13 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                            Entonces
+                            {t('record.section.memory.then')}
                           </p>
                           <p className="text-sm" style={{ color: 'var(--color-deep)' }}>{m.feelingThen}</p>
                         </div>
                         <div>
                           <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                            Ahora
+                            {t('record.section.memory.now')}
                           </p>
                           <p className="text-sm" style={{ color: 'var(--color-deep)' }}>{m.feelingNow}</p>
                         </div>
@@ -462,9 +493,8 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
               </Section>
             )}
 
-            {/* Interpretacion */}
             {session.interpretation && (
-              <Section label="Lo que la IA encontró en ti">
+              <Section label={t('record.section.interpretation')}>
                 <div
                   className="p-5 rounded-[var(--radius-inner)] space-y-3"
                   style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
@@ -474,16 +504,15 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                   </p>
                   {session.interpretation.resonatedAt && (
                     <p className="text-xs" style={{ color: 'var(--color-terracotta)', fontFamily: 'var(--font-mono)' }}>
-                      ♥ Marcaste que esto te resonó
+                      {t('record.interpretation.resonated')}
                     </p>
                   )}
                 </div>
               </Section>
             )}
 
-            {/* Actividad Gestalt */}
             {session.gestaltActivity && (
-              <Section label="Actividad experiencial">
+              <Section label={t('record.section.gestalt')}>
                 <div
                   className="p-5 rounded-[var(--radius-inner)] space-y-3"
                   style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-violet)' }}
@@ -503,9 +532,8 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
               </Section>
             )}
 
-            {/* Cierre */}
             {session.closure && (
-              <Section label="Tu cierre">
+              <Section label={t('record.section.closure')}>
                 <div
                   className="p-5 rounded-[var(--radius-inner)]"
                   style={{
@@ -521,9 +549,8 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
               </Section>
             )}
 
-            {/* Preguntas de reflexion */}
             {session.reflectionQuestions && session.reflectionQuestions.length > 0 && (
-              <Section label="Para llevar contigo">
+              <Section label={t('record.section.reflections')}>
                 <div className="space-y-3">
                   {session.reflectionQuestions.map((q, i) => (
                     <p
@@ -541,9 +568,8 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
               </Section>
             )}
 
-            {/* Evaluación clínica */}
             {(session.phq9 || session.gad7) && (
-              <Section label="Evaluación clínica">
+              <Section label={t('record.section.clinical')}>
                 <div className="grid grid-cols-2 gap-3">
                   {session.phq9 && (() => {
                     const c = PHQ9_SEVERITY_COLORS[session.phq9!.severity];
@@ -556,7 +582,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                           className="text-[10px] font-medium uppercase tracking-wider"
                           style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
                         >
-                          PHQ-9 · Depresión
+                          PHQ-9 · {t('progress.clinical.phq9').split('·')[1]?.trim() ?? 'Depression'}
                         </p>
                         <p className="text-2xl font-semibold leading-none" style={{ color: c.text }}>
                           {session.phq9!.score}
@@ -579,7 +605,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                           className="text-[10px] font-medium uppercase tracking-wider"
                           style={{ color: c.text, fontFamily: 'var(--font-mono)' }}
                         >
-                          GAD-7 · Ansiedad
+                          GAD-7 · {t('progress.clinical.gad7').split('·')[1]?.trim() ?? 'Anxiety'}
                         </p>
                         <p className="text-2xl font-semibold leading-none" style={{ color: c.text }}>
                           {session.gad7!.score}

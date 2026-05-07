@@ -11,12 +11,6 @@ import { FloatingBar } from '@/components/ui/floating-bar';
 import { Heart, ArrowCounterClockwise, ArrowSquareOut } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
-const THINKING_PHRASES = [
-  'Escuchando todo lo que compartiste...',
-  'Conectando perspectivas...',
-  'Formulando algo para ti...',
-];
-
 interface StageInterpretationProps {
   session: PatientSession;
   patient: Patient;
@@ -26,7 +20,13 @@ interface StageInterpretationProps {
 }
 
 export function StageInterpretation({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageInterpretationProps) {
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
+
+  const THINKING_PHRASES = [
+    t('stage4.thinking.1'),
+    t('stage4.thinking.2'),
+    t('stage4.thinking.3'),
+  ];
   const [fullInterpretation, setFullInterpretation] = useState<Interpretation | null>(
     session.interpretation ?? null
   );
@@ -100,7 +100,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
     <div className="space-y-8 pb-48">
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Etapa 4 — Comprensión
+          {t('stage4.label')}
         </p>
         <h2
           className="leading-tight breathe"
@@ -110,10 +110,10 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
             color: 'var(--color-deep)',
           }}
         >
-          Tu historia vista con claridad
+          {t('stage4.title')}
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          He escuchado todo lo que compartiste. Esto es lo que veo.
+          {t('stage4.subtitle')}
         </p>
       </div>
 
@@ -128,10 +128,10 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              He escuchado todo lo que compartiste. Tengo algo para ti.
+              {t('stage4.consent.title')}
             </p>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-              Es una interpretación de lo que percibo en tu historia. ¿Te gustaría leerla?
+              {t('stage4.consent.body')}
             </p>
             <div className="flex gap-3 pt-2">
               <motion.button
@@ -141,7 +141,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                 className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
               >
-                Quiero leerla
+                {t('stage4.consent.yes')}
               </motion.button>
               <motion.button
                 type="button"
@@ -150,7 +150,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                 className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-medium"
                 style={{ color: 'var(--color-muted)' }}
               >
-                Dame un momento
+                {t('stage4.consent.wait')}
               </motion.button>
             </div>
           </motion.div>
@@ -163,7 +163,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-              Tómate el tiempo que necesites. Aquí estaré.
+              {t('stage4.pause.text')}
             </p>
             <motion.button
               type="button"
@@ -172,7 +172,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
               className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
               style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
             >
-              Cuando quieras
+              {t('stage4.pause.ready')}
             </motion.button>
           </motion.div>
         )}
@@ -186,7 +186,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
           style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-            Hubo un problema al generar la interpretación.
+            {t('stage4.error')}
           </p>
           <button
             type="button"
@@ -195,7 +195,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
             style={{ color: 'var(--color-sage)' }}
           >
             <ArrowCounterClockwise size={14} />
-            Intentar de nuevo
+            {t('stage4.retry')}
           </button>
         </div>
       )}
@@ -225,7 +225,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                     >
                       <Heart size={14} weight={resonated ? 'fill' : 'regular'} />
                     </motion.span>
-                    {resonated ? 'Me resuena' : 'Esto me resuena'}
+                    {resonated ? t('stage4.resonated') : t('stage4.resonate')}
                   </motion.button>
                   <AnimatePresence>
                     {showRing && !shouldReduce && (
@@ -252,7 +252,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                   }}
                 >
                   <ArrowCounterClockwise size={14} />
-                  Ver desde otro ángulo
+                  {t('stage4.reframe')}
                 </motion.button>
               </>
             ) : null
@@ -303,7 +303,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
           className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
           style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
         >
-          Continuar →
+          {t('stage4.advance')}
         </motion.button>
       </FloatingBar>
     </div>

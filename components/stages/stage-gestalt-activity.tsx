@@ -23,7 +23,7 @@ const FALLBACK = {
 
 export function StageGestaltActivity({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const [step, setStep] = useState(0);
   const [step1Text, setStep1Text] = useState('');
   const [step2Text, setStep2Text] = useState('');
@@ -81,7 +81,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
         <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
-          Fase 3 — Técnica Gestalt
+          {t('gestalt.label')}
         </p>
         <h2
           style={{
@@ -104,7 +104,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
           style={{ marginBottom: '1.5rem', padding: '1rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
         >
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.5rem' }}>
-            Lo que exploramos en la sesión {lastExploration.sessionNumber}
+            {t('gestalt.prior.title').replace('{n}', String(lastExploration.sessionNumber))}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
             {lastExploration.insights.map(i => (
@@ -122,7 +122,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
       {/* Synthesis states */}
       {synthesisState === 'loading' && (
         <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '2rem' }}>
-          <AIThinking phrases={['Integrando la experiencia...', 'Escuchando lo que emergió...', 'Construyendo el mapa...']} />
+          <AIThinking phrases={[t('gestalt.synthesis.loading.1'), t('gestalt.synthesis.loading.2'), t('gestalt.synthesis.loading.3')]} />
         </motion.div>
       )}
       {synthesisState === 'done' && explorationRecord && (
@@ -134,7 +134,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
         >
           <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lo que emergió en esta exploración
+              {t('gestalt.synthesis.emerged')}
             </p>
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.05rem', lineHeight: 1.6, margin: 0 }}>
               {explorationRecord.aiReflection}
@@ -156,7 +156,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
                   ))}
                 </div>
                 <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0 }}>
-                  Estas piezas se acumulan sesión a sesión para que la IA te entienda mejor
+                  {t('gestalt.synthesis.accumulate')}
                 </p>
               </div>
             )}
@@ -167,7 +167,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
             style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)', alignSelf: 'stretch', textAlign: 'center' }}
           >
-            Continuar a la interpretación →
+            {t('gestalt.advance')}
           </motion.button>
         </motion.div>
       )}
@@ -213,7 +213,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
             >
               <p style={{ color: 'var(--color-deep)', lineHeight: 1.7, margin: 0 }}>{description}</p>
               <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', fontStyle: 'italic', margin: 0 }}>
-                El terapeuta te guiará a través de esta actividad
+                {t('gestalt.therapist.guides')}
               </p>
 
               {/* Breathing indicator */}
@@ -256,7 +256,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
                 alignSelf: 'flex-start',
               }}
             >
-              Comenzar actividad
+              {t('gestalt.step0.cta')}
             </motion.button>
           </motion.div>
         )}
@@ -287,7 +287,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
             <textarea
               value={step1Text}
               onChange={e => setStep1Text(e.target.value)}
-              placeholder="¿Qué surge en ti?"
+              placeholder={t('gestalt.step1.placeholder')}
               autoFocus
               rows={6}
               style={{
@@ -331,7 +331,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
                     alignSelf: 'flex-start',
                   }}
                 >
-                  Continuar
+                  {t('gestalt.step1.cta')}
                 </motion.button>
               )}
             </AnimatePresence>
@@ -358,13 +358,13 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
                 margin: 0,
               }}
             >
-              ¿Qué te llevas de esta experiencia?
+              {t('gestalt.step2.question')}
             </p>
 
             <textarea
               value={step2Text}
               onChange={e => setStep2Text(e.target.value)}
-              placeholder="Comparte lo que surge..."
+              placeholder={t('gestalt.step2.placeholder')}
               autoFocus
               rows={6}
               style={{
@@ -406,7 +406,7 @@ export function StageGestaltActivity({ session, patient, priorSessions = [], onA
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Completar y continuar
+              {t('gestalt.step2.cta')}
             </motion.button>
           </motion.div>
         )}

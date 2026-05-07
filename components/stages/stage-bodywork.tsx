@@ -17,7 +17,7 @@ type Props = {
 
 export function StageBodywork({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const [step, setStep] = useState(0);
 
   // Step 1 state
@@ -110,7 +110,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
         <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
-          Fase 3 — Trabajo Bioenergético
+          {t('bodywork.label')}
         </p>
         <h2
           style={{
@@ -121,7 +121,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
             margin: 0,
           }}
         >
-          El Lenguaje del Cuerpo
+          {t('bodywork.title')}
         </h2>
       </div>
 
@@ -133,7 +133,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
           style={{ marginBottom: '1.5rem', padding: '1rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
         >
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.5rem' }}>
-            Lo que exploramos en la sesión {lastExploration.sessionNumber}
+            {t('bodywork.prior.title').replace('{n}', String(lastExploration.sessionNumber))}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
             {lastExploration.insights.map(i => (
@@ -169,7 +169,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
       {/* Synthesis states */}
       {synthesisState === 'loading' && (
         <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '2rem' }}>
-          <AIThinking phrases={['Integrando lo explorado...', 'Escuchando al cuerpo...', 'Construyendo el mapa...']} />
+          <AIThinking phrases={[t('bodywork.synthesis.loading.1'), t('bodywork.synthesis.loading.2'), t('bodywork.synthesis.loading.3')]} />
         </motion.div>
       )}
       {synthesisState === 'done' && explorationRecord && (
@@ -181,7 +181,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
         >
           <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.75rem', fontWeight: 500, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lo que emergió en esta exploración
+              {t('bodywork.synthesis.emerged')}
             </p>
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.05rem', lineHeight: 1.6, margin: 0 }}>
               {explorationRecord.aiReflection}
@@ -203,7 +203,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
                   ))}
                 </div>
                 <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0 }}>
-                  Estas piezas se acumulan sesión a sesión para que la IA te entienda mejor
+                  {t('bodywork.synthesis.accumulate')}
                 </p>
               </div>
             )}
@@ -214,7 +214,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
             style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}
           >
-            Continuar a la interpretación →
+            {t('bodywork.advance')}
           </motion.button>
         </motion.div>
       )}
@@ -232,7 +232,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              Tu cuerpo tiene algo que decir
+              {t('bodywork.step0.title')}
             </h3>
             <div
               style={{
@@ -243,7 +243,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
               }}
             >
               <p style={{ color: 'var(--color-deep)', lineHeight: 1.7, margin: 0 }}>
-                El cuerpo guarda lo que la mente no siempre puede expresar. Vamos a explorar juntos qué siente tu cuerpo en este momento.
+                {t('bodywork.step0.body')}
               </p>
             </div>
             <motion.button
@@ -252,7 +252,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
               style={btnStyle}
             >
-              Estoy listo/a
+              {t('bodywork.step0.cta')}
             </motion.button>
           </motion.div>
         )}
@@ -269,7 +269,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              Respiración consciente
+              {t('bodywork.step1.title')}
             </h3>
             <div
               style={{
@@ -280,7 +280,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
               }}
             >
               <p style={{ color: 'var(--color-deep)', lineHeight: 1.7, margin: '0 0 1.5rem' }}>
-                Respira profundamente por la nariz (4 segundos), retén (4 segundos), exhala lentamente por la boca (8 segundos). Repite 3 veces.
+                {t('bodywork.step1.body')}
               </p>
 
               {/* Animated breathing circle */}
@@ -306,7 +306,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
                 />
               </div>
               <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', textAlign: 'center', margin: 0 }}>
-                Inhala 4s · Retén 4s · Exhala 8s
+                {t('bodywork.step1.breathing.label')}
               </p>
             </div>
 
@@ -317,7 +317,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
                 whileTap={shouldReduce ? {} : { scale: 0.97 }}
                 style={btnStyle}
               >
-                Ya respiré 3 veces
+                {t('bodywork.step1.done')}
               </motion.button>
             ) : (
               <motion.div
@@ -326,12 +326,12 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
                 style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
               >
                 <p style={{ color: 'var(--color-deep)', fontWeight: 500, margin: 0 }}>
-                  ¿Qué cambió en tu cuerpo? ¿Cómo te sientes ahora?
+                  {t('bodywork.step1.reflection.q')}
                 </p>
                 <textarea
                   value={breathingReflection}
                   onChange={e => setBreathingReflection(e.target.value)}
-                  placeholder="Describe lo que sientes..."
+                  placeholder={t('bodywork.step1.placeholder')}
                   autoFocus
                   rows={4}
                   style={textareaStyle}
@@ -350,7 +350,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
                     transition: 'opacity 0.2s ease',
                   }}
                 >
-                  Continuar
+                  {t('bodywork.continue')}
                 </motion.button>
               </motion.div>
             )}
@@ -369,17 +369,17 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              ¿Dónde vive el conflicto en tu cuerpo?
+              {t('bodywork.step2.title')}
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ color: 'var(--color-deep)', margin: 0, fontWeight: 500 }}>
-                ¿Dónde en tu cuerpo sientes el conflicto que describiste? ¿Es calor, tensión, peso, vacío?
+                {t('bodywork.step2.q1')}
               </p>
               <textarea
                 value={bodySensation}
                 onChange={e => setBodySensation(e.target.value)}
-                placeholder="Describe la sensación y su ubicación..."
+                placeholder={t('bodywork.step2.q1.placeholder')}
                 rows={4}
                 style={textareaStyle}
                 onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
@@ -389,12 +389,12 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ color: 'var(--color-deep)', margin: 0, fontWeight: 500 }}>
-                ¿Qué necesitaría esa parte de tu cuerpo para sentirse mejor?
+                {t('bodywork.step2.q2')}
               </p>
               <textarea
                 value={bodyNeed}
                 onChange={e => setBodyNeed(e.target.value)}
-                placeholder="¿Qué necesita esa parte de ti?"
+                placeholder={t('bodywork.step2.q2.placeholder')}
                 rows={4}
                 style={textareaStyle}
                 onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
@@ -414,7 +414,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Continuar
+              {t('bodywork.continue')}
             </motion.button>
           </motion.div>
         )}
@@ -431,17 +431,17 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
           >
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-deep)', margin: 0 }}>
-              El mensaje de tu cuerpo
+              {t('bodywork.step3.title')}
             </h3>
 
             <p style={{ color: 'var(--color-deep)', margin: 0, fontWeight: 500 }}>
-              ¿Qué mensaje te está enviando tu cuerpo hoy?
+              {t('bodywork.step3.q')}
             </p>
 
             <textarea
               value={bodyMessage}
               onChange={e => setBodyMessage(e.target.value)}
-              placeholder="El mensaje de mi cuerpo es..."
+              placeholder={t('bodywork.step3.placeholder')}
               autoFocus
               rows={6}
               style={textareaStyle}
@@ -461,7 +461,7 @@ export function StageBodywork({ session, patient, priorSessions = [], onAdvance,
                 transition: 'opacity 0.2s ease',
               }}
             >
-              Completar
+              {t('bodywork.complete')}
             </motion.button>
           </motion.div>
         )}

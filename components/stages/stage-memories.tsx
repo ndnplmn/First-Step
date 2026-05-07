@@ -20,19 +20,20 @@ interface StageMemoriesProps {
 type MemoryForm = { raw: string; feelingThen: string; feelingNow: string };
 const EMPTY_FORM: MemoryForm = { raw: '', feelingThen: '', feelingNow: '' };
 
-const FORM_QUESTIONS: { field: keyof MemoryForm; label: string; placeholder: string }[] = [
-  { field: 'raw', label: '¿Qué recuerdo surge cuando piensas en esto? Deja que fluya libremente, sin censura.', placeholder: 'Describe una situación del pasado...' },
-  { field: 'feelingThen', label: '¿Qué sentías entonces? ¿Qué necesitabas que no recibiste?', placeholder: 'Describe tus emociones entonces...' },
-  { field: 'feelingNow', label: '¿Cómo resuena ese recuerdo con lo que sientes hoy?', placeholder: 'Describe lo que sientes al contarlo hoy...' },
-];
-
 function formatFrameworks(matches: FrameworkMatch[]): string {
   return matches.map(m => `${m.name} — ${m.focus}`).join('\n');
 }
 
 export function StageMemories({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageMemoriesProps) {
   const shouldReduce = useReducedMotion();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
+
+  const FORM_QUESTIONS: { field: keyof MemoryForm; label: string; placeholder: string }[] = [
+    { field: 'raw', label: t('memories.form.q0.label'), placeholder: t('memories.form.q0.placeholder') },
+    { field: 'feelingThen', label: t('memories.form.q1.label'), placeholder: t('memories.form.q1.placeholder') },
+    { field: 'feelingNow', label: t('memories.form.q2.label'), placeholder: t('memories.form.q2.placeholder') },
+  ];
+
   const [memories, setMemories] = useState<Memory[]>(session.memories);
   const [form, setForm] = useState<MemoryForm>(EMPTY_FORM);
   const [formStep, setFormStep] = useState(0);
@@ -132,7 +133,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
       {/* Header */}
       <div>
         <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-          Fase 1 — Regulación y seguridad
+          {t('memories.label')}
         </p>
         <h2
           className="leading-tight breathe"
@@ -142,10 +143,10 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
             color: 'var(--color-deep)',
           }}
         >
-          Exploración Psicoanalítica
+          {t('memories.title')}
         </h2>
         <p className="mt-3 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Mediante la libre asociación, exploraremos los recuerdos y patrones que dan forma a este conflicto.
+          {t('memories.subtitle')}
         </p>
       </div>
 
@@ -158,7 +159,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
           style={{ background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
         >
           <p className="text-xs font-medium" style={{ color: 'var(--color-violet)', fontFamily: 'var(--font-mono)' }}>
-            Lo que exploramos en la sesión {lastExploration.sessionNumber}
+            {t('memories.prior.title').replace('{n}', String(lastExploration.sessionNumber))}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {lastExploration.insights.map(i => (
@@ -190,7 +191,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
-              Ahora vamos a explorar un recuerdo que conecte con lo que estás viviendo. Ve a tu ritmo — no hay prisa.
+              {t('memories.intro.body')}
             </p>
 
             <AnimatePresence>
@@ -210,7 +211,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
                       transition={{ duration: 14, repeat: Infinity, times: [0, 0.286, 0.571, 1] }}
                     />
                     <p className="text-xs text-center" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                      Inhala 4s · Sostén 4s · Exhala 6s
+                      {t('memories.breathing.label')}
                     </p>
                   </div>
                 </motion.div>
@@ -225,7 +226,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
                 className="px-5 py-3 rounded-[var(--radius-inner)] text-sm font-semibold text-white"
                 style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
               >
-                Continuar
+                {t('memories.intro.cta')}
               </motion.button>
               <button
                 type="button"
@@ -233,7 +234,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
                 className="text-sm"
                 style={{ color: 'var(--color-muted)' }}
               >
-                {showBreathing ? 'Cerrar ejercicio' : 'Primero quiero respirar un momento'}
+                {showBreathing ? t('memories.breathing.close') : t('memories.breathing.open')}
               </button>
             </div>
           </div>
@@ -249,7 +250,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
           className="flex flex-wrap gap-2 items-center"
         >
           <span className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-            Relacionado con:
+            {t('memories.related')}
           </span>
           {session.conflicts.map(c => (
             <span
@@ -293,7 +294,7 @@ export function StageMemories({ session, patient, priorSessions = [], onAdvance,
                     ))}
                   </div>
                   <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                    Palabras clave que la IA identificó en tu recuerdo
+                    {t('memories.keywords.label')}
                   </p>
                 </div>
               )}

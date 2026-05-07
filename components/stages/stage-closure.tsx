@@ -48,6 +48,8 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   const [wellbeingAfter, setWellbeingAfter] = useState<number | null>(
     session.wellbeingAfter ?? null
   );
+  const [celebrating, setCelebrating] = useState(false);
+  const [pendingAction, setPendingAction] = useState<ClosureAction | null>(null);
   const { text, isStreaming, isDone, startStream } = useAIStream();
   const shouldReduce = useReducedMotion();
 
@@ -67,6 +69,18 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
       return () => clearTimeout(timer);
     }
   }, [isDone, strategies.length, wellbeingAfter, shouldReduce]);
+
+  // Celebration overlay then navigate
+  useEffect(() => {
+    if (!celebrating || !pendingAction) return;
+    const timer = setTimeout(() => onComplete(pendingAction), shouldReduce ? 0 : 1800);
+    return () => clearTimeout(timer);
+  }, [celebrating, pendingAction, shouldReduce, onComplete]);
+
+  const handleComplete = (action: ClosureAction) => {
+    setPendingAction(action);
+    setCelebrating(true);
+  };
 
   const generate = async () => {
     setIsGenerating(true);
@@ -113,6 +127,39 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   const displayText = shouldReduce ? (fullClosure?.text ?? '') : text;
   const showContent = shouldReduce ? !!fullClosure : (isDone || isStreaming);
   const showReady = isDone || (!!shouldReduce && !!fullClosure);
+
+  if (celebrating) {
+    return (
+      <motion.div
+        initial={shouldReduce ? {} : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 flex flex-col items-center justify-center gap-3 z-50"
+        style={{ background: 'var(--color-base)' }}
+      >
+        <motion.p
+          initial={shouldReduce ? {} : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontStyle: 'italic',
+            fontSize: 'clamp(1.5rem, 5vw, 2.25rem)',
+            color: 'var(--color-deep)',
+          }}
+        >
+          {t('stage6.celebrate.line')}
+        </motion.p>
+        <motion.p
+          initial={shouldReduce ? {} : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          style={{ color: 'var(--color-muted)', fontSize: '1rem' }}
+        >
+          {t('stage6.celebrate.sub')}
+        </motion.p>
+      </motion.div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-48">
@@ -328,7 +375,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             {/* Tarjeta: Ver mi resumen */}
             <motion.button
               type="button"
-              onClick={() => onComplete('record')}
+              onClick={() => handleComplete('record')}
               whileHover={shouldReduce ? {} : { y: -2 }}
               whileTap={shouldReduce ? {} : { scale: 0.98 }}
               className="w-full flex items-center gap-4 p-5 rounded-[var(--radius-card)] text-left"
@@ -353,7 +400,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             {/* Tarjeta: Nuevo proceso */}
             <motion.button
               type="button"
-              onClick={() => onComplete('new-session')}
+              onClick={() => handleComplete('new-session')}
               whileHover={shouldReduce ? {} : { y: -2 }}
               whileTap={shouldReduce ? {} : { scale: 0.98 }}
               className="w-full flex items-center gap-4 p-5 rounded-[var(--radius-card)] text-left"
@@ -378,7 +425,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             {/* Volver al inicio — al final, discreto */}
             <motion.button
               type="button"
-              onClick={() => onComplete('dashboard')}
+              onClick={() => handleComplete('dashboard')}
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
               className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
               style={{ color: 'var(--color-muted)' }}
