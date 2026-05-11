@@ -117,6 +117,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     'welcome.crisis': 'Tend no es un servicio de emergencias. Si estás en crisis, llama a una línea de ayuda:',
     'welcome.start': 'Comenzar sesión',
     'welcome.continue': 'Mis sesiones',
+    'welcome.headline.1': 'Un espacio íntimo',
+    'welcome.headline.2': 'para cuidarte.',
+    'welcome.feature.1': 'Guiado por IA',
+    'welcome.feature.2': 'Personalizado',
+    'welcome.feature.3': 'Privado',
+    'welcome.returning.greeting': 'Te esperábamos.',
+    'welcome.start.new': 'Nueva sesión',
 
     // Dashboard
     'dashboard.new': 'Nueva sesión',
@@ -728,6 +735,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     'welcome.crisis': 'Tend is not an emergency service. If you are in crisis, call a helpline:',
     'welcome.start': 'Start session',
     'welcome.continue': 'My sessions',
+    'welcome.headline.1': 'An intimate space',
+    'welcome.headline.2': 'for your wellbeing.',
+    'welcome.feature.1': 'AI-guided',
+    'welcome.feature.2': 'Personalized',
+    'welcome.feature.3': 'Private',
+    'welcome.returning.greeting': 'Welcome back.',
+    'welcome.start.new': 'New session',
 
     // Dashboard
     'dashboard.new': 'New session',
@@ -1339,6 +1353,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     'welcome.crisis': 'Tend не является службой экстренной помощи. Если вы в кризисе, позвоните на горячую линию:',
     'welcome.start': 'Начать сессию',
     'welcome.continue': 'Мои сессии',
+    'welcome.headline.1': 'Интимное пространство',
+    'welcome.headline.2': 'для вашей заботы.',
+    'welcome.feature.1': 'Ведомый ИИ',
+    'welcome.feature.2': 'Персонализированный',
+    'welcome.feature.3': 'Конфиденциально',
+    'welcome.returning.greeting': 'Рады вас видеть.',
+    'welcome.start.new': 'Новая сессия',
 
     // Dashboard
     'dashboard.new': 'Новая сессия',
