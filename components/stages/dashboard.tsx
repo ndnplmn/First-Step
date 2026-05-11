@@ -194,26 +194,43 @@ export function Dashboard({
         )}
 
         {/* Greeting */}
-        <div className="mb-8">
-          <motion.h1
-            initial={shouldReduce ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className="mb-8"
+        >
+          <div
+            style={{
+              width: 28,
+              height: 2,
+              background: 'var(--color-sage)',
+              opacity: 0.55,
+              marginBottom: 14,
+              borderRadius: 2,
+            }}
+          />
+          <h1
             className="leading-tight breathe"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(32px, 6.5vw, 52px)',
+              fontStyle: 'italic',
+              fontSize: 'clamp(2rem, 7vw, 3.25rem)',
               color: 'var(--color-deep)',
+              letterSpacing: '-0.025em',
             }}
           >
             {getGreeting(patient.name)}
-          </motion.h1>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
+          </h1>
+
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
             <p
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
+                fontSize: '0.6875rem',
                 color: 'var(--color-muted)',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
               }}
             >
               {sessionCountLabel}
@@ -223,20 +240,20 @@ export function Dashboard({
                 initial={shouldReduce ? false : { opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.35, delay: 0.3 }}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                 style={{
                   background: 'rgba(180,110,69,0.1)',
-                  border: '1px solid rgba(180,110,69,0.2)',
+                  border: '1px solid rgba(180,110,69,0.18)',
                 }}
-                title={`Racha activa: ${streakLabel(streak)}`}
               >
                 <Flame size={11} weight="fill" style={{ color: 'var(--color-terracotta)' }} />
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: '10px',
+                    fontSize: '0.625rem',
                     color: 'var(--color-terracotta)',
                     fontWeight: 600,
+                    letterSpacing: '0.04em',
                   }}
                 >
                   {streakLabel(streak)}
@@ -251,19 +268,19 @@ export function Dashboard({
               initial={shouldReduce ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.25 }}
-              className="mt-4 px-4 py-3 rounded-[var(--radius-inner)]"
+              className="mt-4 px-4 py-3.5 rounded-[var(--radius-inner)]"
               style={{
                 background: 'var(--color-surface)',
                 boxShadow: 'var(--shadow-card)',
                 borderLeft: `3px solid ${dailyInsight.accent}`,
               }}
             >
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)', fontStyle: 'italic' }}>
                 {dailyInsight.text}
               </p>
             </motion.div>
           )}
-        </div>
+        </motion.div>
 
         {/* Active session card */}
         {activeSession && (
@@ -272,15 +289,18 @@ export function Dashboard({
             animate={{ opacity: 1, y: 0 }}
             className="mb-6"
           >
-            <p className="text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
+            <p
+              className="mb-2 uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', color: 'var(--color-muted)', letterSpacing: '0.1em' }}
+            >
               {t('dashboard.in_progress')}
             </p>
             <div
-              className="w-full rounded-[var(--radius-card)]"
+              className="w-full rounded-[var(--radius-card)] overflow-hidden"
               style={{
-                background: 'var(--color-surface)',
+                background: 'linear-gradient(135deg, rgba(61,107,71,0.07) 0%, var(--color-surface) 55%)',
                 boxShadow: 'var(--shadow-card)',
-                borderLeft: '3px solid var(--color-sage)',
+                border: '1px solid rgba(61,107,71,0.15)',
               }}
             >
               <motion.div
@@ -294,7 +314,14 @@ export function Dashboard({
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-medium" style={{ color: 'var(--color-deep)', fontSize: '1rem' }}>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        fontStyle: 'italic',
+                        fontSize: '1.0625rem',
+                        color: 'var(--color-deep)',
+                      }}
+                    >
                       {t('dashboard.session').replace('{n}', String(activeSession.sessionNumber))}
                     </p>
                     <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
@@ -303,9 +330,12 @@ export function Dashboard({
                   </div>
                   <ChapterProgress currentStage={activeSession.stage} />
                 </div>
-                <p className="text-sm mt-3 font-medium" style={{ color: 'var(--color-sage)' }}>
-                  {t('dashboard.continue')}
-                </p>
+                <div className="flex items-center gap-1.5 mt-3.5">
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-sage)' }} />
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-sage)' }}>
+                    {t('dashboard.continue')}
+                  </p>
+                </div>
               </motion.div>
 
               {/* Delete row */}
@@ -373,30 +403,37 @@ export function Dashboard({
               onClick={onStartSession}
               whileHover={shouldReduce ? {} : { y: -2 }}
               whileTap={shouldReduce ? {} : { scale: 0.99 }}
-              className="w-full p-5 rounded-[var(--radius-card)] text-left"
+              className="w-full p-5 rounded-[var(--radius-card)] text-left card-lift"
               style={{
                 background: 'var(--color-surface)',
                 boxShadow: 'var(--shadow-card)',
-                border: '1.5px dashed var(--color-border)',
+                border: '1.5px dashed rgba(61,107,71,0.25)',
               }}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div
-                  className="flex items-center justify-center rounded-full"
+                  className="flex items-center justify-center rounded-2xl flex-shrink-0"
                   style={{
-                    width: 36,
-                    height: 36,
-                    background: 'rgba(107,127,110,0.1)',
+                    width: 44,
+                    height: 44,
+                    background: 'rgba(61,107,71,0.1)',
                     color: 'var(--color-sage)',
                   }}
                 >
-                  <Plus size={16} />
+                  <Plus size={20} weight="bold" />
                 </div>
                 <div>
-                  <p className="font-medium" style={{ color: 'var(--color-deep)' }}>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontStyle: 'italic',
+                      fontSize: '1rem',
+                      color: 'var(--color-deep)',
+                    }}
+                  >
                     {sessionCount > 0 ? t('dashboard.start.new') : t('dashboard.start.first')}
                   </p>
-                  <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                  <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
                     {sessionCount > 0
                       ? t('dashboard.start.new.sub').replace('{n}', String(sessionCount + 1))
                       : t('dashboard.start.first.sub')}
@@ -410,25 +447,58 @@ export function Dashboard({
         {/* Quick actions */}
         <div className="grid grid-cols-3 gap-3 mt-8">
           {[
-            { icon: <Eye size={18} />, label: t('dashboard.quick.record'), onClick: onViewRecord },
-            { icon: <BookOpen size={18} />, label: t('dashboard.quick.diary'), onClick: onViewDiary },
-            { icon: <Path size={18} />, label: t('dashboard.quick.progress'), onClick: onViewProgress },
-          ].map(({ icon, label, onClick }) => (
+            {
+              icon: <Eye size={18} weight="duotone" />,
+              label: t('dashboard.quick.record'),
+              onClick: onViewRecord,
+              iconBg: 'rgba(61,107,71,0.12)',
+              iconColor: 'var(--color-sage)',
+            },
+            {
+              icon: <BookOpen size={18} weight="duotone" />,
+              label: t('dashboard.quick.diary'),
+              onClick: onViewDiary,
+              iconBg: 'rgba(107,94,158,0.1)',
+              iconColor: 'var(--color-violet)',
+            },
+            {
+              icon: <Path size={18} weight="duotone" />,
+              label: t('dashboard.quick.progress'),
+              onClick: onViewProgress,
+              iconBg: 'rgba(180,110,69,0.1)',
+              iconColor: 'var(--color-terracotta)',
+            },
+          ].map(({ icon, label, onClick, iconBg, iconColor }) => (
             <motion.button
               key={label}
               type="button"
               onClick={onClick}
               whileHover={shouldReduce ? {} : { y: -2 }}
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              className="flex flex-col items-center gap-2 p-4 rounded-[var(--radius-card)]"
+              className="flex flex-col items-center gap-3 py-5 px-3 rounded-[var(--radius-card)] card-lift"
               style={{
                 background: 'var(--color-surface)',
                 boxShadow: 'var(--shadow-card)',
-                color: 'var(--color-muted)',
               }}
             >
-              {icon}
-              <span className="text-xs font-medium" style={{ color: 'var(--color-deep)' }}>{label}</span>
+              <div
+                className="flex items-center justify-center rounded-xl"
+                style={{ width: 40, height: 40, background: iconBg, color: iconColor }}
+              >
+                {icon}
+              </div>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.5625rem',
+                  color: 'var(--color-muted)',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  textAlign: 'center',
+                }}
+              >
+                {label}
+              </span>
             </motion.button>
           ))}
         </div>
@@ -436,24 +506,63 @@ export function Dashboard({
         {/* Session history */}
         {completedSessions.length > 0 && (
           <div className="mt-10">
-            <p className="text-xs font-medium mb-3 uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
+            <p
+              className="mb-3 uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', color: 'var(--color-muted)', letterSpacing: '0.1em' }}
+            >
               {t('dashboard.history')}
             </p>
             <div className="space-y-2">
-              {completedSessions.slice(0, 5).map(session => (
-                <div
-                  key={session.id}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl"
-                  style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-                >
-                  <p className="text-sm" style={{ color: 'var(--color-deep)' }}>
-                    {t('dashboard.session').replace('{n}', String(session.sessionNumber))}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                    {formatRelativeTime(session.updatedAt)}
-                  </p>
-                </div>
-              ))}
+              {completedSessions.slice(0, 5).map(session => {
+                const delta = session.wellbeingAfter && session.wellbeingBefore
+                  ? session.wellbeingAfter - session.wellbeingBefore
+                  : null;
+                return (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between px-4 py-3.5 rounded-[var(--radius-inner)]"
+                    style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+                  >
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        fontStyle: 'italic',
+                        fontSize: '0.9375rem',
+                        color: 'var(--color-deep)',
+                      }}
+                    >
+                      {t('dashboard.session').replace('{n}', String(session.sessionNumber))}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      {delta !== null && (
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '0.625rem',
+                            fontWeight: 600,
+                            color: delta > 0
+                              ? 'var(--color-sage)'
+                              : delta < 0
+                                ? 'var(--color-terracotta)'
+                                : 'var(--color-muted)',
+                          }}
+                        >
+                          {delta > 0 ? `+${delta}` : delta}
+                        </span>
+                      )}
+                      <p
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.625rem',
+                          color: 'var(--color-muted)',
+                        }}
+                      >
+                        {formatRelativeTime(session.updatedAt)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

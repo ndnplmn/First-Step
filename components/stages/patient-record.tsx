@@ -44,6 +44,26 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
+function WellbeingDots({ value, max = 5, color }: { value: number; max?: number; color?: string }) {
+  const fill = color ?? 'var(--color-sage)';
+  return (
+    <div className="flex gap-1.5 items-center">
+      {Array.from({ length: max }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: i < value ? fill : 'var(--color-border)',
+            flexShrink: 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface PatientRecordProps {
   patient: Patient;
   sessions: PatientSession[];
@@ -348,22 +368,69 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
         </div>
 
         {sessions.length > 1 && (
-          <div className="flex gap-2 flex-wrap">
-            {sessions.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setActiveSessionIdx(i)}
-                className="px-4 py-2 rounded-full text-xs font-medium transition-all"
-                style={{
-                  background: activeSessionIdx === i ? 'var(--color-deep)' : 'var(--color-surface)',
-                  color: activeSessionIdx === i ? 'white' : 'var(--color-muted)',
-                  boxShadow: 'var(--shadow-card)',
-                }}
-              >
-                {t('record.process').replace('{n}', String(s.sessionNumber))}
-              </button>
-            ))}
+          <div
+            className="flex gap-2 pb-1 -mx-1 px-1"
+            style={{ overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+          >
+            {sessions.map((s, i) => {
+              const delta = (s.wellbeingAfter != null && s.wellbeingBefore != null)
+                ? s.wellbeingAfter - s.wellbeingBefore
+                : null;
+              const isActive = activeSessionIdx === i;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setActiveSessionIdx(i)}
+                  className="flex-shrink-0 px-4 py-2.5 rounded-[var(--radius-inner)] text-left"
+                  style={{
+                    background: isActive ? 'var(--color-deep)' : 'var(--color-surface)',
+                    boxShadow: 'var(--shadow-card)',
+                    transition: 'all 0.15s ease',
+                    border: isActive ? 'none' : '1px solid var(--color-border)',
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color: isActive ? 'white' : 'var(--color-deep)',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {t('record.process').replace('{n}', String(s.sessionNumber))}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '0.6375rem',
+                      fontFamily: 'var(--font-mono)',
+                      marginTop: 3,
+                      color: isActive ? 'rgba(255,255,255,0.6)' : 'var(--color-muted)',
+                    }}
+                  >
+                    {new Date(s.createdAt).toLocaleDateString(
+                      locale === 'es' ? 'es-ES' : locale === 'ru' ? 'ru-RU' : 'en-US',
+                      { day: 'numeric', month: 'short' }
+                    )}
+                    {delta !== null && (
+                      <span
+                        style={{
+                          marginLeft: 6,
+                          color: delta > 0
+                            ? (isActive ? '#86efac' : 'var(--color-sage)')
+                            : delta < 0
+                              ? 'var(--color-terracotta)'
+                              : isActive ? 'rgba(255,255,255,0.5)' : 'var(--color-muted)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '='}
+                      </span>
+                    )}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -372,39 +439,160 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
         )}
 
         {session && (
+          <>
+          {/* Session hero */}
+          <motion.div
+            key={`hero-${session.id}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="p-5 rounded-[var(--radius-card)]"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontStyle: 'italic',
+                    fontSize: 'clamp(1.5rem, 4.5vw, 2.125rem)',
+                    color: 'var(--color-deep)',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {t('record.process').replace('{n}', String(session.sessionNumber))}
+                </p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.6875rem',
+                    color: 'var(--color-muted)',
+                    marginTop: 5,
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  {formatDate(session.createdAt, locale)}
+                </p>
+              </div>
+
+              {primaryFramework && primaryColor && (
+                <span
+                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium"
+                  style={{
+                    background: primaryColor.bg,
+                    color: primaryColor.text,
+                    fontFamily: 'var(--font-mono)',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  {primaryFramework.name}
+                </span>
+              )}
+            </div>
+
+            {(session.wellbeingBefore != null || session.wellbeingAfter != null) && (
+              <div
+                className="mt-4 pt-4 flex items-end gap-5"
+                style={{ borderTop: '1px solid var(--color-border)' }}
+              >
+                {session.wellbeingBefore != null && (
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.5625rem',
+                        color: 'var(--color-muted)',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.07em',
+                      }}
+                    >
+                      {t('record.section.wellbeing.before')}
+                    </p>
+                    <WellbeingDots value={session.wellbeingBefore} color="var(--color-muted)" />
+                  </div>
+                )}
+
+                {session.wellbeingBefore != null && session.wellbeingAfter != null && (
+                  <div
+                    style={{
+                      fontSize: '1rem',
+                      color: 'var(--color-border)',
+                      marginBottom: 3,
+                      lineHeight: 1,
+                    }}
+                    aria-hidden="true"
+                  >
+                    →
+                  </div>
+                )}
+
+                {session.wellbeingAfter != null && (
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.5625rem',
+                        color: 'var(--color-muted)',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.07em',
+                      }}
+                    >
+                      {t('record.section.wellbeing.after')}
+                    </p>
+                    <WellbeingDots value={session.wellbeingAfter} />
+                  </div>
+                )}
+
+                {session.wellbeingBefore != null && session.wellbeingAfter != null && (() => {
+                  const delta = session.wellbeingAfter - session.wellbeingBefore;
+                  const col = delta > 0 ? 'var(--color-sage)' : delta < 0 ? 'var(--color-terracotta)' : 'var(--color-muted)';
+                  return (
+                    <div style={{ marginLeft: 'auto' }}>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.8125rem',
+                          color: col,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {delta > 0 ? `+${delta}` : delta === 0 ? '=' : `${delta}`}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </motion.div>
+
           <div className="space-y-6">
+            {patient.consultationReason && (
+              <Section label={t('record.section.consultation')}>
+                <div
+                  className="px-5 py-4 rounded-[var(--radius-inner)]"
+                  style={{
+                    background: 'var(--color-surface)',
+                    boxShadow: 'var(--shadow-card)',
+                    borderLeft: '3px solid var(--color-terracotta)',
+                  }}
+                >
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: 'var(--color-deep)', fontStyle: 'italic' }}
+                  >
+                    &quot;{patient.consultationReason}&quot;
+                  </p>
+                </div>
+              </Section>
+            )}
+
             {session.narrativeSummary && (
               <Section label={t('record.section.approach')}>
                 <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
                   {session.narrativeSummary}
                 </p>
-              </Section>
-            )}
-
-            {(session.wellbeingBefore || session.wellbeingAfter) && (
-              <Section label={t('record.section.wellbeing')}>
-                <div className="flex gap-6">
-                  {session.wellbeingBefore && (
-                    <div>
-                      <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                        {t('record.section.wellbeing.before')}
-                      </p>
-                      <p className="text-lg font-medium" style={{ color: 'var(--color-deep)' }}>
-                        {WELLBEING_LABELS[session.wellbeingBefore] ?? session.wellbeingBefore}
-                      </p>
-                    </div>
-                  )}
-                  {session.wellbeingAfter && (
-                    <div>
-                      <p className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-                        {t('record.section.wellbeing.after')}
-                      </p>
-                      <p className="text-lg font-medium" style={{ color: 'var(--color-deep)' }}>
-                        {WELLBEING_LABELS[session.wellbeingAfter] ?? session.wellbeingAfter}
-                      </p>
-                    </div>
-                  )}
-                </div>
               </Section>
             )}
 
@@ -415,7 +603,11 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                     <div
                       key={c.id}
                       className="p-4 rounded-[var(--radius-inner)]"
-                      style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+                      style={{
+                        background: 'var(--color-surface)',
+                        boxShadow: 'var(--shadow-card)',
+                        borderLeft: `3px solid ${FRAMEWORK_COLORS[c.frameworkKey]?.text ?? 'var(--color-muted)'}`,
+                      }}
                     >
                       <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
                         {c.synthesized}
@@ -535,16 +727,53 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
             {session.closure && (
               <Section label={t('record.section.closure')}>
                 <div
-                  className="p-5 rounded-[var(--radius-inner)]"
-                  style={{
-                    background: 'var(--color-surface)',
-                    boxShadow: 'var(--shadow-card)',
-                    borderLeft: '3px solid var(--color-sage)',
-                  }}
+                  className="rounded-[var(--radius-card)] overflow-hidden"
+                  style={{ boxShadow: 'var(--shadow-card)' }}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--color-deep)' }}>
-                    {session.closure.text}
-                  </p>
+                  {/* Letter header strip */}
+                  <div
+                    className="px-6 py-3 flex items-center gap-2"
+                    style={{
+                      background: 'rgba(61,107,71,0.08)',
+                      borderBottom: '1px solid rgba(61,107,71,0.15)',
+                    }}
+                  >
+                    <span
+                      style={{ color: 'var(--color-sage)', fontSize: '0.875rem', lineHeight: 1 }}
+                      aria-hidden="true"
+                    >
+                      ✦
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.6875rem',
+                        color: 'var(--color-sage)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.07em',
+                      }}
+                    >
+                      {t('record.section.closure')}
+                    </span>
+                  </div>
+
+                  {/* Letter body — display italic font */}
+                  <div
+                    className="px-6 pt-6 pb-7"
+                    style={{ background: 'var(--color-surface)' }}
+                  >
+                    <p
+                      className="leading-[1.85] whitespace-pre-wrap"
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        fontStyle: 'italic',
+                        fontSize: 'clamp(0.9375rem, 2vw, 1.0625rem)',
+                        color: 'var(--color-deep)',
+                      }}
+                    >
+                      {session.closure.text}
+                    </p>
+                  </div>
                 </div>
               </Section>
             )}
@@ -621,6 +850,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
               </Section>
             )}
           </div>
+          </>
         )}
       </main>
     </div>

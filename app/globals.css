@@ -17,7 +17,9 @@
 
   /* ── Accent: Sage ── */
   --color-sage: #3D6B47;
+  --color-sage-dark: #2A5035;
   --color-sage-light: #E8F0E6;
+  --color-sage-xlight: #F0F5EE;
   --color-sage-muted: rgba(61, 107, 71, 0.08);
 
   /* ── Accent: Terracotta ── */
@@ -54,19 +56,29 @@
 
   /* ── Shadows (warm-tinted, multi-layer) ── */
   --shadow-card:
-    0 1px 2px rgba(28, 25, 21, 0.04),
-    0 4px 12px rgba(28, 25, 21, 0.03),
-    0 12px 32px rgba(28, 25, 21, 0.025);
+    0 0 0 1px rgba(28, 25, 21, 0.055),
+    0 1px 3px rgba(28, 25, 21, 0.08),
+    0 4px 16px rgba(28, 25, 21, 0.055),
+    0 14px 44px rgba(28, 25, 21, 0.035);
   --shadow-card-hover:
-    0 2px 4px rgba(28, 25, 21, 0.05),
-    0 8px 20px rgba(28, 25, 21, 0.04),
-    0 20px 48px rgba(28, 25, 21, 0.035);
+    0 0 0 1px rgba(28, 25, 21, 0.08),
+    0 2px 6px rgba(28, 25, 21, 0.1),
+    0 8px 28px rgba(28, 25, 21, 0.08),
+    0 24px 64px rgba(28, 25, 21, 0.05);
   --shadow-float:
-    0 -1px 0 rgba(255, 255, 255, 0.5),
-    0 -4px 16px rgba(28, 25, 21, 0.04),
-    0 -12px 48px rgba(28, 25, 21, 0.06);
-  --shadow-glow-sage: 0 0 0 1px rgba(61, 107, 71, 0.12), 0 4px 16px rgba(61, 107, 71, 0.08);
-  --shadow-glow-violet: 0 0 0 1px rgba(107, 94, 158, 0.12), 0 4px 16px rgba(107, 94, 158, 0.08);
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 -2px 4px rgba(28, 25, 21, 0.05),
+    0 -8px 28px rgba(28, 25, 21, 0.07),
+    0 -20px 64px rgba(28, 25, 21, 0.09);
+  --shadow-inset: inset 0 1px 3px rgba(28, 25, 21, 0.09);
+  --shadow-glow-sage:
+    0 0 0 1px rgba(61, 107, 71, 0.28),
+    0 4px 20px rgba(61, 107, 71, 0.24),
+    0 10px 48px rgba(61, 107, 71, 0.14);
+  --shadow-glow-violet:
+    0 0 0 1px rgba(107, 94, 158, 0.24),
+    0 4px 20px rgba(107, 94, 158, 0.2),
+    0 10px 48px rgba(107, 94, 158, 0.12);
 }
 
 /* ══════════════════════════════════════════
@@ -99,7 +111,7 @@ body::before {
   position: fixed;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.028;
+  opacity: 0.034;
   pointer-events: none;
   z-index: 1;
   mix-blend-mode: multiply;
@@ -116,7 +128,7 @@ body::after {
   opacity: 0.032;
   pointer-events: none;
   z-index: 0;
-  animation: grain-drift 180s linear infinite;
+  animation: grain-drift 120s linear infinite;
 }
 
 @keyframes grain-drift {
@@ -183,25 +195,48 @@ body::after {
 }
 
 /* ══════════════════════════════════════════
+   DISPLAY HEADING GLOBAL STYLES
+   ══════════════════════════════════════════ */
+h1, h2, h3 {
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
+
+/* ══════════════════════════════════════════
    FOCUS STATES
    ══════════════════════════════════════════ */
 textarea:focus,
 input:focus {
   outline: none;
   border-color: var(--color-sage) !important;
-  box-shadow: 0 0 0 3px rgba(61, 107, 71, 0.1), 0 0 0 1px rgba(61, 107, 71, 0.2);
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  box-shadow: 0 0 0 4px rgba(61, 107, 71, 0.11), 0 0 0 1.5px rgba(61, 107, 71, 0.28);
+  transition: border-color 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 textarea,
 input {
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  transition: border-color 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1);
   font-family: inherit;
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 
 button:focus-visible {
   outline: 2px solid var(--color-sage);
-  outline-offset: 2px;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ══════════════════════════════════════════
+   CARD HOVER UTILITY
+   ══════════════════════════════════════════ */
+.card-lift {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, box-shadow;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* ══════════════════════════════════════════
@@ -405,7 +440,9 @@ button:focus-visible {
   --color-deep: #19160F;
   --color-deep-soft: #2C271E;
   --color-sage: #3D6B47;
+  --color-sage-dark: #2A5035;
   --color-sage-light: #E8F0E6;
+  --color-sage-xlight: #F0F5EE;
   --color-sage-muted: rgba(61, 107, 71, 0.08);
   --color-terracotta: #B46E45;
   --color-terracotta-light: #FBF0E8;
@@ -414,9 +451,33 @@ button:focus-visible {
   --color-violet-muted: rgba(107, 94, 158, 0.08);
   --color-muted: #6E665C;
   --color-muted-soft: #998F84;
-  --color-border: rgba(28, 25, 21, 0.07);
-  --color-border-strong: rgba(28, 25, 21, 0.13);
+  --color-border: rgba(28, 25, 21, 0.09);
+  --color-border-strong: rgba(28, 25, 21, 0.16);
   --color-glass: rgba(246, 241, 236, 0.88);
-  --color-glass-heavy: rgba(246, 241, 236, 0.95);
-  --color-overlay: rgba(25, 22, 15, 0.45);
+  --color-glass-heavy: rgba(246, 241, 236, 0.96);
+  --color-overlay: rgba(25, 22, 15, 0.52);
+  --shadow-card:
+    0 0 0 1px rgba(28, 25, 21, 0.055),
+    0 1px 3px rgba(28, 25, 21, 0.08),
+    0 4px 16px rgba(28, 25, 21, 0.055),
+    0 14px 44px rgba(28, 25, 21, 0.035);
+  --shadow-card-hover:
+    0 0 0 1px rgba(28, 25, 21, 0.08),
+    0 2px 6px rgba(28, 25, 21, 0.1),
+    0 8px 28px rgba(28, 25, 21, 0.08),
+    0 24px 64px rgba(28, 25, 21, 0.05);
+  --shadow-float:
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 -2px 4px rgba(28, 25, 21, 0.05),
+    0 -8px 28px rgba(28, 25, 21, 0.07),
+    0 -20px 64px rgba(28, 25, 21, 0.09);
+  --shadow-inset: inset 0 1px 3px rgba(28, 25, 21, 0.09);
+  --shadow-glow-sage:
+    0 0 0 1px rgba(61, 107, 71, 0.28),
+    0 4px 20px rgba(61, 107, 71, 0.24),
+    0 10px 48px rgba(61, 107, 71, 0.14);
+  --shadow-glow-violet:
+    0 0 0 1px rgba(107, 94, 158, 0.24),
+    0 4px 20px rgba(107, 94, 158, 0.2),
+    0 10px 48px rgba(107, 94, 158, 0.12);
 }

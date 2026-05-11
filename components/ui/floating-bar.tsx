@@ -20,19 +20,20 @@ export function FloatingBar({ visible, children }: FloatingBarProps) {
           className="fixed bottom-0 left-0 right-0 z-50"
         >
           <div
-            className="max-w-[680px] mx-auto px-6 pb-8 pt-6"
+            className="max-w-[680px] mx-auto px-5 pb-8 pt-5"
             style={{
-              background: 'linear-gradient(to top, var(--color-base) 55%, transparent)',
+              background: 'linear-gradient(to top, var(--color-base) 60%, transparent)',
             }}
           >
             <div
-              className="rounded-[20px] p-4 space-y-2.5"
+              className="rounded-[22px] p-4 space-y-2.5"
               style={{
                 background: 'var(--color-glass-heavy)',
-                backdropFilter: 'blur(24px) saturate(1.2)',
-                WebkitBackdropFilter: 'blur(24px) saturate(1.2)',
+                backdropFilter: 'blur(32px) saturate(1.4)',
+                WebkitBackdropFilter: 'blur(32px) saturate(1.4)',
                 boxShadow: 'var(--shadow-float)',
-                border: '1px solid rgba(255,255,255,0.45)',
+                border: '1px solid rgba(255,255,255,0.55)',
+                outline: '1px solid rgba(28,25,21,0.06)',
               }}
             >
               {children}
