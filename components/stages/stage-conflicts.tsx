@@ -86,7 +86,13 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
   const [showCrisis, setShowCrisis] = useState(false);
 
   // ─── Estado conversacional ────────────────────────────────────────
-  const [messages, setMessages] = useState<Message[]>([]);
+  const openingGreeting = priorSessions.length > 0
+    ? t('stage2.greeting.returning')
+    : t('stage2.greeting.first');
+
+  const [messages, setMessages] = useState<Message[]>(() =>
+    hasExistingData ? [] : [{ role: 'therapist', text: openingGreeting }]
+  );
   const [input, setInput] = useState('');
   const [questionsAsked, setQuestionsAsked] = useState<string[]>([]);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -391,7 +397,7 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
             initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}>
             {STARTER_PROMPTS.map(p => (
-              <button key={p} type="button" onClick={() => setInput(p)}
+              <button key={p} type="button" onClick={() => handleSend(p)}
                 className="px-3.5 py-2 rounded-full text-sm transition-all"
                 style={{ background: 'var(--color-surface)', color: 'var(--color-muted)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--color-border)' }}>
                 {p}
