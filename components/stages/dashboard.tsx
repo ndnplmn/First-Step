@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Eye, BookOpen, Path, Plus, SignOut, Gear, Flame, Trash } from '@phosphor-icons/react';
 import { ChapterProgress } from '@/components/ui/chapter-progress';
 import { TendLogo } from '@/components/ui/logo';
-import { computeStreak, streakLabel } from '@/lib/streak';
+import { computeStreak } from '@/lib/streak';
 import type { Patient, PatientSession } from '@/lib/types';
 import { useLanguage } from '@/contexts/language-context';
 
@@ -256,7 +256,9 @@ export function Dashboard({
                     letterSpacing: '0.04em',
                   }}
                 >
-                  {streakLabel(streak)}
+                  {streak === 1
+                    ? t('dashboard.streak.1')
+                    : t('dashboard.streak.n').replace('{n}', String(streak))}
                 </span>
               </motion.div>
             )}
@@ -523,16 +525,26 @@ export function Dashboard({
                     className="flex items-center justify-between px-4 py-3.5 rounded-[var(--radius-inner)]"
                     style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
                   >
-                    <p
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontStyle: 'italic',
-                        fontSize: '0.9375rem',
-                        color: 'var(--color-deep)',
-                      }}
-                    >
-                      {t('dashboard.session').replace('{n}', String(session.sessionNumber))}
-                    </p>
+                    <div className="min-w-0 flex-1 mr-3">
+                      <p
+                        style={{
+                          fontFamily: 'var(--font-display)',
+                          fontStyle: 'italic',
+                          fontSize: '0.9375rem',
+                          color: 'var(--color-deep)',
+                        }}
+                      >
+                        {t('dashboard.session').replace('{n}', String(session.sessionNumber))}
+                      </p>
+                      {(session.selectedWorkCard?.title || session.explorationRecord?.insights[0]?.theme) && (
+                        <p
+                          className="truncate mt-0.5"
+                          style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--color-muted)' }}
+                        >
+                          {session.selectedWorkCard?.title ?? session.explorationRecord?.insights[0]?.theme}
+                        </p>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3">
                       {delta !== null && (
                         <span

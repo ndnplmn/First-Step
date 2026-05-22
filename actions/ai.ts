@@ -52,9 +52,9 @@ function handleAIError(error: unknown): never {
 
 function getLanguageInstruction(locale?: string): string {
   const toneMap: Record<string, string> = {
-    es: '',
-    en: '\n\nIMPORTANT: You MUST respond entirely in English. Use empathetic, clear, and warm English. All therapeutic content, questions, reflections, analysis, letters, strategies, and any other output must be written in English. This is non-negotiable.',
-    ru: '\n\nВАЖНО: Вы ОБЯЗАНЫ отвечать исключительно на русском языке. Используйте тёплый, рефлексивный и сочувственный тон на русском. Всё терапевтическое содержание — вопросы, размышления, анализ, письма, стратегии и любой другой текст — должно быть написано на русском языке. Это обязательное требование.',
+    es: '\n\nSIEMPRE responde en español. Usa un tono cálido, cercano y reflexivo — como un terapeuta presente, no un sistema. Adapta tu registro al estado emocional del paciente: directo cuando sea necesario, gentil cuando el tema sea sensible, profundo sin ser clínico. Evita frases genéricas o de autoayuda; prioriza la autenticidad y la presencia terapéutica.',
+    en: '\n\nYou MUST respond entirely in English. Use a warm, grounded, and reflective tone — like a present therapist, not a system. Adapt your register to the patient\'s emotional state: direct when needed, gentle on sensitive topics, profound without being clinical. Avoid generic self-help phrases; prioritize authenticity and therapeutic presence.',
+    ru: '\n\nВы ОБЯЗАНЫ отвечать исключительно на русском языке. Используйте тёплый, вдумчивый и рефлексивный тон — как присутствующий терапевт, а не система. Адаптируйте свой регистр к эмоциональному состоянию пациента: прямой, когда это необходимо, мягкий в чувствительных темах, глубокий без клинического холода. Избегайте банальных фраз; приоритет — подлинность и терапевтическое присутствие.',
   };
   return toneMap[locale ?? 'es'] ?? toneMap.en;
 }
@@ -867,16 +867,17 @@ Responde SOLO con JSON con esa estructura exacta.
       response_format: { type: 'json_object' },
       temperature: 0.65,
     });
-    content = response.choices[0]?.message?.content || '{"done":true,"response":"","synthesis":""}';
+    content = response.choices[0]?.message?.content || '{"done":false,"response":"Continúa cuando estés listo.","synthesis":null}';
   } catch (error) {
     handleAIError(error);
   }
 
   const parsed = JSON.parse(content);
+  const synthesis = parsed.synthesis || undefined;
   return {
-    done: !!parsed.done,
+    done: !!parsed.done && !!synthesis,
     response: parsed.response ?? '',
-    synthesis: parsed.synthesis ?? undefined,
+    synthesis,
   };
 }
 

@@ -5,8 +5,8 @@ import { motion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { ArrowLeft, Clock, User, Export, Check, Printer } from '@phosphor-icons/react';
 import {
-  PHQ9_SEVERITY_LABELS, PHQ9_SEVERITY_COLORS,
-  GAD7_SEVERITY_LABELS, GAD7_SEVERITY_COLORS,
+  PHQ9_SEVERITY_COLORS,
+  GAD7_SEVERITY_COLORS,
 } from '@/lib/clinical';
 import { useLanguage } from '@/contexts/language-context';
 
@@ -85,6 +85,7 @@ function buildExportText(
     section_closure: string;
     section_reflections: string;
     section_clinical: string;
+    severity: (key: string) => string;
     locale: string;
   }
 ): string {
@@ -129,10 +130,10 @@ function buildExportText(
   if (session.phq9 || session.gad7) {
     lines.push(labels.section_clinical.toUpperCase());
     if (session.phq9) {
-      lines.push(`PHQ-9: ${session.phq9.score}/27 — ${PHQ9_SEVERITY_LABELS[session.phq9.severity]}`);
+      lines.push(`PHQ-9: ${session.phq9.score}/27 — ${labels.severity(session.phq9.severity)}`);
     }
     if (session.gad7) {
-      lines.push(`GAD-7: ${session.gad7.score}/21 — ${GAD7_SEVERITY_LABELS[session.gad7.severity]}`);
+      lines.push(`GAD-7: ${session.gad7.score}/21 — ${labels.severity(session.gad7.severity)}`);
     }
     lines.push('');
   }
@@ -156,6 +157,25 @@ function buildTherapistReport(patient: Patient, sessions: PatientSession[], loca
 
   const isEs = locale === 'es';
   const isRu = locale === 'ru';
+
+  const translateGender = (v: string) => {
+    const es: Record<string, string> = { 'female': 'Femenino', 'male': 'Masculino', 'other': 'Otro' };
+    const en: Record<string, string> = { 'female': 'Female', 'male': 'Male', 'other': 'Other' };
+    const ru: Record<string, string> = { 'female': 'Женский', 'male': 'Мужской', 'other': 'Другой' };
+    return (isRu ? ru : isEs ? es : en)[v] ?? v;
+  };
+  const translateMarital = (v: string) => {
+    const es: Record<string, string> = { 'single': 'Soltero/a', 'partnered': 'En pareja', 'married': 'Casado/a', 'divorced': 'Divorciado/a', 'widowed': 'Viudo/a', 'separated': 'Separado/a' };
+    const en: Record<string, string> = { 'single': 'Single', 'partnered': 'In a relationship', 'married': 'Married', 'divorced': 'Divorced', 'widowed': 'Widowed', 'separated': 'Separated' };
+    const ru: Record<string, string> = { 'single': 'Одинок/а', 'partnered': 'В отношениях', 'married': 'Женат/Замужем', 'divorced': 'В разводе', 'widowed': 'Вдовец/Вдова', 'separated': 'В разлуке' };
+    return (isRu ? ru : isEs ? es : en)[v] ?? v;
+  };
+  const translateLiving = (v: string) => {
+    const es: Record<string, string> = { 'alone': 'Solo/a', 'with-partner': 'Con pareja', 'with-family': 'Con familia', 'with-housemates': 'Con compañeros', 'with-parents': 'Con padres', 'other': 'Otro' };
+    const en: Record<string, string> = { 'alone': 'Alone', 'with-partner': 'With partner', 'with-family': 'With family', 'with-housemates': 'With housemates', 'with-parents': 'With parents', 'other': 'Other' };
+    const ru: Record<string, string> = { 'alone': 'Один/Одна', 'with-partner': 'С партнёром', 'with-family': 'С семьёй', 'with-housemates': 'С сожителями', 'with-parents': 'С родителями', 'other': 'Другое' };
+    return (isRu ? ru : isEs ? es : en)[v] ?? v;
+  };
 
   return `<!DOCTYPE html>
 <html lang="${locale}">
@@ -181,8 +201,8 @@ function buildTherapistReport(patient: Patient, sessions: PatientSession[], loca
   <p class="subtitle">${isRu ? 'Создано с помощью Tend' : 'Generated with Tend'} · ${new Date().toLocaleDateString(fmtLocale, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 
   <h2>${isRu ? 'Данные пациента' : isEs ? 'Datos del paciente' : 'Patient data'}</h2>
-  <p><strong>${isRu ? 'Имя' : isEs ? 'Nombre' : 'Name'}:</strong> ${patient.name} · <strong>${isRu ? 'Возраст' : isEs ? 'Edad' : 'Age'}:</strong> ${patient.age} · <strong>${isRu ? 'Пол' : isEs ? 'Género' : 'Gender'}:</strong> ${patient.gender}</p>
-  <p><strong>${isRu ? 'Семейное положение' : isEs ? 'Estado civil' : 'Marital status'}:</strong> ${patient.maritalStatus} · <strong>${isRu ? 'Ситуация' : isEs ? 'Situación' : 'Situation'}:</strong> ${patient.livingSituation}</p>
+  <p><strong>${isRu ? 'Имя' : isEs ? 'Nombre' : 'Name'}:</strong> ${patient.name} · <strong>${isRu ? 'Возраст' : isEs ? 'Edad' : 'Age'}:</strong> ${patient.age} · <strong>${isRu ? 'Пол' : isEs ? 'Género' : 'Gender'}:</strong> ${translateGender(patient.gender)}</p>
+  <p><strong>${isRu ? 'Семейное положение' : isEs ? 'Estado civil' : 'Marital status'}:</strong> ${translateMarital(patient.maritalStatus)} · <strong>${isRu ? 'Ситуация' : isEs ? 'Situación' : 'Situation'}:</strong> ${translateLiving(patient.livingSituation)}</p>
   <p><strong>${isRu ? 'Предыдущая терапия' : isEs ? 'Terapia previa' : 'Prior therapy'}:</strong> ${patient.previousTherapy ? `${isRu ? 'Да' : isEs ? 'Sí' : 'Yes'}${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}` : (isRu ? 'Нет' : isEs ? 'No' : 'No')}</p>
   <p><strong>${isRu ? 'Медикаменты' : isEs ? 'Medicación' : 'Medication'}:</strong> ${patient.takingMedication ? `${isRu ? 'Да' : isEs ? 'Sí' : 'Yes'}${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}` : (isRu ? 'Нет' : isEs ? 'No' : 'No')}</p>
 
@@ -258,6 +278,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
       section_closure: t('record.section.closure'),
       section_reflections: t('record.section.reflections'),
       section_clinical: t('record.section.clinical'),
+      severity: (key: string) => t(`clinical.severity.${key}`),
       locale,
     };
     const text = buildExportText(patient, session, exportLabels);
@@ -353,7 +374,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
       <main className="max-w-[680px] mx-auto px-6 py-8 space-y-8">
         <div className="flex flex-wrap gap-3">
           {[
-            { icon: <User size={13} />, label: t('record.age').replace('{n}', String(patient.age)) + ', ' + patient.gender },
+            { icon: <User size={13} />, label: t('record.age').replace('{n}', String(patient.age)) + ', ' + (patient.gender === 'female' ? t('intake.gender.female') : patient.gender === 'male' ? t('intake.gender.male') : t('intake.gender.other')) },
             { icon: <Clock size={13} />, label: formatDate(patient.createdAt, locale) },
           ].map((item, i) => (
             <div
@@ -818,7 +839,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                           <span className="text-xs font-normal ml-1" style={{ opacity: 0.7 }}>/ 27</span>
                         </p>
                         <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
-                          {PHQ9_SEVERITY_LABELS[session.phq9!.severity]}
+                          {t(`clinical.severity.${session.phq9!.severity}`)}
                         </p>
                       </div>
                     );
@@ -841,7 +862,7 @@ export function PatientRecord({ patient, sessions, onBack }: PatientRecordProps)
                           <span className="text-xs font-normal ml-1" style={{ opacity: 0.7 }}>/ 21</span>
                         </p>
                         <p className="text-xs" style={{ color: c.text, opacity: 0.85 }}>
-                          {GAD7_SEVERITY_LABELS[session.gad7!.severity]}
+                          {t(`clinical.severity.${session.gad7!.severity}`)}
                         </p>
                       </div>
                     );

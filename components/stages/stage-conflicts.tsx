@@ -99,6 +99,8 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
   const [showCardSelection, setShowCardSelection] = useState(false);
   const [sessionCards, setSessionCards] = useState<WorkCard[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(false);
+  const [customCardExpanded, setCustomCardExpanded] = useState(false);
+  const [customCardText, setCustomCardText] = useState('');
 
   // Análisis final
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -612,6 +614,73 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                 </p>
               </motion.button>
             ))}
+            {!isLoadingCards && (
+              <motion.div
+                initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: sessionCards.length * 0.1 }}
+                className="rounded-[var(--radius-card)] overflow-hidden"
+                style={{
+                  background: 'var(--color-surface)',
+                  boxShadow: 'var(--shadow-card)',
+                  border: '1px dashed var(--color-border)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setCustomCardExpanded(e => !e)}
+                  className="w-full text-left p-5 space-y-1"
+                >
+                  <p className="font-medium text-[15px]" style={{ color: 'var(--color-deep)' }}>
+                    {t('stage2.cards.custom.label')}
+                  </p>
+                  <p className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
+                    {t('stage2.cards.custom.cta')}
+                  </p>
+                </button>
+                <AnimatePresence>
+                  {customCardExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden px-5 pb-5 space-y-3"
+                    >
+                      <textarea
+                        value={customCardText}
+                        onChange={e => setCustomCardText(e.target.value)}
+                        placeholder={t('stage2.cards.custom.placeholder')}
+                        rows={3}
+                        className="w-full bg-transparent outline-none resize-none p-3 rounded-[var(--radius-inner)] border-2 text-sm"
+                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+                        onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                      />
+                      <motion.button
+                        type="button"
+                        disabled={customCardText.trim().length < 5}
+                        onClick={() => {
+                          if (!result || customCardText.trim().length < 5) return;
+                          const customCard: WorkCard = {
+                            id: 'custom',
+                            title: customCardText.trim(),
+                            subtitle: customCardText.trim(),
+                            openingLine: customCardText.trim(),
+                          };
+                          handleSelectCard(customCard);
+                        }}
+                        whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                        className="w-full py-3 rounded-xl font-semibold text-white text-sm disabled:opacity-40"
+                        style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+                      >
+                        {t('stage2.cards.custom.cta')}
+                      </motion.button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

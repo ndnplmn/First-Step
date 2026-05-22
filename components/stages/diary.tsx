@@ -6,6 +6,7 @@ import type { Patient, DiaryEntry, DiaryEmotion } from '@/lib/types';
 import { db } from '@/lib/db';
 import { generateId } from '@/lib/id';
 import { ArrowLeft, Plus, X, CaretLeft, CaretRight, BookOpen, Lightning, Clipboard, Check } from '@phosphor-icons/react';
+import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
 import { useLanguage } from '@/contexts/language-context';
@@ -105,6 +106,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
   const shouldReduce = useReducedMotion();
   const { t, locale } = useLanguage();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const INTENSITY_LABELS = [
@@ -138,7 +140,10 @@ export function Diary({ patient, onBack }: DiaryProps) {
   }
 
   useEffect(() => {
-    db.getDiaryEntries().then(setEntries);
+    db.getDiaryEntries().then(data => {
+      setEntries(data);
+      setEntriesLoading(false);
+    });
   }, []);
 
   const [isAdding, setIsAdding] = useState(false);
@@ -261,7 +266,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
                       background: selected ? color : `rgba(${raw}, 0.08)`,
                       color: selected ? 'white' : color,
                       border: `1px solid rgba(${raw}, ${selected ? 0 : 0.2})`,
-                      boxShadow: selected ? 'var(--shadow-glow-sage)' : 'none',
+                      boxShadow: selected ? `0 0 0 1px rgba(${raw}, 0.28), 0 4px 20px rgba(${raw}, 0.24), 0 10px 48px rgba(${raw}, 0.14)` : 'none',
                     }}
                   >
                     {emotionDisplay(em)}
@@ -453,6 +458,18 @@ export function Diary({ patient, onBack }: DiaryProps) {
             </p>
           </motion.div>
 
+          {/* Skeleton loading state */}
+          {entriesLoading && (
+            <div className="space-y-4 mt-2">
+              <Skeleton height={80} rounded="var(--radius-card)" />
+              <SkeletonCard lines={2} />
+              <SkeletonCard lines={3} />
+              <SkeletonCard lines={2} />
+            </div>
+          )}
+
+          {!entriesLoading && <>
+
           {/* Emotion trend (last 30 days) */}
           {topEmotions.length > 0 && (
             <motion.div
@@ -541,8 +558,9 @@ export function Diary({ patient, onBack }: DiaryProps) {
                 whileTap={shouldReduce ? {} : { scale: 0.9 }}
                 className="w-7 h-7 flex items-center justify-center rounded-full"
                 style={{
-                  color: weekOffset >= 0 ? 'var(--color-border)' : 'var(--color-muted)',
+                  color: weekOffset >= 0 ? 'var(--color-muted-soft)' : 'var(--color-muted)',
                   background: 'var(--color-base)',
+                  opacity: weekOffset >= 0 ? 0.4 : 1,
                 }}
                 disabled={weekOffset >= 0}
                 aria-label={t('diary.week.next')}
@@ -848,6 +866,8 @@ export function Diary({ patient, onBack }: DiaryProps) {
               </p>
             </motion.div>
           )}
+
+          </>}
         </main>
 
         {/* FAB */}

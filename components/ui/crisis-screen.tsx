@@ -2,12 +2,14 @@
 
 import { motion } from 'motion/react';
 import { CRISIS_LINES } from '@/lib/crisis';
+import { useLanguage } from '@/contexts/language-context';
 
 interface CrisisScreenProps {
   onDismiss: () => void;
 }
 
 export function CrisisScreen({ onDismiss }: CrisisScreenProps) {
+  const { t } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -27,12 +29,11 @@ export function CrisisScreen({ onDismiss }: CrisisScreenProps) {
           className="text-3xl leading-snug mb-4"
           style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
         >
-          Estamos aquí contigo.
+          {t('crisis.title')}
         </h1>
 
         <p className="text-base leading-relaxed mb-8" style={{ color: 'var(--color-muted)' }}>
-          Parece que estás pasando por un momento muy difícil. Tend es un espacio de apoyo,
-          pero no puede reemplazar la ayuda profesional inmediata cuando más la necesitas.
+          {t('crisis.body')}
         </p>
 
         <div
@@ -47,7 +48,7 @@ export function CrisisScreen({ onDismiss }: CrisisScreenProps) {
             className="text-xs font-medium tracking-wide uppercase"
             style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
           >
-            Líneas de crisis — disponibles ahora
+            {t('crisis.lines.label')}
           </p>
           <div className="space-y-3">
             {CRISIS_LINES.map(line => (
@@ -75,8 +76,7 @@ export function CrisisScreen({ onDismiss }: CrisisScreenProps) {
         </div>
 
         <p className="text-sm leading-relaxed mb-8" style={{ color: 'var(--color-muted)' }}>
-          Si en este momento sientes que puedes estar a salvo y quieres continuar usando Tend,
-          puedes volver. Estamos aquí cuando lo necesites.
+          {t('crisis.safe.body')}
         </p>
 
         <button
@@ -90,7 +90,7 @@ export function CrisisScreen({ onDismiss }: CrisisScreenProps) {
             boxShadow: 'var(--shadow-card)',
           }}
         >
-          Estoy a salvo — volver a Tend
+          {t('crisis.dismiss')}
         </button>
       </div>
     </motion.div>

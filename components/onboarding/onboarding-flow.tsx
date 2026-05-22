@@ -40,7 +40,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     {
       title: t('onboarding.step.1.title'),
       desc: t('onboarding.step.1.desc'),
-      chips: t('onboarding.frameworks').split(','),
+      chips: t('onboarding.frameworks').split(',').map(s => s.trim()),
     },
     {
       title: t('onboarding.step.2.title'),
@@ -100,7 +100,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               Elige · Choose · Выберите
             </p>
             <p className="text-sm mb-10" style={{ color: 'var(--color-muted)' }}>
-              {t('onboarding.lang.subtitle')}
+              Tu idioma · Your language · Ваш язык
             </p>
 
             <div className="flex flex-col gap-3">

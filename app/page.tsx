@@ -19,6 +19,7 @@ import { db } from '@/lib/db';
 import { createClient } from '@/lib/supabase';
 import { generateId } from '@/lib/id';
 import { shouldShowAssessment } from '@/lib/clinical';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import type { Patient, PatientSession, DiaryEntry, AppView } from '@/lib/types';
 
 function LoadingScreen() {
@@ -306,10 +307,14 @@ export default function Home() {
   }
 
   if (view === 'CHECK_IN' && activePatient && activeSession) {
+    const priorCheckInSessions = sessions.filter(
+      s => s.stage >= 6 && s.sessionNumber < activeSession.sessionNumber
+    );
     return (
       <CheckIn
         patient={activePatient}
         session={activeSession}
+        priorSessions={priorCheckInSessions}
         onComplete={handleCheckInComplete}
         onViewSettings={handleViewSettings}
       />
@@ -330,14 +335,16 @@ export default function Home() {
       s => s.stage === 6 && s.sessionNumber < activeSession.sessionNumber
     );
     return (
-      <SessionView
-        patient={activePatient}
-        session={activeSession}
-        priorSessions={priorSessions}
-        onSessionUpdate={handleSessionUpdate}
-        onComplete={handleComplete}
-        onViewSettings={handleViewSettings}
-      />
+      <ErrorBoundary>
+        <SessionView
+          patient={activePatient}
+          session={activeSession}
+          priorSessions={priorSessions}
+          onSessionUpdate={handleSessionUpdate}
+          onComplete={handleComplete}
+          onViewSettings={handleViewSettings}
+        />
+      </ErrorBoundary>
     );
   }
 

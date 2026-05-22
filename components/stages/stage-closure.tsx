@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession, Closure, Strategy } from '@/lib/types';
-import { generateClosure, generateStrategies } from '@/actions/ai';
+import { generateStrategies } from '@/actions/ai';
+import { buildClosurePrompt } from '@/lib/ai-prompts';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
 import { FloatingBar } from '@/components/ui/floating-bar';
-import { ArrowCounterClockwise, Users, ArrowsClockwise, House } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, FileText, ArrowsClockwise, House } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
 type ClosureAction = 'dashboard' | 'record' | 'new-session';
@@ -50,7 +51,9 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   );
   const [celebrating, setCelebrating] = useState(false);
   const [pendingAction, setPendingAction] = useState<ClosureAction | null>(null);
-  const { text, isStreaming, isDone, startStream } = useAIStream();
+  const [gestaltResponse, setGestaltResponse] = useState(session.gestaltActivityResponse ?? '');
+  const [gestaltResponseSaved, setGestaltResponseSaved] = useState(!!session.gestaltActivityResponse);
+  const { text, isStreaming, isDone, startStream, streamFromUrl } = useAIStream();
   const shouldReduce = useReducedMotion();
 
   useEffect(() => {
@@ -62,13 +65,20 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Las acciones solo aparecen cuando el wellbeing check-out está completo
+  // Show actions after wellbeing is selected
   useEffect(() => {
     if (isDone && strategies.length > 0 && wellbeingAfter !== null) {
       const timer = setTimeout(() => setShowActions(true), shouldReduce ? 0 : 800);
       return () => clearTimeout(timer);
     }
   }, [isDone, strategies.length, wellbeingAfter, shouldReduce]);
+
+  // 30-second fallback: show actions even if wellbeing is never selected
+  useEffect(() => {
+    if (!(isDone && strategies.length > 0)) return;
+    const timer = setTimeout(() => setShowActions(true), 30000);
+    return () => clearTimeout(timer);
+  }, [isDone, strategies.length]);
 
   // Celebration overlay then navigate
   useEffect(() => {
@@ -89,7 +99,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     setStrategies([]);
     setShowActions(false);
     try {
-      const result = await generateClosure({
+      const prompt = buildClosurePrompt({
         conflicts: session.conflicts,
         frameworkMatches: session.frameworkMatches,
         memories: session.memories,
@@ -100,32 +110,47 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         priorSessions,
         locale,
       });
-      setFullClosure(result);
-      onUpdate({ closure: result });
-      startStream(result.text);
 
-      const strats = await generateStrategies({
-        conflicts: session.conflicts,
-        frameworkMatches: session.frameworkMatches,
-        interpretation: session.interpretation!.text,
-        gestaltActivity: session.gestaltActivity!,
-        patient,
-        locale,
-      });
+      // Start streaming the letter immediately; fetch strategies in parallel
+      setIsGenerating(false);
+      const [, strats] = await Promise.all([
+        streamFromUrl('/api/stream', { prompt, temperature: 0.7 }),
+        generateStrategies({
+          conflicts: session.conflicts,
+          frameworkMatches: session.frameworkMatches,
+          interpretation: session.interpretation!.text,
+          gestaltActivity: session.gestaltActivity!,
+          patient,
+          locale,
+        }),
+      ]);
       setStrategies(strats);
-      const closureWithStrategies = { ...result, strategies: strats };
-      setFullClosure(closureWithStrategies);
-      onUpdate({ closure: closureWithStrategies });
     } catch (e) {
       console.error(e);
       setIsError(true);
-    } finally {
       setIsGenerating(false);
     }
   };
 
-  const displayText = shouldReduce ? (fullClosure?.text ?? '') : text;
-  const showContent = shouldReduce ? !!fullClosure : (isDone || isStreaming);
+  // When real streaming completes, save the closure from streamed text
+  useEffect(() => {
+    if (!isDone || !text || fullClosure) return;
+    const result: Closure = { text, groundingSources: [] };
+    setFullClosure(result);
+    // onUpdate with strategies will be called once strategies also arrive
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone]);
+
+  // Persist closure + strategies whenever both are available
+  useEffect(() => {
+    if (!fullClosure || strategies.length === 0) return;
+    const closureWithStrategies = { ...fullClosure, strategies };
+    onUpdate({ closure: closureWithStrategies });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullClosure, strategies]);
+
+  const displayText = shouldReduce ? (fullClosure?.text ?? text) : text;
+  const showContent = isDone || isStreaming || (!!shouldReduce && !!fullClosure);
   const showReady = isDone || (!!shouldReduce && !!fullClosure);
 
   if (celebrating) {
@@ -252,6 +277,51 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
                 {session.gestaltActivity.prompt}
               </p>
             </div>
+            <AnimatePresence>
+              {!gestaltResponseSaved ? (
+                <motion.div
+                  initial={shouldReduce ? false : { opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="space-y-2"
+                >
+                  <textarea
+                    value={gestaltResponse}
+                    onChange={e => setGestaltResponse(e.target.value)}
+                    placeholder={t('stage6.gestalt.response.placeholder')}
+                    rows={3}
+                    className="w-full bg-transparent outline-none resize-none p-3 rounded-[var(--radius-inner)] border-2 text-sm"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
+                    onFocus={e => (e.target.style.borderColor = 'var(--color-violet)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                  />
+                  {gestaltResponse.trim().length >= 5 && (
+                    <motion.button
+                      type="button"
+                      onClick={() => {
+                        onUpdate({ gestaltActivityResponse: gestaltResponse.trim() });
+                        setGestaltResponseSaved(true);
+                      }}
+                      initial={shouldReduce ? {} : { opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                      className="text-sm font-medium"
+                      style={{ color: 'var(--color-violet)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem 0' }}
+                    >
+                      {t('stage6.gestalt.response.save')}
+                    </motion.button>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.p
+                  initial={shouldReduce ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm italic"
+                  style={{ color: 'var(--color-muted)' }}
+                >
+                  {gestaltResponse}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -385,7 +455,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
                 className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{ background: 'var(--color-violet-light)' }}
               >
-                <Users size={18} style={{ color: 'var(--color-violet)' }} />
+                <FileText size={18} style={{ color: 'var(--color-violet)' }} />
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>

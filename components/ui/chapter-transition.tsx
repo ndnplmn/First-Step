@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import { useLanguage } from '@/contexts/language-context';
 
-const STAGE_META: Record<number, { roman: string; name: string; bg: string }> = {
-  2: { roman: 'II',  name: 'APERTURA',    bg: 'rgba(44, 39, 30, 0.97)'  },
-  3: { roman: 'III', name: 'EXPLORACIÓN', bg: 'rgba(60, 52, 82, 0.97)'  },
-  6: { roman: 'VI',  name: 'CIERRE',      bg: 'rgba(38, 62, 36, 0.97)'  },
+const STAGE_META: Record<number, { roman: string; nameKey: string; bg: string }> = {
+  2: { roman: 'II',  nameKey: 'chapter.stage.2.name', bg: 'rgba(44, 39, 30, 0.97)'  },
+  3: { roman: 'III', nameKey: 'chapter.stage.3.name', bg: 'rgba(60, 52, 82, 0.97)'  },
+  6: { roman: 'VI',  nameKey: 'chapter.stage.6.name', bg: 'rgba(38, 62, 36, 0.97)'  },
 };
 
 interface ChapterTransitionProps {
@@ -16,6 +17,7 @@ interface ChapterTransitionProps {
 
 export function ChapterTransition({ toStage, onComplete }: ChapterTransitionProps) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
   const meta = STAGE_META[toStage] ?? STAGE_META[2];
 
   useEffect(() => {
@@ -87,7 +89,7 @@ export function ChapterTransition({ toStage, onComplete }: ChapterTransitionProp
             color: 'white',
           }}
         >
-          {meta.name}
+          {t(meta.nameKey)}
         </motion.span>
       </div>
     </motion.div>

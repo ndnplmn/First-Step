@@ -67,13 +67,13 @@ type IntakeSynthesis = {
 const INITIAL_VALUES: IntakeValues = {
   name: '',
   age: '',
-  gender: 'Femenino',
-  maritalStatus: 'Soltero/a',
+  gender: 'female',
+  maritalStatus: 'single',
   hasChildren: null,
   childrenCount: '',
-  livingSituation: 'Solo/a',
+  livingSituation: 'alone',
   livingSituationDetail: '',
-  employment: 'Empleado/a',
+  employment: 'employed',
   occupation: '',
   hasSupportNetwork: null,
   supportDescription: '',
@@ -102,28 +102,36 @@ const INITIAL_VALUES: IntakeValues = {
 // 10: medication
 // 11: specificEvents     ← structured event narration
 // 12: feelingsSensations ← feelings & bodily sensations
+// 13: wellbeingAtIntake  ← emotional baseline before first session
 
-const TOTAL_STEPS = 13;
+const TOTAL_STEPS = 14;
 
-function getStepQuestion(step: number, values: IntakeValues): string {
+function getStepQuestion(
+  step: number,
+  values: IntakeValues,
+  t: (key: string) => string,
+): string {
   switch (step) {
-    case 0: return '¿Qué te trae aquí hoy?';
-    case 1: return '¿Cómo te llamas?';
-    case 2: return values.name ? `¿Cuántos años tienes, ${values.name}?` : '¿Cuántos años tienes?';
-    case 3: return '¿Cómo te identificas?';
-    case 4: return '¿Cuál es tu estado civil?';
-    case 5: return '¿Tienes hijos?';
-    case 6: return '¿Con quién vives?';
-    case 7: return '¿A qué te dedicas?';
-    case 8: return '¿Tienes personas de confianza con quienes puedas hablar?';
-    case 9: return '¿Has ido a terapia antes?';
-    case 10: return '¿Tomas algún medicamento, ya sea psiquiátrico o de cualquier otro tipo?';
+    case 0: return t('intake.q0');
+    case 1: return t('intake.q1');
+    case 2: return values.name
+      ? t('intake.q2.named').replace('{name}', values.name)
+      : t('intake.q2');
+    case 3: return t('intake.q3');
+    case 4: return t('intake.q4');
+    case 5: return t('intake.q5');
+    case 6: return t('intake.q6');
+    case 7: return t('intake.q7');
+    case 8: return t('intake.q8');
+    case 9: return t('intake.q9');
+    case 10: return t('intake.q10');
     case 11: return values.name
-      ? `${values.name}, ¿puedes contarme una situación concreta o momento específico relacionado con lo que te trajo aquí?`
-      : '¿Puedes contarme una situación concreta o momento específico relacionado con lo que te trajo aquí?';
+      ? t('intake.q11.named').replace('{name}', values.name)
+      : t('intake.q11');
     case 12: return values.name
-      ? `¿Qué sentimientos o sensaciones surgen en tu cuerpo cuando piensas en eso, ${values.name}?`
-      : '¿Qué sentimientos o sensaciones surgen en tu cuerpo cuando piensas en eso?';
+      ? t('intake.q12.named').replace('{name}', values.name)
+      : t('intake.q12');
+    case 13: return t('intake.wellbeing.question');
     default: return '';
   }
 }
@@ -133,49 +141,92 @@ function getStepAnswer(
   values: IntakeValues,
   specificEvents: string,
   feelingsSensations: string,
+  wellbeingAtIntake: number | null,
+  t: (key: string) => string,
 ): string | null {
+  const genderLabel: Record<Gender, string> = {
+    'female': t('intake.gender.female'),
+    'male': t('intake.gender.male'),
+    'other': t('intake.gender.other'),
+  };
+  const maritalLabel: Record<MaritalStatus, string> = {
+    'single': t('intake.marital.single'),
+    'partnered': t('intake.marital.partner'),
+    'married': t('intake.marital.married'),
+    'divorced': t('intake.marital.divorced'),
+    'widowed': t('intake.marital.widowed'),
+    'separated': t('intake.marital.separated'),
+  };
+  const livingLabel: Record<LivingSituation, string> = {
+    'alone': t('intake.living.alone'),
+    'with-partner': t('intake.living.partner'),
+    'with-family': t('intake.living.family'),
+    'with-housemates': t('intake.living.housemates'),
+    'with-parents': t('intake.living.parents'),
+    'other': t('intake.living.other'),
+  };
+  const employmentLabel: Record<EmploymentStatus, string> = {
+    'employed': t('intake.employment.employed'),
+    'unemployed': t('intake.employment.unemployed'),
+    'student': t('intake.employment.student'),
+    'freelance': t('intake.employment.freelance'),
+    'retired': t('intake.employment.retired'),
+    'other': t('intake.employment.other'),
+  };
+
   switch (step) {
     case 0: return values.consultationReason.trim() || null;
     case 1: return values.name.trim() || null;
     case 2: return values.age || null;
-    case 3: return values.gender;
-    case 4: return values.maritalStatus;
+    case 3: return genderLabel[values.gender] ?? values.gender;
+    case 4: return maritalLabel[values.maritalStatus] ?? values.maritalStatus;
     case 5: {
       if (values.hasChildren === null) return null;
-      if (!values.hasChildren) return 'No';
-      return values.childrenCount ? `Sí, ${values.childrenCount}` : 'Sí';
+      if (!values.hasChildren) return t('intake.no');
+      return values.childrenCount
+        ? t('intake.yes.detail').replace('{detail}', values.childrenCount)
+        : t('intake.yes');
     }
     case 6: {
-      if (values.livingSituation === 'Otro' && values.livingSituationDetail.trim()) {
+      if (values.livingSituation === 'other' && values.livingSituationDetail.trim()) {
         return values.livingSituationDetail.trim();
       }
-      return values.livingSituation;
+      return livingLabel[values.livingSituation] ?? values.livingSituation;
     }
     case 7: {
-      const parts: string[] = [values.employment];
+      const parts: string[] = [employmentLabel[values.employment] ?? values.employment];
       if (values.occupation.trim()) parts.push(values.occupation.trim());
       return parts.join(' · ');
     }
     case 8: {
       if (values.hasSupportNetwork === null) return null;
-      if (!values.hasSupportNetwork) return 'No';
-      return values.supportDescription.trim() ? `Sí — ${values.supportDescription.trim()}` : 'Sí';
+      if (!values.hasSupportNetwork) return t('intake.no');
+      return values.supportDescription.trim()
+        ? t('intake.yes.detail').replace('{detail}', values.supportDescription.trim())
+        : t('intake.yes');
     }
     case 9: {
       if (values.previousTherapy === null) return null;
-      if (!values.previousTherapy) return 'No';
-      return values.previousTherapyDetail.trim() ? `Sí — ${values.previousTherapyDetail.trim()}` : 'Sí';
+      if (!values.previousTherapy) return t('intake.no');
+      return values.previousTherapyDetail.trim()
+        ? t('intake.yes.detail').replace('{detail}', values.previousTherapyDetail.trim())
+        : t('intake.yes');
     }
     case 10: {
       if (values.takingMedication === null) return null;
-      if (!values.takingMedication) return 'No';
-      return values.medicationDetail.trim() ? `Sí — ${values.medicationDetail.trim()}` : 'Sí';
+      if (!values.takingMedication) return t('intake.no');
+      return values.medicationDetail.trim()
+        ? t('intake.yes.detail').replace('{detail}', values.medicationDetail.trim())
+        : t('intake.yes');
     }
     case 11: return specificEvents
       ? specificEvents.slice(0, 80) + (specificEvents.length > 80 ? '...' : '')
       : null;
     case 12: return feelingsSensations
       ? feelingsSensations.slice(0, 80) + (feelingsSensations.length > 80 ? '...' : '')
+      : null;
+    case 13: return wellbeingAtIntake
+      ? t(`checkin.wellbeing.${wellbeingAtIntake}`)
       : null;
     default: return null;
   }
@@ -186,6 +237,7 @@ function canProceed(
   values: IntakeValues,
   specificEvents: string,
   feelingsSensations: string,
+  wellbeingAtIntake: number | null,
 ): boolean {
   switch (step) {
     case 0: return values.consultationReason.trim().length > 0;
@@ -194,13 +246,14 @@ function canProceed(
     case 3: return true;
     case 4: return true;
     case 5: return values.hasChildren !== null;
-    case 6: return values.livingSituation !== 'Otro' || values.livingSituationDetail.trim().length > 0;
+    case 6: return values.livingSituation !== 'other' || values.livingSituationDetail.trim().length > 0;
     case 7: return true;
     case 8: return values.hasSupportNetwork !== null;
     case 9: return values.previousTherapy !== null;
     case 10: return values.takingMedication !== null;
     case 11: return specificEvents.trim().length >= 20;
     case 12: return feelingsSensations.trim().length >= 10;
+    case 13: return wellbeingAtIntake !== null;
     default: return false;
   }
 }
@@ -247,10 +300,11 @@ function YesNo({
   onChange: (v: boolean) => void;
   reduce: boolean | null;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="flex gap-3">
-      <Chip label="Sí" active={value === true} onClick={() => onChange(true)} reduce={reduce} />
-      <Chip label="No" active={value === false} onClick={() => onChange(false)} reduce={reduce} />
+      <Chip label={t('intake.yes')} active={value === true} onClick={() => onChange(true)} reduce={reduce} />
+      <Chip label={t('intake.no')} active={value === false} onClick={() => onChange(false)} reduce={reduce} />
     </div>
   );
 }
@@ -272,23 +326,28 @@ function TextInput({
   max?: number;
   autoFocus?: boolean;
 }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!autoFocus) return;
+    const timer = setTimeout(() => ref.current?.focus(), 320);
+    return () => clearTimeout(timer);
+  }, [autoFocus]);
+
   return (
     <input
+      ref={ref}
       type={type}
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       min={min}
       max={max}
-      autoFocus={autoFocus}
       className="w-full bg-transparent outline-none py-3.5 text-lg placeholder:opacity-35 border-b-2"
       style={{
         borderColor: 'var(--color-border)',
         color: 'var(--color-deep)',
         transition: 'border-color 0.2s ease',
       }}
-      onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-      onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
     />
   );
 }
@@ -306,14 +365,21 @@ function TextArea({
   autoFocus?: boolean;
   rows?: number;
 }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!autoFocus) return;
+    const timer = setTimeout(() => ref.current?.focus(), 320);
+    return () => clearTimeout(timer);
+  }, [autoFocus]);
+
   return (
     <div style={{ position: 'relative' }}>
       <textarea
+        ref={ref}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        autoFocus={autoFocus}
         className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 text-base placeholder:opacity-35"
         style={{
           borderColor: 'var(--color-border)',
@@ -321,8 +387,6 @@ function TextArea({
           transition: 'border-color 0.2s ease',
           paddingBottom: '2.75rem',
         }}
-        onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-        onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
       />
       <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
         <VoiceFillButton onFill={text => onChange(value ? value + ' ' + text : text)} />
@@ -337,13 +401,14 @@ function TextArea({
 
 export function Intake({ onComplete, onBack }: IntakeProps) {
   const shouldReduce = useReducedMotion();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<IntakeValues>(INITIAL_VALUES);
 
   const [specificEvents, setSpecificEvents] = useState('');
   const [feelingsSensations, setFeelingsSensations] = useState('');
+  const [wellbeingAtIntake, setWellbeingAtIntake] = useState<number | null>(null);
 
   const [intakeProcessing, setIntakeProcessing] = useState<'idle' | 'loading' | 'ready'>('idle');
   const [intakeSynthesis, setIntakeSynthesis] = useState<IntakeSynthesis | null>(null);
@@ -366,7 +431,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   }, [step, intakeProcessing]);
 
   const handleNext = () => {
-    if (!canProceed(step, values, specificEvents, feelingsSensations)) return;
+    if (!canProceed(step, values, specificEvents, feelingsSensations, wellbeingAtIntake)) return;
     if (step === TOTAL_STEPS - 1) {
       handleIntakeAISynthesis();
     } else {
@@ -377,7 +442,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   const handleBack = () => {
     if (intakeProcessing === 'ready') {
       setIntakeProcessing('idle');
-      setStep(12);
+      setStep(TOTAL_STEPS - 1);
       return;
     }
     if (intakeProcessing === 'loading') return;
@@ -403,7 +468,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           : undefined,
       livingSituation: values.livingSituation,
       livingSituationDetail:
-        values.livingSituation === 'Otro' && values.livingSituationDetail.trim()
+        values.livingSituation === 'other' && values.livingSituationDetail.trim()
           ? values.livingSituationDetail.trim()
           : undefined,
       employment: values.employment,
@@ -429,7 +494,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
   };
 
   const handleIntakeAISynthesis = async () => {
-    setStep(13); // advance past all form steps so step 12 renders as a bubble
+    setStep(TOTAL_STEPS); // advance past all form steps so the last step renders as a bubble
     setIntakeProcessing('loading');
     try {
       const patient = await buildPatient();
@@ -445,7 +510,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       setIntakeProcessing('ready');
     } catch {
       setIntakeProcessing('idle');
-      setStep(12);
+      setStep(TOTAL_STEPS - 1);
       handleSubmitWithSynthesis(null);
     }
   };
@@ -472,6 +537,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       interpretation: null,
       closure: null,
       unmappedPhrases,
+      wellbeingBefore: wellbeingAtIntake ?? undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -500,10 +566,17 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
     );
   }
 
-  const isReady = canProceed(step, values, specificEvents, feelingsSensations);
+  const isReady = canProceed(step, values, specificEvents, feelingsSensations, wellbeingAtIntake);
 
   return (
-    <div className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-6 pb-48">
+    <div
+      className="min-h-dvh flex flex-col max-w-[680px] mx-auto px-6 pt-6 pb-48"
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter') return;
+        if ((e.target as HTMLElement).matches('textarea, input, button')) return;
+        if (canProceed(step, values, specificEvents, feelingsSensations, wellbeingAtIntake)) handleNext();
+      }}
+    >
       {/* Header with back + progress */}
       <div className="flex items-center gap-4 mb-6">
         <motion.button
@@ -518,7 +591,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           }}
         >
           <ArrowLeft size={16} />
-          <span className="text-sm">Volver</span>
+          <span className="text-sm">{t('intake.back')}</span>
         </motion.button>
 
         <div className="flex-1 flex gap-0.5">
@@ -538,7 +611,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
       <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto">
         {/* Previous answered steps as bubbles */}
         {Array.from({ length: Math.min(step, TOTAL_STEPS) }).map((_, i) => {
-          const answer = getStepAnswer(i, values, specificEvents, feelingsSensations);
+          const answer = getStepAnswer(i, values, specificEvents, feelingsSensations, wellbeingAtIntake, t);
           if (!answer) return null;
           return (
             <motion.div
@@ -548,7 +621,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
               className="space-y-1.5"
             >
               <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                {getStepQuestion(i, values)}
+                {getStepQuestion(i, values, t)}
               </p>
               <p
                 className="text-sm inline-block px-3 py-1.5 rounded-[var(--radius-inner)]"
@@ -577,8 +650,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
                   className="text-sm leading-relaxed"
                   style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-display)' }}
                 >
-                  Bienvenido/a. Este es un espacio seguro, sin juicios.{' '}
-                  No hay respuestas correctas ni incorrectas.
+                  {t('intake.welcome')}
                 </p>
               )}
 
@@ -586,7 +658,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
                 className="text-xl leading-snug"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
               >
-                {getStepQuestion(step, values)}
+                {getStepQuestion(step, values, t)}
               </p>
 
               <StepInput
@@ -598,6 +670,8 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
                 setSpecificEvents={setSpecificEvents}
                 feelingsSensations={feelingsSensations}
                 setFeelingsSensations={setFeelingsSensations}
+                wellbeingAtIntake={wellbeingAtIntake}
+                setWellbeingAtIntake={setWellbeingAtIntake}
               />
             </motion.div>
           </AnimatePresence>
@@ -612,9 +686,9 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           >
             <AIThinking
               phrases={[
-                'Escuchando lo que compartiste...',
-                'Identificando lo que emerge...',
-                'Preparando tu camino terapéutico...',
+                t('intake.processing.1'),
+                t('intake.processing.2'),
+                t('intake.processing.3'),
               ]}
             />
           </motion.div>
@@ -650,7 +724,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
                   letterSpacing: '0.05em',
                 }}
               >
-                Lo que escuchamos
+                {t('intake.result.label')}
               </p>
               <p
                 style={{
@@ -689,7 +763,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
                 lineHeight: 1.4,
               }}
             >
-              ¿Deseas empezar la terapia?
+              {t('intake.result.start')}
             </p>
             <motion.button
               type="button"
@@ -709,7 +783,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
                 textAlign: 'center',
               }}
             >
-              Sí, empezar →
+              {t('intake.result.cta')}
             </motion.button>
             <button
               type="button"
@@ -724,7 +798,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
                 textAlign: 'center',
               }}
             >
-              Quiero ajustar algo
+              {t('intake.result.adjust')}
             </button>
           </motion.div>
         )}
@@ -739,7 +813,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
           style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
         >
-          {step === TOTAL_STEPS - 1 ? 'Continuar' : 'Siguiente'}
+          {step === TOTAL_STEPS - 1 ? t('intake.continue') : t('intake.next')}
         </motion.button>
       </FloatingBar>
 
@@ -768,6 +842,8 @@ function StepInput({
   setSpecificEvents,
   feelingsSensations,
   setFeelingsSensations,
+  wellbeingAtIntake,
+  setWellbeingAtIntake,
 }: {
   step: number;
   values: IntakeValues;
@@ -777,11 +853,40 @@ function StepInput({
   setSpecificEvents: (v: string) => void;
   feelingsSensations: string;
   setFeelingsSensations: (v: string) => void;
+  wellbeingAtIntake: number | null;
+  setWellbeingAtIntake: (v: number | null) => void;
 }) {
-  const genders: Gender[] = ['Femenino', 'Masculino', 'Otro'];
-  const statuses: MaritalStatus[] = ['Soltero/a', 'En pareja', 'Casado/a', 'Divorciado/a', 'Viudo/a', 'Separado/a'];
-  const situations: LivingSituation[] = ['Solo/a', 'Con pareja', 'Con familia', 'Con compañeros', 'Con padres', 'Otro'];
-  const employments: EmploymentStatus[] = ['Empleado/a', 'Desempleado/a', 'Estudiante', 'Independiente', 'Jubilado/a', 'Otro'];
+  const { t } = useLanguage();
+
+  const genderOptions: { value: Gender; label: string }[] = [
+    { value: 'female', label: t('intake.gender.female') },
+    { value: 'male', label: t('intake.gender.male') },
+    { value: 'other', label: t('intake.gender.other') },
+  ];
+  const maritalOptions: { value: MaritalStatus; label: string }[] = [
+    { value: 'single', label: t('intake.marital.single') },
+    { value: 'partnered', label: t('intake.marital.partner') },
+    { value: 'married', label: t('intake.marital.married') },
+    { value: 'divorced', label: t('intake.marital.divorced') },
+    { value: 'widowed', label: t('intake.marital.widowed') },
+    { value: 'separated', label: t('intake.marital.separated') },
+  ];
+  const livingOptions: { value: LivingSituation; label: string }[] = [
+    { value: 'alone', label: t('intake.living.alone') },
+    { value: 'with-partner', label: t('intake.living.partner') },
+    { value: 'with-family', label: t('intake.living.family') },
+    { value: 'with-housemates', label: t('intake.living.housemates') },
+    { value: 'with-parents', label: t('intake.living.parents') },
+    { value: 'other', label: t('intake.living.other') },
+  ];
+  const employmentOptions: { value: EmploymentStatus; label: string }[] = [
+    { value: 'employed', label: t('intake.employment.employed') },
+    { value: 'unemployed', label: t('intake.employment.unemployed') },
+    { value: 'student', label: t('intake.employment.student') },
+    { value: 'freelance', label: t('intake.employment.freelance') },
+    { value: 'retired', label: t('intake.employment.retired') },
+    { value: 'other', label: t('intake.employment.other') },
+  ];
 
   switch (step) {
     case 0:
@@ -789,7 +894,7 @@ function StepInput({
         <TextArea
           value={values.consultationReason}
           onChange={v => set('consultationReason', v)}
-          placeholder="Escribe lo que sientas, no hay respuestas incorrectas"
+          placeholder={t('intake.placeholder.reason')}
           autoFocus
           rows={4}
         />
@@ -800,7 +905,7 @@ function StepInput({
         <TextInput
           value={values.name}
           onChange={v => set('name', v)}
-          placeholder="Tu nombre"
+          placeholder={t('intake.placeholder.name')}
           autoFocus
         />
       );
@@ -813,7 +918,7 @@ function StepInput({
           <TextInput
             value={values.age}
             onChange={v => set('age', v)}
-            placeholder="Tu edad"
+            placeholder={t('intake.placeholder.age')}
             type="number"
             min={18}
             max={120}
@@ -826,8 +931,7 @@ function StepInput({
               className="text-sm leading-relaxed px-1"
               style={{ color: 'var(--color-terracotta)' }}
             >
-              Tend está diseñado para personas de 18 años o más. Si eres menor, te recomendamos
-              buscar apoyo a través de tu centro educativo o familiar.
+              {t('intake.age.tooyoung')}
             </motion.p>
           )}
         </div>
@@ -837,8 +941,8 @@ function StepInput({
     case 3:
       return (
         <div className="flex flex-wrap gap-3">
-          {genders.map(g => (
-            <Chip key={g} label={g} active={values.gender === g} onClick={() => set('gender', g)} reduce={reduce} />
+          {genderOptions.map(({ value, label }) => (
+            <Chip key={value} label={label} active={values.gender === value} onClick={() => set('gender', value)} reduce={reduce} />
           ))}
         </div>
       );
@@ -846,8 +950,8 @@ function StepInput({
     case 4:
       return (
         <div className="flex flex-wrap gap-3">
-          {statuses.map(s => (
-            <Chip key={s} label={s} active={values.maritalStatus === s} onClick={() => set('maritalStatus', s)} reduce={reduce} />
+          {maritalOptions.map(({ value, label }) => (
+            <Chip key={value} label={label} active={values.maritalStatus === value} onClick={() => set('maritalStatus', value)} reduce={reduce} />
           ))}
         </div>
       );
@@ -868,7 +972,7 @@ function StepInput({
                 <TextInput
                   value={values.childrenCount}
                   onChange={v => set('childrenCount', v)}
-                  placeholder="¿Cuántos?"
+                  placeholder={t('intake.placeholder.children')}
                   type="number"
                   min={1}
                   autoFocus
@@ -883,12 +987,12 @@ function StepInput({
       return (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-3">
-            {situations.map(s => (
-              <Chip key={s} label={s} active={values.livingSituation === s} onClick={() => set('livingSituation', s)} reduce={reduce} />
+            {livingOptions.map(({ value, label }) => (
+              <Chip key={value} label={label} active={values.livingSituation === value} onClick={() => set('livingSituation', value)} reduce={reduce} />
             ))}
           </div>
           <AnimatePresence>
-            {values.livingSituation === 'Otro' && (
+            {values.livingSituation === 'other' && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -899,7 +1003,7 @@ function StepInput({
                 <TextInput
                   value={values.livingSituationDetail}
                   onChange={v => set('livingSituationDetail', v)}
-                  placeholder="Cuéntanos más"
+                  placeholder={t('intake.placeholder.living.detail')}
                   autoFocus
                 />
               </motion.div>
@@ -912,14 +1016,14 @@ function StepInput({
       return (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-3">
-            {employments.map(e => (
-              <Chip key={e} label={e} active={values.employment === e} onClick={() => set('employment', e)} reduce={reduce} />
+            {employmentOptions.map(({ value, label }) => (
+              <Chip key={value} label={label} active={values.employment === value} onClick={() => set('employment', value)} reduce={reduce} />
             ))}
           </div>
           <TextInput
             value={values.occupation}
             onChange={v => set('occupation', v)}
-            placeholder="¿A qué te dedicas? (opcional)"
+            placeholder={t('intake.placeholder.occupation')}
           />
         </div>
       );
@@ -940,7 +1044,7 @@ function StepInput({
                 <TextArea
                   value={values.supportDescription}
                   onChange={v => set('supportDescription', v)}
-                  placeholder="Cuéntame brevemente sobre ellas"
+                  placeholder={t('intake.placeholder.support')}
                   autoFocus
                 />
               </motion.div>
@@ -965,7 +1069,7 @@ function StepInput({
                 <TextInput
                   value={values.previousTherapyDetail}
                   onChange={v => set('previousTherapyDetail', v)}
-                  placeholder="¿Qué tipo? ¿Hace cuánto?"
+                  placeholder={t('intake.placeholder.therapy')}
                   autoFocus
                 />
               </motion.div>
@@ -990,7 +1094,7 @@ function StepInput({
                 <TextInput
                   value={values.medicationDetail}
                   onChange={v => set('medicationDetail', v)}
-                  placeholder="¿Cuál?"
+                  placeholder={t('intake.placeholder.medication')}
                   autoFocus
                 />
               </motion.div>
@@ -1004,7 +1108,7 @@ function StepInput({
         <TextArea
           value={specificEvents}
           onChange={setSpecificEvents}
-          placeholder="Describe el momento con el mayor detalle posible..."
+          placeholder={t('intake.placeholder.events')}
           autoFocus
           rows={5}
         />
@@ -1015,11 +1119,28 @@ function StepInput({
         <TextArea
           value={feelingsSensations}
           onChange={setFeelingsSensations}
-          placeholder="Tensión, opresión, mariposas... cualquier cosa que surja..."
+          placeholder={t('intake.placeholder.feelings')}
           autoFocus
           rows={5}
         />
       );
+
+    case 13: {
+      const wellbeingOpts = [1,2,3,4,5].map(v => ({ value: v, label: t(`checkin.wellbeing.${v}`) }));
+      return (
+        <div className="flex flex-wrap gap-3">
+          {wellbeingOpts.map(opt => (
+            <Chip
+              key={opt.value}
+              label={opt.label}
+              active={wellbeingAtIntake === opt.value}
+              onClick={() => setWellbeingAtIntake(opt.value)}
+              reduce={reduce}
+            />
+          ))}
+        </div>
+      );
+    }
 
     default:
       return null;

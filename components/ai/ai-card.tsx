@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import type { GroundingSource } from '@/lib/types';
 import { ArrowSquareOut } from '@phosphor-icons/react';
+import { useLanguage } from '@/contexts/language-context';
 
 interface AICardProps {
   children: ReactNode;
@@ -12,6 +13,7 @@ interface AICardProps {
 }
 
 export function AICard({ children, sources, actions }: AICardProps) {
+  const { t } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -36,7 +38,7 @@ export function AICard({ children, sources, actions }: AICardProps) {
           {sources && sources.length > 0 && (
             <div className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
               <p className="text-[11px] font-medium tracking-wide mb-2.5" style={{ color: 'var(--color-muted-soft)' }}>
-                Fuentes
+                {t('ai.sources.label')}
               </p>
               <div className="space-y-1.5">
                 {sources.map((source, i) => (

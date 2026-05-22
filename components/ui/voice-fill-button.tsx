@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { Microphone, Stop } from '@phosphor-icons/react';
 import { useVoice } from '@/hooks/use-voice';
+import { useLanguage } from '@/contexts/language-context';
 
 interface VoiceFillButtonProps {
   onFill: (text: string) => void;
@@ -11,6 +12,7 @@ interface VoiceFillButtonProps {
 
 export function VoiceFillButton({ onFill, size = 16 }: VoiceFillButtonProps) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
   const { isRecording, isTranscribing, voiceError, startRecording, stopRecording } = useVoice();
 
   const handleStop = async () => {
@@ -27,7 +29,7 @@ export function VoiceFillButton({ onFill, size = 16 }: VoiceFillButtonProps) {
         onPointerLeave={isRecording ? handleStop : undefined}
         whileTap={shouldReduce ? {} : { scale: 0.9 }}
         disabled={isTranscribing}
-        title={isRecording ? 'Suelta para enviar' : 'Mantén para hablar'}
+        title={isRecording ? t('voice.release') : t('voice.hold')}
         style={{
           background: isRecording ? 'var(--color-terracotta)' : 'var(--color-surface)',
           border: isRecording ? 'none' : '1px solid var(--color-border)',
@@ -41,7 +43,7 @@ export function VoiceFillButton({ onFill, size = 16 }: VoiceFillButtonProps) {
           transition: 'background 0.15s ease, color 0.15s ease',
           boxShadow: isRecording ? '0 0 0 4px rgba(180,110,69,0.15)' : 'none',
         }}
-        aria-label={isRecording ? 'Grabando' : isTranscribing ? 'Transcribiendo' : 'Hablar'}
+        aria-label={isRecording ? t('voice.recording') : isTranscribing ? t('voice.transcribing') : t('voice.speak')}
         aria-pressed={isRecording}
       >
         {isTranscribing ? (

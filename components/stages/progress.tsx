@@ -5,8 +5,8 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { ArrowLeft, ChartLine, CaretDown } from '@phosphor-icons/react';
 import {
-  PHQ9_SEVERITY_LABELS, PHQ9_SEVERITY_COLORS,
-  GAD7_SEVERITY_LABELS, GAD7_SEVERITY_COLORS,
+  PHQ9_SEVERITY_COLORS,
+  GAD7_SEVERITY_COLORS,
 } from '@/lib/clinical';
 import { useLanguage } from '@/contexts/language-context';
 
@@ -81,6 +81,67 @@ function WellbeingSpark({ points }: { points: number[] }) {
   );
 }
 
+/* ── ClinicalSpark ──────────────────────────────────────── */
+
+interface ClinicalSparkProps {
+  points: number[];
+  maxY: number;
+  color: string;
+  id: string;
+}
+
+function ClinicalSpark({ points, maxY, color, id }: ClinicalSparkProps) {
+  if (points.length < 2) return null;
+  const W = 100;
+  const H = 36;
+  const PAD_X = 4;
+  const PAD_Y = 4;
+  // Invert Y so lower score (improvement) renders higher on the chart
+  const xs = points.map((_, i) =>
+    PAD_X + (i / (points.length - 1)) * (W - PAD_X * 2)
+  );
+  const ys = points.map(v =>
+    PAD_Y + (v / maxY) * (H - PAD_Y * 2)
+  );
+  const linePath = xs.map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${ys[i]}`).join(' ');
+  const areaPath = `${linePath} L ${xs[xs.length - 1]} ${H} L ${xs[0]} ${H} Z`;
+  const gradId = `cs-fill-${id}`;
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      style={{ width: '100%', height: H, display: 'block' }}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gradId})`} />
+      <path
+        d={linePath}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {xs.map((x, i) => (
+        <circle
+          key={i}
+          cx={x}
+          cy={ys[i]}
+          r="2"
+          fill={color}
+        />
+      ))}
+    </svg>
+  );
+}
+
 /* ── component ─────────────────────────────────────────── */
 
 interface ProgressProps {
@@ -114,6 +175,16 @@ export function Progress({ patient, sessions, onBack, isLoading }: ProgressProps
   const wellbeingPoints = useMemo(
     () => chronological.filter(s => s.wellbeingAfter).map(s => s.wellbeingAfter!),
     [chronological]
+  );
+
+  const phq9Points = useMemo(
+    () => [...sorted].reverse().filter(s => s.phq9).map(s => s.phq9!.score),
+    [sorted]
+  );
+
+  const gad7Points = useMemo(
+    () => [...sorted].reverse().filter(s => s.gad7).map(s => s.gad7!.score),
+    [sorted]
   );
 
   const avgWellbeing = wellbeingPoints.length > 0
@@ -380,8 +451,16 @@ export function Progress({ patient, sessions, onBack, isLoading }: ProgressProps
                   <div className="mt-2 mb-1.5 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.1)' }}>
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.text, opacity: 0.5 }} />
                   </div>
+                  {phq9Points.length >= 2 && (
+                    <div className="mt-2 mb-1">
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: c.text, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                        {t('progress.clinical.trend')}
+                      </p>
+                      <ClinicalSpark points={phq9Points} maxY={27} color={c.text} id="phq9" />
+                    </div>
+                  )}
                   <p style={{ fontSize: '0.6875rem', color: c.text, opacity: 0.85 }}>
-                    {PHQ9_SEVERITY_LABELS[latestPHQ9.severity]}
+                    {t(`clinical.severity.${latestPHQ9.severity}`)}
                   </p>
                 </div>
               );
@@ -407,8 +486,16 @@ export function Progress({ patient, sessions, onBack, isLoading }: ProgressProps
                   <div className="mt-2 mb-1.5 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.1)' }}>
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.text, opacity: 0.5 }} />
                   </div>
+                  {gad7Points.length >= 2 && (
+                    <div className="mt-2 mb-1">
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', color: c.text, opacity: 0.6, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                        {t('progress.clinical.trend')}
+                      </p>
+                      <ClinicalSpark points={gad7Points} maxY={21} color={c.text} id="gad7" />
+                    </div>
+                  )}
                   <p style={{ fontSize: '0.6875rem', color: c.text, opacity: 0.85 }}>
-                    {GAD7_SEVERITY_LABELS[latestGAD7.severity]}
+                    {t(`clinical.severity.${latestGAD7.severity}`)}
                   </p>
                 </div>
               );
@@ -685,7 +772,7 @@ export function Progress({ patient, sessions, onBack, isLoading }: ProgressProps
                                           <span style={{ fontSize: '0.625rem', fontWeight: 400, opacity: 0.7 }}>/27</span>
                                         </p>
                                         <p style={{ fontSize: '0.6875rem', color: c.text, opacity: 0.85, marginTop: 2 }}>
-                                          {PHQ9_SEVERITY_LABELS[session.phq9.severity]}
+                                          {t(`clinical.severity.${session.phq9.severity}`)}
                                         </p>
                                       </div>
                                     );
@@ -702,7 +789,7 @@ export function Progress({ patient, sessions, onBack, isLoading }: ProgressProps
                                           <span style={{ fontSize: '0.625rem', fontWeight: 400, opacity: 0.7 }}>/21</span>
                                         </p>
                                         <p style={{ fontSize: '0.6875rem', color: c.text, opacity: 0.85, marginTop: 2 }}>
-                                          {GAD7_SEVERITY_LABELS[session.gad7.severity]}
+                                          {t(`clinical.severity.${session.gad7.severity}`)}
                                         </p>
                                       </div>
                                     );

@@ -1,18 +1,41 @@
 import { createClient } from './supabase';
 import type { Patient, PatientSession, DiaryEntry } from './types';
 
+const GENDER_MAP: Record<string, Patient['gender']> = {
+  'Femenino': 'female', 'Masculino': 'male', 'Otro': 'other',
+  'female': 'female', 'male': 'male', 'other': 'other',
+};
+const MARITAL_MAP: Record<string, Patient['maritalStatus']> = {
+  'Soltero/a': 'single', 'En pareja': 'partnered', 'Casado/a': 'married',
+  'Divorciado/a': 'divorced', 'Viudo/a': 'widowed', 'Separado/a': 'separated',
+  'single': 'single', 'partnered': 'partnered', 'married': 'married',
+  'divorced': 'divorced', 'widowed': 'widowed', 'separated': 'separated',
+};
+const LIVING_MAP: Record<string, Patient['livingSituation']> = {
+  'Solo/a': 'alone', 'Con pareja': 'with-partner', 'Con familia': 'with-family',
+  'Con compañeros': 'with-housemates', 'Con padres': 'with-parents', 'Otro': 'other',
+  'alone': 'alone', 'with-partner': 'with-partner', 'with-family': 'with-family',
+  'with-housemates': 'with-housemates', 'with-parents': 'with-parents', 'other': 'other',
+};
+const EMPLOYMENT_MAP: Record<string, Patient['employment']> = {
+  'Empleado/a': 'employed', 'Desempleado/a': 'unemployed', 'Estudiante': 'student',
+  'Independiente': 'freelance', 'Jubilado/a': 'retired', 'Otro': 'other',
+  'employed': 'employed', 'unemployed': 'unemployed', 'student': 'student',
+  'freelance': 'freelance', 'retired': 'retired', 'other': 'other',
+};
+
 function rowToPatient(row: Record<string, unknown>, userId: string): Patient {
   return {
     id: userId,
     name: row.name as string,
     age: row.age as number,
-    gender: row.gender as Patient['gender'],
-    maritalStatus: row.marital_status as Patient['maritalStatus'],
+    gender: GENDER_MAP[row.gender as string] ?? (row.gender as Patient['gender']),
+    maritalStatus: MARITAL_MAP[row.marital_status as string] ?? (row.marital_status as Patient['maritalStatus']),
     hasChildren: row.has_children as boolean,
     childrenCount: row.children_count as number | undefined,
-    livingSituation: row.living_situation as Patient['livingSituation'],
+    livingSituation: LIVING_MAP[row.living_situation as string] ?? (row.living_situation as Patient['livingSituation']),
     livingSituationDetail: row.living_situation_detail as string | undefined,
-    employment: row.employment as Patient['employment'],
+    employment: EMPLOYMENT_MAP[row.employment as string] ?? (row.employment as Patient['employment']),
     occupation: row.occupation as string | undefined,
     hasSupportNetwork: row.has_support_network as boolean,
     supportDescription: row.support_description as string | undefined,

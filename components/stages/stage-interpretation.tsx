@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession, Interpretation } from '@/lib/types';
-import { generateInterpretation } from '@/actions/ai';
+import { buildInterpretationPrompt } from '@/lib/ai-prompts';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
 import { AIThinking } from '@/components/ai/ai-thinking';
@@ -36,7 +36,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
   const [isError, setIsError] = useState(false);
   const [resonated, setResonated] = useState(!!session.interpretation?.resonatedAt);
   const [showRing, setShowRing] = useState(false);
-  const { text, isStreaming, isDone, startStream } = useAIStream();
+  const { text, isStreaming, isDone, startStream, streamFromUrl } = useAIStream();
   const shouldReduce = useReducedMotion();
 
   useEffect(() => {
@@ -47,6 +47,15 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
     // If no interpretation, we wait for consent — no auto-generate
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When real streaming completes, save the interpretation from streamed text
+  useEffect(() => {
+    if (!isDone || !text || fullInterpretation) return;
+    const result: Interpretation = { text, groundingSources: [] };
+    setFullInterpretation(result);
+    onUpdate({ interpretation: result });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDone]);
 
   const handleConsent = () => {
     setAwaitingConsent(false);
@@ -62,23 +71,22 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
     setIsError(false);
     setFullInterpretation(null);
     try {
-      const result = await generateInterpretation({
+      const prompt = buildInterpretationPrompt({
         conflicts: session.conflicts,
         frameworkMatches: session.frameworkMatches,
         memories: session.memories,
         patient,
         lifeChanges: session.lifeChanges,
         stage3Notes: session.stage3Notes,
+        explorationRecord: session.explorationRecord,
         priorSessions,
         locale,
       });
-      setFullInterpretation(result);
-      onUpdate({ interpretation: result });
-      startStream(result.text);
+      setIsGenerating(false);
+      await streamFromUrl('/api/stream', { prompt, temperature: 0.7 });
     } catch (e) {
       console.error(e);
       setIsError(true);
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -93,8 +101,8 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
     onUpdate({ interpretation: updated });
   };
 
-  const displayText = shouldReduce ? (fullInterpretation?.text ?? '') : text;
-  const showContent = shouldReduce ? !!fullInterpretation : (isDone || isStreaming);
+  const displayText = shouldReduce ? (fullInterpretation?.text ?? text) : text;
+  const showContent = isDone || isStreaming || (!!shouldReduce && !!fullInterpretation);
 
   return (
     <div className="space-y-8 pb-48">
@@ -298,7 +306,10 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
       <FloatingBar visible={isDone || (!!shouldReduce && !!fullInterpretation)}>
         <motion.button
           type="button"
-          onClick={() => onAdvance(fullInterpretation!)}
+          onClick={() => {
+            const interp: Interpretation = fullInterpretation ?? { text, groundingSources: [] };
+            onAdvance(interp);
+          }}
           whileTap={shouldReduce ? {} : { scale: 0.97 }}
           className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
           style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}

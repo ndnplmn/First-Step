@@ -20,9 +20,10 @@ export function FloatingBar({ visible, children }: FloatingBarProps) {
           className="fixed bottom-0 left-0 right-0 z-50"
         >
           <div
-            className="max-w-[680px] mx-auto px-5 pb-8 pt-5"
+            className="max-w-[680px] mx-auto px-5 pt-5"
             style={{
               background: 'linear-gradient(to top, var(--color-base) 60%, transparent)',
+              paddingBottom: 'max(32px, env(safe-area-inset-bottom, 32px))',
             }}
           >
             <div

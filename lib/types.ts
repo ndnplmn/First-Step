@@ -1,8 +1,7 @@
-export type Gender = 'Femenino' | 'Masculino' | 'Otro';
-
-export type MaritalStatus = 'Soltero/a' | 'En pareja' | 'Casado/a' | 'Divorciado/a' | 'Viudo/a' | 'Separado/a';
-export type LivingSituation = 'Solo/a' | 'Con pareja' | 'Con familia' | 'Con compañeros' | 'Con padres' | 'Otro';
-export type EmploymentStatus = 'Empleado/a' | 'Desempleado/a' | 'Estudiante' | 'Independiente' | 'Jubilado/a' | 'Otro';
+export type Gender = 'female' | 'male' | 'other';
+export type MaritalStatus = 'single' | 'partnered' | 'married' | 'divorced' | 'widowed' | 'separated';
+export type LivingSituation = 'alone' | 'with-partner' | 'with-family' | 'with-housemates' | 'with-parents' | 'other';
+export type EmploymentStatus = 'employed' | 'unemployed' | 'student' | 'freelance' | 'retired' | 'other';
 
 export type FrameworkKey =
   | 'freudiano'
@@ -195,6 +194,8 @@ export type PatientSession = {
   wellbeingAfter?: number;   // 1-5 scale
   lifeChanges?: LifeChanges;
   sessionIntention?: string;  // what the patient wants to work on this session
+  commitmentFollowUp?: { status: 'yes' | 'partial' | 'no'; note?: string };
+  gestaltActivityResponse?: string;
   phq9?: PHQ9Response;
   gad7?: GAD7Response;
   explorationRecord?: ExplorationRecord;

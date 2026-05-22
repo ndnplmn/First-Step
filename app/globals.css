@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ══════════════════════════════════════════
-   DESIGN TOKENS — First Step 2026
+   DESIGN TOKENS — Tend 2026
    ══════════════════════════════════════════ */
 @theme {
   /* ── Core Palette ── */
@@ -14,6 +14,9 @@
   --color-surface-elevated: #FFFFFF;
   --color-deep: #19160F;
   --color-deep-soft: #2C271E;
+
+  /* ── Brand (unified across icon, wordmark, and primary teal surfaces) ── */
+  --color-brand: #2D5F5F;
 
   /* ── Accent: Sage ── */
   --color-sage: #3D6B47;
@@ -32,8 +35,8 @@
   --color-violet-muted: rgba(107, 94, 158, 0.08);
 
   /* ── Neutrals ── */
-  --color-muted: #6E665C;
-  --color-muted-soft: #998F84;
+  --color-muted: #5A5349;
+  --color-muted-soft: #7D7469;
   --color-border: rgba(28, 25, 21, 0.07);
   --color-border-strong: rgba(28, 25, 21, 0.13);
   --color-glass: rgba(246, 241, 236, 0.88);
@@ -79,6 +82,10 @@
     0 0 0 1px rgba(107, 94, 158, 0.24),
     0 4px 20px rgba(107, 94, 158, 0.2),
     0 10px 48px rgba(107, 94, 158, 0.12);
+  --shadow-glow-terracotta:
+    0 0 0 1px rgba(180, 110, 69, 0.26),
+    0 4px 20px rgba(180, 110, 69, 0.22),
+    0 10px 48px rgba(180, 110, 69, 0.12);
 }
 
 /* ══════════════════════════════════════════
@@ -88,6 +95,8 @@
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Removes the grey tap flash on iOS Safari — biggest "feels like web" tell */
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -103,6 +112,13 @@ html {
 
 body {
   min-height: 100dvh;
+  /* Prevents pull-to-refresh from interrupting a therapy session */
+  overscroll-behavior: none;
+}
+
+button, a, [role="button"] {
+  /* Removes 300ms tap delay on some browsers */
+  touch-action: manipulation;
 }
 
 /* ── Grain texture overlay (subtle organic feel) ── */
@@ -225,6 +241,23 @@ button:focus-visible {
   outline: 2px solid var(--color-sage);
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+/* ══════════════════════════════════════════
+   AUTH UNDERLINE INPUT
+   Pure CSS — no inline JS focus handlers needed.
+   ══════════════════════════════════════════ */
+.auth-field {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 1px solid var(--color-border);
+  transition: border-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.auth-field:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: var(--color-sage);
 }
 
 /* ══════════════════════════════════════════
@@ -429,11 +462,14 @@ button:focus-visible {
 }
 
 /* ══════════════════════════════════════════
-   DESIGN TOKEN OVERRIDES
-   Must come AFTER @theme inline (Shadcn) which overwrites
-   --color-muted and --color-border with its own values.
+   DESIGN TOKEN OVERRIDES — LIGHT MODE
+   IMPORTANT: Must come AFTER @theme inline (Shadcn) which silently
+   overwrites --color-muted with oklch(0.97 0 0) and --color-border
+   with oklch(0.922 0 0). This block re-asserts the correct values.
+   If Shadcn is upgraded, verify these tokens are not silently reset.
    ══════════════════════════════════════════ */
 :root {
+  --color-brand: #2D5F5F;
   --color-base: #F6F1EC;
   --color-surface: #FDFAF7;
   --color-surface-elevated: #FFFFFF;
@@ -449,8 +485,8 @@ button:focus-visible {
   --color-violet: #6B5E9E;
   --color-violet-light: #EEEBF5;
   --color-violet-muted: rgba(107, 94, 158, 0.08);
-  --color-muted: #6E665C;
-  --color-muted-soft: #998F84;
+  --color-muted: #5A5349;
+  --color-muted-soft: #7D7469;
   --color-border: rgba(28, 25, 21, 0.09);
   --color-border-strong: rgba(28, 25, 21, 0.16);
   --color-glass: rgba(246, 241, 236, 0.88);
@@ -480,4 +516,68 @@ button:focus-visible {
     0 0 0 1px rgba(107, 94, 158, 0.24),
     0 4px 20px rgba(107, 94, 158, 0.2),
     0 10px 48px rgba(107, 94, 158, 0.12);
+  --shadow-glow-terracotta:
+    0 0 0 1px rgba(180, 110, 69, 0.26),
+    0 4px 20px rgba(180, 110, 69, 0.22),
+    0 10px 48px rgba(180, 110, 69, 0.12);
+}
+
+/* ══════════════════════════════════════════
+   DARK MODE TOKEN OVERRIDES
+   Activated by system prefers-color-scheme.
+   ══════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-base: #111009;
+    --color-surface: #1A1812;
+    --color-surface-elevated: #22201A;
+    --color-deep: #F0EBE3;
+    --color-deep-soft: #D4CEC5;
+    --color-brand: #4A8A8A;
+    --color-sage: #5A9668;
+    --color-sage-dark: #3D6B47;
+    --color-sage-light: rgba(90, 150, 104, 0.15);
+    --color-sage-xlight: rgba(90, 150, 104, 0.08);
+    --color-sage-muted: rgba(90, 150, 104, 0.12);
+    --color-terracotta: #D4885A;
+    --color-terracotta-light: rgba(212, 136, 90, 0.12);
+    --color-violet: #9B8EC8;
+    --color-violet-light: rgba(155, 142, 200, 0.12);
+    --color-violet-muted: rgba(155, 142, 200, 0.1);
+    --color-muted: #8A8278;
+    --color-muted-soft: #6A6460;
+    --color-border: rgba(255, 252, 245, 0.08);
+    --color-border-strong: rgba(255, 252, 245, 0.14);
+    --color-glass: rgba(17, 16, 9, 0.88);
+    --color-glass-heavy: rgba(17, 16, 9, 0.96);
+    --color-overlay: rgba(0, 0, 0, 0.65);
+    --shadow-card:
+      0 0 0 1px rgba(255, 252, 245, 0.05),
+      0 1px 3px rgba(0, 0, 0, 0.2),
+      0 4px 16px rgba(0, 0, 0, 0.18),
+      0 14px 44px rgba(0, 0, 0, 0.14);
+    --shadow-card-hover:
+      0 0 0 1px rgba(255, 252, 245, 0.08),
+      0 2px 6px rgba(0, 0, 0, 0.25),
+      0 8px 28px rgba(0, 0, 0, 0.22),
+      0 24px 64px rgba(0, 0, 0, 0.18);
+    --shadow-float:
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+      0 -2px 4px rgba(0, 0, 0, 0.2),
+      0 -8px 28px rgba(0, 0, 0, 0.24),
+      0 -20px 64px rgba(0, 0, 0, 0.3);
+    --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+    --shadow-glow-sage:
+      0 0 0 1px rgba(90, 150, 104, 0.3),
+      0 4px 20px rgba(90, 150, 104, 0.28),
+      0 10px 48px rgba(90, 150, 104, 0.18);
+    --shadow-glow-violet:
+      0 0 0 1px rgba(155, 142, 200, 0.28),
+      0 4px 20px rgba(155, 142, 200, 0.24),
+      0 10px 48px rgba(155, 142, 200, 0.14);
+    --shadow-glow-terracotta:
+      0 0 0 1px rgba(212, 136, 90, 0.3),
+      0 4px 20px rgba(212, 136, 90, 0.26),
+      0 10px 48px rgba(212, 136, 90, 0.16);
+  }
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Interpretation, UnmappedPhrase, Stage3Type, ExplorationRecord, WorkCard } from '@/lib/types';
+import { useLanguage } from '@/contexts/language-context';
 import { SessionHeader } from '@/components/ui/session-header';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
 import { StageConflicts } from './stage-conflicts';
@@ -28,6 +29,7 @@ interface SessionViewProps {
 }
 
 export function SessionView({ patient, session, priorSessions = [], onSessionUpdate, onComplete, onViewSettings }: SessionViewProps) {
+  const { t } = useLanguage();
   const [pendingUpdates, setPendingUpdates] = useState<Partial<PatientSession> | null>(null);
   const [showTransition, setShowTransition] = useState(false);
   const [targetStage, setTargetStage] = useState<number>(session.stage);
@@ -119,7 +121,7 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
             }}
           >
             <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', fontSize: '0.7rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
-              Explorando hoy
+              {t('session.exploring')}
             </p>
             <p style={{ color: 'var(--color-deep)', fontSize: '0.9375rem', fontWeight: 500, margin: 0 }}>
               {session.selectedWorkCard.title}

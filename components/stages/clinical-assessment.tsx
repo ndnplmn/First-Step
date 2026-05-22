@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { scorePHQ9, scoreGAD7 } from '@/lib/clinical';
+import type { PHQ9Response, GAD7Response } from '@/lib/types';
 import { useLanguage } from '@/contexts/language-context';
 import type { PatientSession } from '@/lib/types';
 
@@ -11,7 +12,7 @@ interface ClinicalAssessmentProps {
   onComplete: (updated: PatientSession) => void;
 }
 
-type Phase = 'intro' | 'phq9' | 'gad7';
+type Phase = 'intro' | 'phq9' | 'gad7' | 'results';
 
 function AnswerRow({
   selected,
@@ -67,6 +68,8 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
   const [phase, setPhase] = useState<Phase>('intro');
   const [phq9Answers, setPhq9Answers] = useState<(number | null)[]>(Array(9).fill(null));
   const [gad7Answers, setGad7Answers] = useState<(number | null)[]>(Array(7).fill(null));
+  const [phq9Result, setPhq9Result] = useState<PHQ9Response | null>(null);
+  const [gad7Result, setGad7Result] = useState<GAD7Response | null>(null);
 
   const freqLabels = [
     { short: t('assessment.freq.0.short'), label: t('assessment.freq.0.label') },
@@ -103,23 +106,31 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
     },
   };
 
-  const config = phase !== 'intro' ? phaseConfig[phase] : null;
+  const config = (phase === 'phq9' || phase === 'gad7') ? phaseConfig[phase] : null;
   const answers = phase === 'phq9' ? phq9Answers : gad7Answers;
   const setAnswer = (i: number, v: number) => {
     if (phase === 'phq9') setPhq9Answers(prev => { const n = [...prev]; n[i] = v; return n; });
     else setGad7Answers(prev => { const n = [...prev]; n[i] = v; return n; });
   };
 
-  const allAnswered = phase !== 'intro' && answers.every(a => a !== null);
-  const answeredCount = phase !== 'intro' ? answers.filter(a => a !== null).length : 0;
+  const allAnswered = (phase === 'phq9' || phase === 'gad7') && answers.every(a => a !== null);
+  const answeredCount = (phase === 'phq9' || phase === 'gad7') ? answers.filter(a => a !== null).length : 0;
 
   const handleContinue = () => {
     if (phase === 'intro') { setPhase('phq9'); return; }
     if (!allAnswered) return;
     if (phase === 'phq9') { setPhase('gad7'); return; }
-    const phq9Result = scorePHQ9(phq9Answers as number[]);
-    const gad7Result = scoreGAD7(gad7Answers as number[]);
-    onComplete({ ...session, phq9: phq9Result, gad7: gad7Result });
+    if (phase === 'gad7') {
+      const p9 = scorePHQ9(phq9Answers as number[]);
+      const g7 = scoreGAD7(gad7Answers as number[]);
+      setPhq9Result(p9);
+      setGad7Result(g7);
+      setPhase('results');
+      return;
+    }
+    if (phase === 'results' && phq9Result && gad7Result) {
+      onComplete({ ...session, phq9: phq9Result, gad7: gad7Result });
+    }
   };
 
   if (phase === 'intro') {
@@ -163,6 +174,90 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
             style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
           >
             {t('assessment.intro.cta')}
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (phase === 'results' && phq9Result && gad7Result) {
+    const severityColor = (s: string) => {
+      if (s === 'minimal') return 'var(--color-sage)';
+      if (s === 'mild') return 'var(--color-terracotta)';
+      return 'var(--color-terracotta)';
+    };
+    return (
+      <div
+        className="min-h-dvh flex flex-col items-center justify-center px-6"
+        style={{ background: 'var(--color-base)' }}
+      >
+        <motion.div
+          initial={shouldReduce ? false : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-[480px] w-full space-y-4"
+        >
+          <p
+            className="text-xs font-medium uppercase tracking-widest"
+            style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+          >
+            {t('assessment.results.title')}
+          </p>
+
+          {/* PHQ-9 score card */}
+          <div
+            className="p-5 rounded-[var(--radius-card)] flex items-center justify-between"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                {t('assessment.results.phq9.label')}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                {t(`clinical.severity.${phq9Result.severity}`)}
+              </p>
+            </div>
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
+              style={{ background: `${severityColor(phq9Result.severity)}18`, color: severityColor(phq9Result.severity) }}
+            >
+              {phq9Result.score}
+            </div>
+          </div>
+
+          {/* GAD-7 score card */}
+          <div
+            className="p-5 rounded-[var(--radius-card)] flex items-center justify-between"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                {t('assessment.results.gad7.label')}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                {t(`clinical.severity.${gad7Result.severity}`)}
+              </p>
+            </div>
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
+              style={{ background: `${severityColor(gad7Result.severity)}18`, color: severityColor(gad7Result.severity) }}
+            >
+              {gad7Result.score}
+            </div>
+          </div>
+
+          <p className="text-sm leading-relaxed px-1" style={{ color: 'var(--color-muted)' }}>
+            {t('assessment.results.body')}
+          </p>
+
+          <motion.button
+            type="button"
+            onClick={handleContinue}
+            whileTap={shouldReduce ? {} : { scale: 0.97 }}
+            className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
+            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+          >
+            {t('assessment.results.cta')}
           </motion.button>
         </motion.div>
       </div>

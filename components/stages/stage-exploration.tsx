@@ -84,6 +84,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
   const [fullInterpretation, setFullInterpretation] = useState<Interpretation | null>(null);
   const [resonated, setResonated] = useState(false);
   const [showRing, setShowRing] = useState(false);
+  const [showReframeConfirm, setShowReframeConfirm] = useState(false);
   const { text: streamText, isStreaming, isDone: streamDone, startStream } = useAIStream();
 
   // Voice
@@ -266,25 +267,6 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', margin: 0 }}>
             {t('stage3.label')} — {frameworkName}
           </p>
-          {synthesisState === 'idle' && (
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={currentPhase}
-                initial={shouldReduce ? {} : { opacity: 0, x: 6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={shouldReduce ? {} : { opacity: 0, x: -6 }}
-                transition={{ duration: 0.25 }}
-                style={{
-                  fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600,
-                  color: currentPhase === 'insight' ? 'var(--color-violet)' : 'var(--color-sage)',
-                  padding: '0.125rem 0.5rem', borderRadius: '9999px',
-                  background: currentPhase === 'insight' ? 'rgba(107,94,158,0.1)' : 'rgba(61,107,71,0.08)',
-                }}
-              >
-                {PHASE_LABELS[currentPhase]}
-              </motion.span>
-            </AnimatePresence>
-          )}
         </div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 4.5vw, 42px)', color: 'var(--color-deep)', lineHeight: 1.1, margin: 0 }}>
           {t('stage3.title')}
@@ -499,7 +481,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                 </div>
                 <motion.button
                   type="button"
-                  onClick={generateInterp}
+                  onClick={() => resonated ? setShowReframeConfirm(true) : generateInterp()}
                   whileTap={shouldReduce ? {} : { scale: 0.98 }}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.875rem', borderRadius: '9999px', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-muted)', border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}
                 >
@@ -668,7 +650,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                       onFocus={e => (e.target.style.borderColor = lastMessage.isInsight ? 'var(--color-violet)' : 'var(--color-sage)')}
                       onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
                       onKeyDown={e => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && currentInput.trim().length >= 5) {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && currentInput.trim().length >= 1) {
                           e.preventDefault();
                           handleSubmit();
                         }
@@ -692,7 +674,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                         <SpeakerSlash size={18} aria-hidden />
                       </motion.button>
                       <AnimatePresence>
-                        {currentInput.trim().length >= 5 && (
+                        {currentInput.trim().length >= 1 && (
                           <motion.button
                             type="button"
                             onClick={() => handleSubmit()}
@@ -707,7 +689,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                               fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', flex: 1,
                             }}
                           >
-                            Enviar
+                            {t('stage3.send')}
                           </motion.button>
                         )}
                       </AnimatePresence>
@@ -751,6 +733,53 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         </div>
       )}
 
+      {/* Reframe confirmation modal */}
+      <AnimatePresence>
+        {showReframeConfirm && (
+          <motion.div
+            initial={shouldReduce ? {} : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={shouldReduce ? {} : { opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)', padding: '1.5rem' }}
+            onClick={() => setShowReframeConfirm(false)}
+          >
+            <motion.div
+              initial={shouldReduce ? {} : { y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={shouldReduce ? {} : { y: 24, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)', padding: '1.5rem', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.15)' }}
+            >
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.0625rem', color: 'var(--color-deep)', margin: 0, lineHeight: 1.4 }}>
+                {t('stage3.interp.reframe.title')}
+              </p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', margin: 0, lineHeight: 1.6 }}>
+                {t('stage3.interp.reframe.body')}
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.25rem' }}>
+                <motion.button
+                  type="button"
+                  onClick={() => { setShowReframeConfirm(false); setResonated(false); generateInterp(); }}
+                  whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                  style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t('stage3.interp.reframe.confirm')}
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={() => setShowReframeConfirm(false)}
+                  whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                  style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-inner)', background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  {t('stage3.interp.reframe.cancel')}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Action step — micro-experiment */}
       <AnimatePresence>
         {showActionStep && (
@@ -766,7 +795,7 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                 {t('stage3.action.title')}
               </p>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: '0 0 0.5rem' }}>
-                Dado lo que notaste hoy sobre <em>{workCard.title.toLowerCase()}</em>, ¿hay algo concreto y pequeño que quieras intentar esta semana?
+                {t('stage3.action.question.pre')}<em>{workCard.title.toLowerCase()}</em>{t('stage3.action.question.post')}
               </p>
               <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
                 {t('stage3.action.subtitle')}

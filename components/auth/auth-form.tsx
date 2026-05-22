@@ -57,13 +57,8 @@ function Field({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={type === 'password' ? 'current-password' : type === 'email' ? 'email' : 'off'}
-        className="w-full bg-transparent border-b py-2 text-base outline-none transition-colors"
-        style={{
-          borderColor: 'var(--color-border)',
-          color: 'var(--color-deep)',
-        }}
-        onFocus={e => (e.target.style.borderBottomColor = 'var(--color-sage)')}
-        onBlur={e => (e.target.style.borderBottomColor = 'var(--color-border)')}
+        className="auth-field w-full bg-transparent py-2 text-base"
+        style={{ color: 'var(--color-deep)' }}
       />
     </div>
   );
@@ -93,6 +88,7 @@ function ConfirmationScreen({
         <div
           className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl"
           style={{ background: 'rgba(61,107,71,0.12)' }}
+          aria-hidden="true"
         >
           {icon}
         </div>

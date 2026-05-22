@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'motion/react';
+import { useLanguage } from '@/contexts/language-context';
 
 interface ConsentScreenProps {
   onAccept: () => void;
@@ -9,6 +10,7 @@ interface ConsentScreenProps {
 }
 
 export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
+  const { t } = useLanguage();
   const [checked, setChecked] = useState(false);
 
   return (
@@ -28,13 +30,11 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
         className="text-3xl leading-snug mb-4"
         style={{ fontFamily: 'var(--font-display)', color: 'var(--color-deep)' }}
       >
-        Antes de comenzar
+        {t('consent.title')}
       </h1>
 
       <p className="text-base leading-relaxed mb-8" style={{ color: 'var(--color-muted)' }}>
-        Tend es un espacio de autoexploración guiada. Para ofrecerte la mejor experiencia
-        necesitamos recopilar y procesar información sensible sobre tu bienestar emocional.
-        Por favor lee con atención.
+        {t('consent.intro')}
       </p>
 
       {/* Scroll area */}
@@ -53,14 +53,9 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
             className="text-xs font-medium tracking-wide uppercase mb-2"
             style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-mono)' }}
           >
-            Qué recopilamos
+            {t('consent.section.collect')}
           </p>
-          <p>
-            Recopilamos información personal sensible (categoría especial según el RGPD Art. 9),
-            incluyendo: historia psicológica y emocional, experiencias con terapia previa,
-            medicación actual, situación familiar y laboral, y el contenido de tus sesiones y
-            entradas de diario.
-          </p>
+          <p>{t('consent.section.collect.body')}</p>
         </div>
 
         <div>
@@ -68,14 +63,9 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
             className="text-xs font-medium tracking-wide uppercase mb-2"
             style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-mono)' }}
           >
-            Cómo lo usamos
+            {t('consent.section.use')}
           </p>
-          <p>
-            Esta información se usa exclusivamente para personalizar tu experiencia terapéutica
-            dentro de Tend. No vendemos ni compartimos tus datos con terceros. El análisis de
-            tus sesiones es realizado por modelos de inteligencia artificial (Groq / LLaMA).
-            Los datos se almacenan de forma segura en Supabase (cifrado en tránsito y en reposo).
-          </p>
+          <p>{t('consent.section.use.body')}</p>
         </div>
 
         <div>
@@ -83,13 +73,9 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
             className="text-xs font-medium tracking-wide uppercase mb-2"
             style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-mono)' }}
           >
-            Tus derechos
+            {t('consent.section.rights')}
           </p>
-          <p>
-            Tienes derecho a acceder, rectificar, suprimir y portar tus datos en cualquier momento.
-            Puedes eliminar tu cuenta y todos tus datos desde Configuración → Zona de peligro.
-            El consentimiento es revocable en cualquier momento sin consecuencias.
-          </p>
+          <p>{t('consent.section.rights.body')}</p>
         </div>
 
         <div>
@@ -97,13 +83,19 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
             className="text-xs font-medium tracking-wide uppercase mb-2"
             style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-mono)' }}
           >
-            Importante
+            {t('consent.section.important')}
           </p>
           <p>
-            Tend <strong style={{ color: 'var(--color-deep)' }}>no es un servicio de emergencias</strong> ni
-            sustituye a un profesional de salud mental. Si estás en crisis, llama a una línea de ayuda:{' '}
-            <span style={{ color: 'var(--color-deep)' }}>España 024 · México 800 290 0024 · Argentina 135</span>.
-            Debes tener al menos 18 años para usar este servicio.
+            {t('consent.section.important.pre')}
+            <strong style={{ color: 'var(--color-deep)' }}>
+              {t('consent.section.important.emphasis')}
+            </strong>
+            {t('consent.section.important.post')}{' '}
+            <span style={{ color: 'var(--color-deep)' }}>
+              {t('consent.section.important.lines')}
+            </span>
+            {'. '}
+            {t('consent.section.important.age')}
           </p>
         </div>
       </div>
@@ -131,8 +123,7 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
           )}
         </div>
         <span className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          He leído y acepto el tratamiento de mis datos personales para el uso de Tend.
-          Confirmo que tengo 18 años o más.
+          {t('consent.checkbox')}
         </span>
       </button>
 
@@ -150,7 +141,7 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
             transition: 'box-shadow 0.2s, opacity 0.2s',
           }}
         >
-          Acepto y quiero comenzar
+          {t('consent.cta.accept')}
         </motion.button>
 
         <button
@@ -159,7 +150,7 @@ export function ConsentScreen({ onAccept, onDecline }: ConsentScreenProps) {
           className="w-full py-3 text-sm text-center hover:opacity-70 transition-opacity"
           style={{ color: 'var(--color-muted)' }}
         >
-          No acepto — volver
+          {t('consent.cta.decline')}
         </button>
       </div>
     </motion.div>

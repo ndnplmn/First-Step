@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ArrowLeft, SignOut, Trash, Lock, EnvelopeSimple, CheckCircle, Bell, BellSlash } from '@phosphor-icons/react';
 import { db } from '@/lib/db';
@@ -16,8 +16,10 @@ type FeedbackState = { type: 'success' | 'error'; message: string } | null;
 
 export function Settings({ onBack, onSignOut }: SettingsProps) {
   const shouldReduce = useReducedMotion();
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
+  const isFirstRender = useRef(true);
   const [email, setEmail] = useState<string | null>(null);
+  const [langToast, setLangToast] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -44,6 +46,13 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [handleEscape]);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setLangToast(true);
+    const timer = setTimeout(() => setLangToast(false), 2000);
+    return () => clearTimeout(timer);
+  }, [locale]);
 
   const handlePasswordReset = async () => {
     if (!email) return;
@@ -122,19 +131,13 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
       </header>
 
       <main className="max-w-[680px] mx-auto px-6 pt-8 pb-24 space-y-8">
-        {/* Title */}
-        <div>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(28px, 5vw, 40px)',
-              color: 'var(--color-deep)',
-              lineHeight: 1.1,
-            }}
-          >
-            {t('settings.account')}
-          </h1>
-        </div>
+        {/* Account section label */}
+        <p
+          className="text-xs font-medium uppercase tracking-widest"
+          style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+        >
+          {t('settings.account')}
+        </p>
 
         {/* Feedback banner */}
         <div aria-live="polite" aria-atomic="true">
@@ -347,6 +350,30 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
         </div>
       </main>
 
+      {/* Language change toast */}
+      <AnimatePresence>
+        {langToast && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            aria-live="polite"
+            className="fixed left-1/2 z-50 -translate-x-1/2 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium text-white"
+            style={{
+              bottom: 'max(32px, env(safe-area-inset-bottom, 32px))',
+              background: 'var(--color-deep)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <CheckCircle size={15} aria-hidden="true" />
+            {t('settings.language.changed')}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Delete confirmation modal */}
       <AnimatePresence>
         {showDeleteConfirm && (
@@ -387,7 +414,11 @@ export function Settings({ onBack, onSignOut }: SettingsProps) {
                   disabled={deleteLoading}
                   whileTap={shouldReduce ? {} : { scale: 0.98 }}
                   className="w-full py-4 rounded-2xl font-semibold text-white"
-                  style={{ background: 'var(--color-terracotta)', opacity: deleteLoading ? 0.6 : 1 }}
+                  style={{
+                    background: 'var(--color-terracotta)',
+                    opacity: deleteLoading ? 0.6 : 1,
+                    boxShadow: deleteLoading ? 'none' : 'var(--shadow-glow-terracotta)',
+                  }}
                 >
                   {deleteLoading ? t('settings.delete.confirm.deleting') : t('settings.delete.confirm.yes')}
                 </motion.button>
