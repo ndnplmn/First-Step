@@ -110,9 +110,20 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.interpretation?.text ?? undefined;
 
+  const lastInterpretationResponse = priorSessions
+    .filter(s => s.interpretationResponse)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.interpretationResponse ?? undefined;
+
   const openingGreeting = (() => {
     if (session.sessionIntention) {
       return t('stage2.greeting.intention').replace('{intention}', session.sessionIntention);
+    }
+    if (session.consultationAlignment === 'no') {
+      return t('stage2.greeting.alignment_no');
+    }
+    if (session.consultationAlignment === 'partial') {
+      return t('stage2.greeting.alignment_partial');
     }
     if (session.commitmentFollowUp?.status === 'yes') {
       const commitment = lastCommitment ?? t('stage2.commitment.generic');
@@ -128,6 +139,9 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
     }
     if (lastMissedIntention) {
       return t('stage2.greeting.intention_missed');
+    }
+    if (lastInterpretationResponse && session.sessionNumber >= 2) {
+      return t('stage2.greeting.interpretation_response').replace('{response}', lastInterpretationResponse.slice(0, 120));
     }
     if (session.sessionNumber >= 3 && lastSessionWithExploration) {
       const conflictTheme = lastSessionWithExploration.explorationRecord!.insights[0]?.theme

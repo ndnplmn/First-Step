@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase';
 import { generateId } from '@/lib/id';
 import { shouldShowAssessment, getAssessmentInstrument } from '@/lib/clinical';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { useLanguage } from '@/contexts/language-context';
 import type { Patient, PatientSession, DiaryEntry, AppView } from '@/lib/types';
 
 function LoadingScreen() {
@@ -41,6 +42,7 @@ function LoadingScreen() {
 }
 
 export default function Home() {
+  const { t } = useLanguage();
   const [view, setView] = useState<AppView>('WELCOME');
   const [loading, setLoading] = useState(true);
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
@@ -348,10 +350,10 @@ export default function Home() {
           className="space-y-3 text-center"
         >
           <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.75rem, 6vw, 2.5rem)', color: 'var(--color-deep)', lineHeight: 1.2 }}>
-            Tu espacio está listo.
+            {t('session_intro.title')}
           </p>
           <p style={{ color: 'var(--color-muted)', fontSize: '1rem', lineHeight: 1.6 }}>
-            Cuando estés preparado/a, empieza tu primera sesión.
+            {t('session_intro.subtitle')}
           </p>
         </motion.div>
         <motion.div
@@ -366,7 +368,7 @@ export default function Home() {
             className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
             style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
           >
-            Empezar ahora →
+            {t('session_intro.start')}
           </button>
           <button
             type="button"
@@ -374,7 +376,7 @@ export default function Home() {
             className="w-full py-3 rounded-2xl text-sm font-medium"
             style={{ color: 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            Continuar después
+            {t('session_intro.later')}
           </button>
         </motion.div>
       </div>

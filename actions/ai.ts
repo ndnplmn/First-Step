@@ -120,6 +120,9 @@ function buildSessionHistory(priorSessions: PatientSession[]): string {
     const wellbeingLine = (s.wellbeingBefore != null && s.wellbeingAfter != null)
       ? `  Bienestar: ${s.wellbeingBefore}/5 → ${s.wellbeingAfter}/5`
       : null;
+    const alignmentLine = s.consultationAlignment
+      ? `  Alineación terapéutica percibida: ${s.consultationAlignment === 'yes' ? 'trabajando lo que necesita' : s.consultationAlignment === 'partial' ? 'parcialmente alineado' : 'desviado del motivo de consulta'}`
+      : null;
     return [
       `Sesión ${s.sessionNumber} (${date}):`,
       `  Conflictos trabajados: ${conflictos}`,
@@ -128,6 +131,7 @@ function buildSessionHistory(priorSessions: PatientSession[]): string {
       explorationLine,
       interpResponseLine,
       interpretacion ? `  Interpretación (extracto): "${interpretacion}"` : null,
+      alignmentLine,
     ].filter(Boolean).join('\n');
   });
 
@@ -1021,12 +1025,17 @@ export async function generateStrategies(params: {
   gestaltActivity: GestaltActivity | null;
   patient: Patient;
   explorationRecord?: ExplorationRecord;
+  actionCommitment?: string;
   locale?: string;
 }): Promise<{ title: string; description: string }[]> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
 
   const explorationContext = params.explorationRecord?.insights?.length
     ? `\n    Lo que emergió en la exploración de esta sesión (basa al menos una estrategia en estos insights concretos):\n${params.explorationRecord.insights.map(i => `    - ${i.theme}: ${i.observation}`).join('\n')}\n`
+    : '';
+
+  const commitmentContext = params.actionCommitment
+    ? `\n    El paciente ya asumió este compromiso de acción: "${params.actionCommitment}". Las estrategias deben COMPLEMENTAR y ampliar ese compromiso, no repetirlo.\n`
     : '';
 
   const prompt = `
@@ -1042,7 +1051,7 @@ export async function generateStrategies(params: {
 
     Se le ha dado esta interpretación:
     "${interpretation}"
-${explorationContext}
+${explorationContext}${commitmentContext}
     ${gestaltActivity ? `Actividad Gestalt del caso:\nTipo: ${gestaltActivity.type}\nTítulo: "${gestaltActivity.title}"\nDescripción: "${gestaltActivity.description}"` : ''}
 
     Genera exactamente 3 ESTRATEGIAS PRÁCTICAS que el paciente pueda aplicar en su vida diaria para confrontar su problema. Las estrategias deben:

@@ -509,6 +509,19 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                 <p className="text-xs font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
                   {t('checkin.alignment.step')}
                 </p>
+                {patient.consultationReason && (
+                  <div
+                    className="p-3 rounded-[var(--radius-inner)] space-y-1"
+                    style={{ background: 'rgba(107,94,158,0.06)', border: '1px solid rgba(107,94,158,0.15)' }}
+                  >
+                    <p className="text-xs font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      {t('checkin.alignment.reason_label')}
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--color-deep)', lineHeight: 1.5 }}>
+                      {patient.consultationReason}
+                    </p>
+                  </div>
+                )}
                 <div className="flex flex-col gap-3">
                   {([
                     { value: 'yes' as const, label: t('checkin.alignment.yes') },

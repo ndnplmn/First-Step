@@ -75,13 +75,9 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
   const [phaseTransitionMsg, setPhaseTransitionMsg] = useState<string | null>(null);
   const prevPhaseRef = useRef<ExplorationPhase>('exploring');
 
-  // Synthesis + action step
+  // Synthesis state
   const [synthesisState, setSynthesisState] = useState<'idle' | 'loading' | 'done'>('idle');
   const [explorationRecord, setExplorationRecord] = useState<ExplorationRecord | null>(null);
-  const [showActionStep, setShowActionStep] = useState(false);
-  const [actionPhase, setActionPhase] = useState<'obstacle' | 'experiment'>('obstacle');
-  const [obstacleText, setObstacleText] = useState('');
-  const [actionInput, setActionInput] = useState('');
 
   // Voice
   const {
@@ -97,7 +93,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
 
   const patientTurns = messages.filter(m => m.role === 'patient').length;
   const lastMessage = messages[messages.length - 1];
-  const awaitingPatient = lastMessage?.role === 'therapist' && !showActionStep && synthesisState === 'idle';
+  const awaitingPatient = lastMessage?.role === 'therapist' && synthesisState === 'idle';
   const canEndEarly = patientTurns >= MIN_TURNS_TO_END && !isThinking;
 
   const lastExploration = [...priorSessions].reverse().find(s => s.explorationRecord)?.explorationRecord;
@@ -190,36 +186,21 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
       setIsThinking(false);
 
       if (result.done) {
-        setShowActionStep(true);
+        handleSynthesize([...updatedMessages, therapistMessage]);
       }
     } catch {
       setIsThinking(false);
-      setShowActionStep(true);
+      handleSynthesize(messages);
     }
   };
 
-  const handleEndEarly = () => setShowActionStep(true);
+  const handleEndEarly = () => handleSynthesize(messages);
 
-  const handleActionCommit = () => {
-    if (actionPhase === 'obstacle') {
-      setActionPhase('experiment');
-      return;
-    }
-    handleSynthesize(messages, actionInput.trim(), obstacleText.trim());
-  };
-
-  const handleSkipAction = () => handleSynthesize(messages, '', '');
-
-  const handleSynthesize = async (finalMessages: Message[], commitment: string, obstacle: string) => {
+  const handleSynthesize = async (finalMessages: Message[]) => {
     setSynthesisState('loading');
-    setShowActionStep(false);
-    const rawData = [
-      finalMessages
-        .map(m => `${m.role === 'therapist' ? 'Terapeuta' : 'Paciente'}: ${m.text}`)
-        .join('\n\n'),
-      obstacle ? `\nObstáculo identificado por el paciente: "${obstacle}"` : '',
-      commitment ? `\nCompromiso de acción del paciente: "${commitment}"` : '',
-    ].join('');
+    const rawData = finalMessages
+      .map(m => `${m.role === 'therapist' ? 'Terapeuta' : 'Paciente'}: ${m.text}`)
+      .join('\n\n');
 
     try {
       const priorExplorations = priorSessions.filter(s => s.explorationRecord).map(s => s.explorationRecord!);
@@ -229,15 +210,12 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
         sessionNumber: session.sessionNumber, priorExplorations,
         locale,
       });
-      const fullCommitment = obstacle && commitment
-        ? `Obstáculo: ${obstacle} → ${commitment}`
-        : commitment || undefined;
-      setExplorationRecord({ ...record, actionCommitment: fullCommitment });
+      setExplorationRecord(record);
       setSynthesisState('done');
     } catch {
       setSynthesisState('idle');
       onAdvance(
-        { sessionNumber: session.sessionNumber, framework: frameworkKey, frameworkName, stage3Type, insights: [], aiReflection: '', completedAt: Date.now(), actionCommitment: commitment || undefined },
+        { sessionNumber: session.sessionNumber, framework: frameworkKey, frameworkName, stage3Type, insights: [], aiReflection: '', completedAt: Date.now() },
       );
     }
   };
@@ -350,16 +328,6 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
                 </p>
               </div>
             )}
-            {explorationRecord.actionCommitment && (
-              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid rgba(107,94,158,0.15)' }}>
-                <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {t('stage3.synthesis.commitment.label')}
-                </p>
-                <p style={{ color: 'var(--color-deep)', fontSize: '0.9375rem', fontStyle: 'italic', margin: 0, lineHeight: 1.5 }}>
-                  "{explorationRecord.actionCommitment}"
-                </p>
-              </div>
-            )}
           </div>
           <motion.button
             type="button"
@@ -373,7 +341,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
       )}
 
       {/* Active conversation */}
-      {synthesisState === 'idle' && !showActionStep && (
+      {synthesisState === 'idle' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Progress line + phase label */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
@@ -639,121 +607,6 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
         </div>
       )}
 
-      {/* Action step — micro-experiment */}
-      <AnimatePresence>
-        {showActionStep && (
-          <AnimatePresence mode="wait">
-            {actionPhase === 'obstacle' ? (
-              <motion.div
-                key="obstacle"
-                initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={shouldReduce ? {} : { opacity: 0, y: -8 }}
-                transition={{ duration: 0.4 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
-              >
-                <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {t('stage3.action.title')}
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: '0 0 0.5rem' }}>
-                    {t('stage3.action.obstacle.q.pre')}<em>{workCard.title.toLowerCase()}</em>{t('stage3.action.obstacle.q.post')}
-                  </p>
-                </div>
-                <textarea
-                  value={obstacleText}
-                  onChange={e => setObstacleText(e.target.value)}
-                  placeholder={t('stage3.action.obstacle.placeholder')}
-                  autoFocus
-                  rows={3}
-                  style={textareaStyle}
-                  onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-                  onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <AnimatePresence>
-                    {obstacleText.trim().length >= 5 && (
-                      <motion.button
-                        type="button"
-                        onClick={handleActionCommit}
-                        initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={shouldReduce ? {} : { opacity: 0 }}
-                        whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                        style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '0.9375rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
-                      >
-                        {t('stage3.action.obstacle.next')}
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-                  <button
-                    type="button"
-                    onClick={handleSkipAction}
-                    style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center' }}
-                  >
-                    {t('stage3.action.skip')}
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="experiment"
-                initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={shouldReduce ? {} : { opacity: 0, y: -8 }}
-                transition={{ duration: 0.4 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
-              >
-                <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {t('stage3.action.title')}
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: '0 0 0.5rem' }}>
-                    {t('stage3.action.experiment.q')}
-                  </p>
-                  <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
-                    {t('stage3.action.subtitle')}
-                  </p>
-                </div>
-                <textarea
-                  value={actionInput}
-                  onChange={e => setActionInput(e.target.value)}
-                  placeholder={t('stage3.action.placeholder')}
-                  autoFocus
-                  rows={3}
-                  style={textareaStyle}
-                  onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-                  onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-                />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <AnimatePresence>
-                    {actionInput.trim().length >= 5 && (
-                      <motion.button
-                        type="button"
-                        onClick={handleActionCommit}
-                        initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={shouldReduce ? {} : { opacity: 0 }}
-                        whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                        style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '0.9375rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
-                      >
-                        {t('stage3.action.commit')}
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-                  <button
-                    type="button"
-                    onClick={handleSkipAction}
-                    style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center' }}
-                  >
-                    {t('stage3.action.skip')}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
-      </AnimatePresence>
 
     </div>
   );

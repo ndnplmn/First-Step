@@ -159,6 +159,7 @@ export function buildClosurePrompt(params: {
   interpretationResponse?: string;
   priorSessions?: PatientSession[];
   locale?: string;
+  quickSession?: boolean;
 }): string {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
   const closureHistory = buildSessionHistory(params.priorSessions ?? []);
@@ -210,5 +211,6 @@ ${params.deepWorkSynthesis
     ${closing}
 
     NO expliques teorías. Habla al corazón.
+    ${params.quickSession ? 'IMPORTANTE: Esta fue una sesión breve de contención. El paciente llegó con un estado emocional bajo. La carta debe priorizar la calidez y la validación emocional por encima de la exploración profunda. Evita abrir nuevas preguntas o invitar a ir más profundo — en su lugar, valida el esfuerzo de haber venido y ofrece seguridad.' : ''}
   ${getLanguageInstruction(params.locale)}`;
 }
