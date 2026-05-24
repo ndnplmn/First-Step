@@ -36,6 +36,8 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
   const [isError, setIsError] = useState(false);
   const [resonated, setResonated] = useState(!!session.interpretation?.resonatedAt);
   const [showRing, setShowRing] = useState(false);
+  const [responseText, setResponseText] = useState(session.interpretationResponse ?? '');
+  const [responseSaved, setResponseSaved] = useState(!!session.interpretationResponse);
   const { text, isStreaming, isDone, startStream, streamFromUrl } = useAIStream();
   const shouldReduce = useReducedMotion();
 
@@ -66,7 +68,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
     setPauseMode(true);
   };
 
-  const generate = async () => {
+  const generate = async (priorText?: string) => {
     setIsGenerating(true);
     setIsError(false);
     setFullInterpretation(null);
@@ -80,6 +82,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
         stage3Notes: session.stage3Notes,
         explorationRecord: session.explorationRecord,
         priorSessions,
+        priorInterpretation: priorText,
         locale,
       });
       setIsGenerating(false);
@@ -198,7 +201,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
           </p>
           <button
             type="button"
-            onClick={generate}
+            onClick={() => generate()}
             className="flex items-center gap-2 mx-auto text-sm font-medium"
             style={{ color: 'var(--color-sage)' }}
           >
@@ -250,7 +253,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                 </div>
                 <motion.button
                   type="button"
-                  onClick={generate}
+                  onClick={() => generate(fullInterpretation?.text ?? (text || undefined))}
                   whileTap={shouldReduce ? {} : { scale: 0.98 }}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm"
                   style={{
@@ -302,8 +305,69 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
         </AICard>
       )}
 
-      {/* CTA solo visible cuando el streaming ha terminado */}
-      <FloatingBar visible={isDone || (!!shouldReduce && !!fullInterpretation)}>
+      {/* Patient response to interpretation */}
+      <AnimatePresence>
+        {(isDone || (!!shouldReduce && !!fullInterpretation)) && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: shouldReduce ? 0 : 0.4 }}
+            className="rounded-[var(--radius-card)] p-6 space-y-3"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '17px', lineHeight: 1.4 }}>
+              {t('stage4.response.question')}
+            </p>
+            {responseSaved ? (
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)', fontStyle: 'italic' }}>
+                {responseText}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <textarea
+                  value={responseText}
+                  onChange={e => setResponseText(e.target.value)}
+                  placeholder={t('stage4.response.placeholder')}
+                  rows={3}
+                  className="w-full bg-transparent outline-none resize-none p-3 rounded-[var(--radius-inner)] border-2 text-sm"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
+                  onFocus={e => (e.target.style.borderColor = 'var(--color-violet)')}
+                  onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                />
+                <div className="flex gap-3">
+                  {responseText.trim().length >= 5 && (
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => {
+                        onUpdate({ interpretationResponse: responseText.trim() });
+                        setResponseSaved(true);
+                      }}
+                      whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                      className="text-sm font-medium"
+                      style={{ color: 'var(--color-violet)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem 0' }}
+                    >
+                      {t('stage4.response.save')}
+                    </motion.button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setResponseSaved(true)}
+                    className="text-sm"
+                    style={{ color: 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem 0' }}
+                  >
+                    {t('stage4.response.skip')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CTA solo visible cuando el streaming ha terminado y el paciente respondió o saltó */}
+      <FloatingBar visible={(isDone || (!!shouldReduce && !!fullInterpretation)) && responseSaved}>
         <motion.button
           type="button"
           onClick={() => {

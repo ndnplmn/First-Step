@@ -6,9 +6,11 @@ import { scorePHQ9, scoreGAD7 } from '@/lib/clinical';
 import type { PHQ9Response, GAD7Response } from '@/lib/types';
 import { useLanguage } from '@/contexts/language-context';
 import type { PatientSession } from '@/lib/types';
+import { CrisisScreen } from '@/components/ui/crisis-screen';
 
 interface ClinicalAssessmentProps {
   session: PatientSession;
+  instrument?: 'phq9' | 'gad7' | 'both';
   onComplete: (updated: PatientSession) => void;
 }
 
@@ -62,7 +64,7 @@ function AnswerRow({
   );
 }
 
-export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentProps) {
+export function ClinicalAssessment({ session, instrument = 'both', onComplete }: ClinicalAssessmentProps) {
   const shouldReduce = useReducedMotion();
   const { t } = useLanguage();
   const [phase, setPhase] = useState<Phase>('intro');
@@ -70,6 +72,7 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
   const [gad7Answers, setGad7Answers] = useState<(number | null)[]>(Array(7).fill(null));
   const [phq9Result, setPhq9Result] = useState<PHQ9Response | null>(null);
   const [gad7Result, setGad7Result] = useState<GAD7Response | null>(null);
+  const [showCrisisAlert, setShowCrisisAlert] = useState(false);
 
   const freqLabels = [
     { short: t('assessment.freq.0.short'), label: t('assessment.freq.0.label') },
@@ -89,16 +92,17 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
     t('assessment.gad7.q6'),
   ];
 
+  const isSingle = instrument === 'phq9' || instrument === 'gad7';
   const phaseConfig = {
     phq9: {
-      index: 1, total: 2,
+      index: 1, total: isSingle ? 1 : 2,
       title: t('assessment.phq9.title'),
       subtitle: t('assessment.phq9.subtitle'),
       instruction: t('assessment.phq9.instruction'),
       questions: phq9Questions,
     },
     gad7: {
-      index: 2, total: 2,
+      index: isSingle ? 1 : 2, total: isSingle ? 1 : 2,
       title: t('assessment.gad7.title'),
       subtitle: t('assessment.gad7.subtitle'),
       instruction: t('assessment.gad7.instruction'),
@@ -117,19 +121,45 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
   const answeredCount = (phase === 'phq9' || phase === 'gad7') ? answers.filter(a => a !== null).length : 0;
 
   const handleContinue = () => {
-    if (phase === 'intro') { setPhase('phq9'); return; }
+    if (phase === 'intro') {
+      setPhase(instrument === 'gad7' ? 'gad7' : 'phq9');
+      return;
+    }
     if (!allAnswered) return;
-    if (phase === 'phq9') { setPhase('gad7'); return; }
+    if (phase === 'phq9') {
+      if ((phq9Answers[8] ?? 0) >= 1) {
+        setShowCrisisAlert(true);
+        return;
+      }
+      if (instrument === 'phq9') {
+        const p9 = scorePHQ9(phq9Answers as number[]);
+        setPhq9Result(p9);
+        setPhase('results');
+        return;
+      }
+      setPhase('gad7');
+      return;
+    }
     if (phase === 'gad7') {
-      const p9 = scorePHQ9(phq9Answers as number[]);
       const g7 = scoreGAD7(gad7Answers as number[]);
-      setPhq9Result(p9);
       setGad7Result(g7);
+      if (instrument === 'gad7') {
+        setPhase('results');
+        return;
+      }
+      const p9 = scorePHQ9(phq9Answers as number[]);
+      setPhq9Result(p9);
       setPhase('results');
       return;
     }
-    if (phase === 'results' && phq9Result && gad7Result) {
-      onComplete({ ...session, phq9: phq9Result, gad7: gad7Result });
+    if (phase === 'results') {
+      if (instrument === 'phq9' && phq9Result) {
+        onComplete({ ...session, phq9: phq9Result });
+      } else if (instrument === 'gad7' && gad7Result) {
+        onComplete({ ...session, gad7: gad7Result });
+      } else if (phq9Result && gad7Result) {
+        onComplete({ ...session, phq9: phq9Result, gad7: gad7Result });
+      }
     }
   };
 
@@ -180,7 +210,7 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
     );
   }
 
-  if (phase === 'results' && phq9Result && gad7Result) {
+  if (phase === 'results' && (phq9Result || gad7Result)) {
     const severityColor = (s: string) => {
       if (s === 'minimal') return 'var(--color-sage)';
       if (s === 'mild') return 'var(--color-terracotta)';
@@ -205,46 +235,50 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
           </p>
 
           {/* PHQ-9 score card */}
-          <div
-            className="p-5 rounded-[var(--radius-card)] flex items-center justify-between"
-            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-          >
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                {t('assessment.results.phq9.label')}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                {t(`clinical.severity.${phq9Result.severity}`)}
-              </p>
-            </div>
+          {phq9Result && (
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
-              style={{ background: `${severityColor(phq9Result.severity)}18`, color: severityColor(phq9Result.severity) }}
+              className="p-5 rounded-[var(--radius-card)] flex items-center justify-between"
+              style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
             >
-              {phq9Result.score}
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                  {t('assessment.results.phq9.label')}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                  {t(`clinical.severity.${phq9Result.severity}`)}
+                </p>
+              </div>
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
+                style={{ background: `${severityColor(phq9Result.severity)}18`, color: severityColor(phq9Result.severity) }}
+              >
+                {phq9Result.score}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* GAD-7 score card */}
-          <div
-            className="p-5 rounded-[var(--radius-card)] flex items-center justify-between"
-            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-          >
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                {t('assessment.results.gad7.label')}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                {t(`clinical.severity.${gad7Result.severity}`)}
-              </p>
-            </div>
+          {gad7Result && (
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
-              style={{ background: `${severityColor(gad7Result.severity)}18`, color: severityColor(gad7Result.severity) }}
+              className="p-5 rounded-[var(--radius-card)] flex items-center justify-between"
+              style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
             >
-              {gad7Result.score}
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
+                  {t('assessment.results.gad7.label')}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                  {t(`clinical.severity.${gad7Result.severity}`)}
+                </p>
+              </div>
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold"
+                style={{ background: `${severityColor(gad7Result.severity)}18`, color: severityColor(gad7Result.severity) }}
+              >
+                {gad7Result.score}
+              </div>
             </div>
-          </div>
+          )}
 
           <p className="text-sm leading-relaxed px-1" style={{ color: 'var(--color-muted)' }}>
             {t('assessment.results.body')}
@@ -266,6 +300,11 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
 
   return (
     <div className="min-h-dvh" style={{ background: 'var(--color-base)' }}>
+      <AnimatePresence>
+        {showCrisisAlert && (
+          <CrisisScreen onDismiss={() => { setShowCrisisAlert(false); setPhase('gad7'); }} />
+        )}
+      </AnimatePresence>
       <header
         className="sticky top-0 z-40 border-b"
         style={{
@@ -277,7 +316,7 @@ export function ClinicalAssessment({ session, onComplete }: ClinicalAssessmentPr
       >
         <div className="max-w-[680px] mx-auto px-6 py-3">
           <div className="flex gap-1 mb-2">
-            {(['phq9', 'gad7'] as const).map((p, i) => (
+            {(isSingle ? [instrument as 'phq9' | 'gad7'] : ['phq9', 'gad7'] as const).map((p, i) => (
               <div
                 key={p}
                 className="h-[3px] flex-1 rounded-full transition-all duration-400"

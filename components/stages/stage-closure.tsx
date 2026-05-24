@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession, Closure, Strategy } from '@/lib/types';
-import { generateStrategies } from '@/actions/ai';
+import { generateStrategies, generateReflectionQuestions } from '@/actions/ai';
 import { buildClosurePrompt } from '@/lib/ai-prompts';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
@@ -12,13 +12,63 @@ import { FloatingBar } from '@/components/ui/floating-bar';
 import { ArrowCounterClockwise, FileText, ArrowsClockwise, House } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
-type ClosureAction = 'dashboard' | 'record' | 'new-session';
+type ClosureAction = 'dashboard' | 'record' | 'new-session' | 'diary';
+
+function StrategiesSection({ strategies, label, shouldReduce }: { strategies: Strategy[]; label: string; shouldReduce: boolean }) {
+  const [expanded, setExpanded] = useState<number>(0);
+  return (
+    <motion.div
+      initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.2 }}
+      className="rounded-[var(--radius-card)] p-6 space-y-3"
+      style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+    >
+      <p className="text-xs font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+        {label}
+      </p>
+      <div className="space-y-2">
+        {strategies.map((s, i) => (
+          <motion.div
+            key={i}
+            initial={shouldReduce ? false : { opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: (shouldReduce ? 0 : 1.3) + i * 0.12, duration: 0.4 }}
+          >
+            <button
+              type="button"
+              onClick={() => setExpanded(expanded === i ? -1 : i)}
+              className="w-full text-left pl-3 py-2"
+              style={{ borderLeft: `2px solid ${expanded === i ? 'var(--color-terracotta)' : 'var(--color-border)'}`, background: 'none', border: 'none', cursor: 'pointer', transition: 'border-color 0.2s' }}
+            >
+              <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>{s.title}</p>
+            </button>
+            <AnimatePresence>
+              {expanded === i && (
+                <motion.p
+                  initial={shouldReduce ? {} : { opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={shouldReduce ? {} : { opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-sm leading-relaxed pl-3 mt-1 overflow-hidden"
+                  style={{ color: 'var(--color-muted)', borderLeft: '2px solid var(--color-terracotta)' }}
+                >
+                  {s.description}
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
 
 interface StageClosureProps {
   session: PatientSession;
   patient: Patient;
   priorSessions?: PatientSession[];
-  onComplete: (action: ClosureAction) => void;
+  onComplete: (action: 'dashboard' | 'record' | 'new-session' | 'diary') => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
 
@@ -49,10 +99,19 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   const [wellbeingAfter, setWellbeingAfter] = useState<number | null>(
     session.wellbeingAfter ?? null
   );
+  const [intentionOutcome, setIntentionOutcome] = useState<'yes' | 'related' | 'no' | null>(
+    session.intentionOutcome ?? null
+  );
   const [celebrating, setCelebrating] = useState(false);
   const [pendingAction, setPendingAction] = useState<ClosureAction | null>(null);
   const [gestaltResponse, setGestaltResponse] = useState(session.gestaltActivityResponse ?? '');
   const [gestaltResponseSaved, setGestaltResponseSaved] = useState(!!session.gestaltActivityResponse);
+  const [resolutionAnswer, setResolutionAnswer] = useState<'much_better' | 'better' | 'still_working' | null>(
+    session.resolutionAnswer ?? null
+  );
+  const [reflectionQuestions, setReflectionQuestions] = useState<string[]>(
+    session.reflectionQuestions ?? []
+  );
   const { text, isStreaming, isDone, startStream, streamFromUrl } = useAIStream();
   const shouldReduce = useReducedMotion();
 
@@ -99,14 +158,21 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     setStrategies([]);
     setShowActions(false);
     try {
+      const priorGestaltResponse = priorSessions
+        .filter(s => s.gestaltActivityResponse)
+        .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+        ?.gestaltActivityResponse;
+
       const prompt = buildClosurePrompt({
         conflicts: session.conflicts,
         frameworkMatches: session.frameworkMatches,
         memories: session.memories,
-        interpretation: session.interpretation!.text,
-        gestaltActivity: session.gestaltActivity!,
+        interpretation: session.interpretation?.text ?? '',
+        gestaltActivity: session.gestaltActivity ?? null,
+        gestaltActivityResponse: priorGestaltResponse,
         patient,
         deepWorkSynthesis: session.deepWork?.synthesis,
+        interpretationResponse: session.interpretationResponse,
         priorSessions,
         locale,
       });
@@ -118,9 +184,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         generateStrategies({
           conflicts: session.conflicts,
           frameworkMatches: session.frameworkMatches,
-          interpretation: session.interpretation!.text,
-          gestaltActivity: session.gestaltActivity!,
+          interpretation: session.interpretation?.text ?? '',
+          gestaltActivity: session.gestaltActivity ?? null,
           patient,
+          explorationRecord: session.explorationRecord ?? undefined,
           locale,
         }),
       ]);
@@ -132,12 +199,26 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     }
   };
 
-  // When real streaming completes, save the closure from streamed text
+  // When real streaming completes, save the closure and generate reflection questions
   useEffect(() => {
     if (!isDone || !text || fullClosure) return;
     const result: Closure = { text, groundingSources: [] };
     setFullClosure(result);
-    // onUpdate with strategies will be called once strategies also arrive
+    // Generate reflection questions if not already present
+    if (reflectionQuestions.length === 0) {
+      generateReflectionQuestions({
+        conflicts: session.conflicts,
+        frameworkMatches: session.frameworkMatches,
+        closure: text,
+        explorationRecord: session.explorationRecord ?? undefined,
+        locale,
+      }).then(questions => {
+        setReflectionQuestions(questions);
+        onUpdate({ reflectionQuestions: questions });
+      }).catch(() => {
+        // Silently fail — reflection questions are non-critical
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDone]);
 
@@ -329,82 +410,89 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
       {/* Estrategias prácticas */}
       <AnimatePresence>
         {showReady && strategies.length > 0 && (
-          <motion.div
-            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.2 }}
-            className="rounded-[var(--radius-card)] p-6 space-y-4"
-            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-          >
-            <p
-              className="text-xs font-medium uppercase tracking-widest"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
-            >
-              {t('stage6.strategies.label')}
-            </p>
-            <div className="space-y-4">
-              {strategies.map((s, i) => (
-                <motion.div
-                  key={i}
-                  initial={shouldReduce ? false : { opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (shouldReduce ? 0 : 1.3) + i * 0.15, duration: 0.4 }}
-                  className="pl-3"
-                  style={{ borderLeft: '2px solid var(--color-terracotta)' }}
-                >
-                  <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>
-                    {s.title}
-                  </p>
-                  <p className="text-sm mt-1 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                    {s.description}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+          <StrategiesSection strategies={strategies} label={t('stage6.strategies.label')} shouldReduce={!!shouldReduce} />
         )}
       </AnimatePresence>
 
-      {/* Wellbeing check-out */}
+      {/* Checkout card — intention + wellbeing combined */}
       <AnimatePresence>
         {showReady && strategies.length > 0 && wellbeingAfter === null && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.4 }}
-            className="rounded-[var(--radius-card)] p-6 space-y-4"
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.35 }}
+            className="rounded-[var(--radius-card)] p-6 space-y-6"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
           >
             <p
               className="text-xs font-medium uppercase tracking-widest"
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}
             >
-              {t('stage6.wellbeing.label')}
+              {t('stage6.checkout.label')}
             </p>
-            <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
-              {t('stage6.wellbeing.question')}
-            </p>
-            <div className="flex gap-3 flex-wrap">
-              {WELLBEING_OPTIONS.map(opt => (
-                <motion.button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    setWellbeingAfter(opt.value);
-                    onUpdate({ wellbeingAfter: opt.value });
-                  }}
-                  whileTap={shouldReduce ? {} : { scale: 0.95 }}
-                  className="px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-medium"
-                  style={{
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-deep)',
-                    boxShadow: 'var(--shadow-card)',
-                    transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
-                  }}
-                >
-                  {opt.label}
-                </motion.button>
-              ))}
+
+            {session.sessionIntention && (
+              <div className="space-y-3">
+                <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
+                  {t('stage6.intention.question')}
+                </p>
+                {intentionOutcome === null ? (
+                  <div className="flex gap-3 flex-wrap">
+                    {(['yes', 'related', 'no'] as const).map(opt => (
+                      <motion.button
+                        key={opt}
+                        type="button"
+                        onClick={() => {
+                          setIntentionOutcome(opt);
+                          onUpdate({ intentionOutcome: opt });
+                        }}
+                        whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                        className="px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-medium"
+                        style={{
+                          background: 'var(--color-base)',
+                          border: '1.5px solid var(--color-border)',
+                          color: 'var(--color-deep)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {t(`stage6.intention.${opt}` as Parameters<typeof t>[0])}
+                      </motion.button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm" style={{ color: 'var(--color-sage)', fontStyle: 'italic' }}>
+                    {t(`stage6.intention.${intentionOutcome}` as Parameters<typeof t>[0])}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
+                {t('stage6.wellbeing.question')}
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                {WELLBEING_OPTIONS.map(opt => (
+                  <motion.button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setWellbeingAfter(opt.value);
+                      onUpdate({ wellbeingAfter: opt.value });
+                    }}
+                    whileTap={shouldReduce ? {} : { scale: 0.95 }}
+                    className="px-4 py-2.5 rounded-[var(--radius-inner)] text-sm font-medium"
+                    style={{
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-deep)',
+                      boxShadow: 'var(--shadow-card)',
+                      transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                    }}
+                  >
+                    {opt.label}
+                  </motion.button>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
@@ -422,6 +510,85 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
               {t('stage6.thanks')}
             </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reflection questions — visible once actions are ready */}
+      <AnimatePresence>
+        {showActions && reflectionQuestions.length > 0 && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.1 }}
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-terracotta)' }}
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-terracotta)' }}
+            >
+              {t('stage6.reflection.label')}
+            </p>
+            <div className="space-y-3">
+              {reflectionQuestions.map((q, i) => (
+                <motion.p
+                  key={i}
+                  initial={shouldReduce ? false : { opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: (shouldReduce ? 0 : 0.15) + i * 0.1 }}
+                  className="text-sm leading-relaxed"
+                  style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontStyle: 'italic' }}
+                >
+                  {q}
+                </motion.p>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Resolution question — session 5+ milestone */}
+      <AnimatePresence>
+        {showActions && session.sessionNumber >= 5 && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.2 }}
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
+            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-sage)' }}
+          >
+            <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '17px', lineHeight: 1.4 }}>
+              {t('stage6.resolution.question')}
+            </p>
+            {resolutionAnswer === null ? (
+              <div className="flex flex-col gap-2">
+                {(['much_better', 'better', 'still_working'] as const).map(opt => (
+                  <motion.button
+                    key={opt}
+                    type="button"
+                    onClick={() => {
+                      setResolutionAnswer(opt);
+                      onUpdate({ resolutionAnswer: opt });
+                    }}
+                    whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                    className="w-full text-left px-4 py-3 rounded-[var(--radius-inner)] text-sm"
+                    style={{
+                      background: 'var(--color-base)',
+                      border: '1.5px solid var(--color-border)',
+                      color: 'var(--color-deep)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t(`stage6.resolution.${opt}` as Parameters<typeof t>[0])}
+                  </motion.button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--color-sage)', fontStyle: 'italic' }}>
+                {t(`stage6.resolution.${resolutionAnswer}` as Parameters<typeof t>[0])}
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -503,6 +670,27 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               <House size={15} />
               {t('stage6.actions.home')}
             </motion.button>
+
+            {/* Diary nudge — subtle, below all main actions */}
+            <motion.div
+              initial={shouldReduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: shouldReduce ? 0 : 0.6 }}
+              className="pt-2 text-center"
+              style={{ borderTop: '1px solid var(--color-border)' }}
+            >
+              <p className="text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
+                {t('stage6.diary.nudge')}
+              </p>
+              <button
+                type="button"
+                onClick={() => handleComplete('diary')}
+                className="text-xs font-medium hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--color-sage)', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                {t('stage6.diary.cta')}
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

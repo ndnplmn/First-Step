@@ -33,9 +33,9 @@ function makeSession(overrides: Partial<PatientSession> = {}): PatientSession {
 /* ── Happy path: Session 1 ────────────────────────────────── */
 
 describe('Session 1 happy path', () => {
-  it('routes directly to ASSESSMENT (skips check-in)', () => {
+  it('routes directly to SESSION (skips check-in and assessment)', () => {
     const session = makeSession({ sessionNumber: 1 });
-    expect(getViewAfterSessionStart(session)).toBe('ASSESSMENT');
+    expect(getViewAfterSessionStart(session)).toBe('SESSION');
   });
 
   it('routes to SESSION after assessment', () => {
@@ -60,17 +60,17 @@ describe('Session 2 happy path', () => {
     expect(getViewAfterSessionStart(session)).toBe('CHECK_IN');
   });
 
-  it('routes to SESSION after check-in (no assessment due)', () => {
+  it('routes to ASSESSMENT after check-in (baseline assessment due at session 2)', () => {
     const session = makeSession({ sessionNumber: 2 });
-    expect(getViewAfterCheckIn(session)).toBe('SESSION');
+    expect(getViewAfterCheckIn(session)).toBe('ASSESSMENT');
   });
 });
 
 /* ── Assessment trigger schedule ─────────────────────────── */
 
-describe('Assessment trigger schedule (session 1, 5, 9, 13…)', () => {
-  const triggeredAt = [1, 5, 9, 13, 17];
-  const skippedAt = [2, 3, 4, 6, 7, 8, 10, 11, 12];
+describe('Assessment trigger schedule (session 2, 6, 10, 14…)', () => {
+  const triggeredAt = [2, 3, 6, 10, 14, 18];
+  const skippedAt = [1, 4, 5, 7, 8, 9, 11, 12, 13];
 
   for (const n of triggeredAt) {
     it(`triggers assessment at session ${n}`, () => {
@@ -85,7 +85,7 @@ describe('Assessment trigger schedule (session 1, 5, 9, 13…)', () => {
   }
 
   it('routes through ASSESSMENT when due', () => {
-    const session = makeSession({ sessionNumber: 5 });
+    const session = makeSession({ sessionNumber: 6 });
     expect(getViewAfterCheckIn(session)).toBe('ASSESSMENT');
   });
 });

@@ -14,7 +14,8 @@ import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
 import { useLanguage } from '@/contexts/language-context';
 
-const SOFT_CAP = 5;
+const SOFT_CAP_DEFAULT = 5;
+const SOFT_CAP_WITH_INTENTION = 2;
 
 
 type MessageRole = 'patient' | 'therapist';
@@ -69,6 +70,7 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
 export function StageConflicts({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
   const { t, locale } = useLanguage();
+  const SOFT_CAP = session.sessionIntention ? SOFT_CAP_WITH_INTENTION : SOFT_CAP_DEFAULT;
   const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
 
   const STARTER_PROMPTS = [
@@ -86,9 +88,34 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
   const [showCrisis, setShowCrisis] = useState(false);
 
   // ─── Estado conversacional ────────────────────────────────────────
-  const openingGreeting = priorSessions.length > 0
-    ? t('stage2.greeting.returning')
-    : t('stage2.greeting.first');
+  const lastMissedIntention = priorSessions
+    .filter(s => s.stage >= 6 && s.intentionOutcome === 'no')
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0] ?? null;
+
+  const lastSessionWithExploration = [...priorSessions]
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)
+    .find(s => s.stage >= 6 && s.explorationRecord?.insights?.length);
+
+  const openingGreeting = (() => {
+    if (session.sessionIntention) {
+      return t('stage2.greeting.intention').replace('{intention}', session.sessionIntention);
+    }
+    if (session.commitmentFollowUp?.status === 'no') {
+      return t('stage2.greeting.commitment_missed');
+    }
+    if (lastMissedIntention) {
+      return t('stage2.greeting.intention_missed');
+    }
+    if (session.sessionNumber >= 3 && lastSessionWithExploration) {
+      const conflictTheme = lastSessionWithExploration.explorationRecord!.insights[0]?.theme
+        ?? lastSessionWithExploration.conflicts[0]?.synthesized
+        ?? '';
+      return t('stage2.greeting.continuity').replace('{conflict}', conflictTheme);
+    }
+    return priorSessions.length > 0
+      ? t('stage2.greeting.returning')
+      : t('stage2.greeting.first');
+  })();
 
   const [messages, setMessages] = useState<Message[]>(() =>
     hasExistingData ? [] : [{ role: 'therapist', text: openingGreeting }]
@@ -185,6 +212,9 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         forceClose: questionsAsked.length >= SOFT_CAP - 1,
         priorSessions,
         locale,
+        phq9: session.phq9,
+        gad7: session.gad7,
+        commitmentFollowUp: session.commitmentFollowUp,
       });
 
       if (done || !question) {
@@ -233,6 +263,9 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         forceClose: questionsAsked.length >= SOFT_CAP - 1,
         priorSessions,
         locale,
+        phq9: session.phq9,
+        gad7: session.gad7,
+        commitmentFollowUp: session.commitmentFollowUp,
       });
       if (done || !question) {
         if (bridgeMsg) {
@@ -258,17 +291,35 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
   };
 
   // ─── Análisis final ───────────────────────────────────────────────
+  const [cardsFailed, setCardsFailed] = useState(false);
+
   const goToAnalysis = async (inputs: string[]) => {
     setShowBridge(false);
     setShowAnalysis(true);
     setShowValidation(false);
     setIsAnalyzing(true);
     setError('');
+    setCardsFailed(false);
     try {
-      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention, priorSessions, locale);
+      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention, priorSessions, locale, session.phq9, session.gad7);
       setResult(data);
       onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
       setShowValidation(true);
+      // Pre-fetch work cards while user reads the validation screen
+      setIsLoadingCards(true);
+      generateSessionWorkCards({
+        conflicts: data.conflicts,
+        frameworkMatches: data.frameworkMatches,
+        stage3Type: data.stage3Type,
+        patient,
+        locale,
+      }).then(cards => {
+        setSessionCards(cards);
+      }).catch(() => {
+        setCardsFailed(true);
+      }).finally(() => {
+        setIsLoadingCards(false);
+      });
     } catch {
       setError(t('stage2.error'));
     } finally {
@@ -276,19 +327,9 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
     }
   };
 
-  const handleConfirmValidation = async () => {
+  const handleConfirmValidation = () => {
     if (!result) return;
-    setShowCardSelection(true);
-    setIsLoadingCards(true);
-    try {
-      const cards = await generateSessionWorkCards({
-        conflicts: result.conflicts,
-        frameworkMatches: result.frameworkMatches,
-        locale,
-      });
-      setSessionCards(cards);
-    } catch {
-      // Fallback: advance directly if card generation fails
+    if (cardsFailed) {
       const fallbackCard: WorkCard = {
         id: 'fallback',
         title: t('stage2.fallback.title'),
@@ -296,9 +337,9 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         openingLine: t('stage2.fallback.opening'),
       };
       onAdvance(result.conflicts, result.frameworkMatches, result.gestaltActivity, result.unmappedPhrases, result.narrativeSummary, result.stage3Type, fallbackCard);
-    } finally {
-      setIsLoadingCards(false);
+      return;
     }
+    setShowCardSelection(true);
   };
 
   const handleSelectCard = (card: WorkCard) => {
@@ -668,11 +709,12 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
                         disabled={customCardText.trim().length < 5}
                         onClick={() => {
                           if (!result || customCardText.trim().length < 5) return;
+                          const trimmed = customCardText.trim();
                           const customCard: WorkCard = {
                             id: 'custom',
-                            title: customCardText.trim(),
-                            subtitle: customCardText.trim(),
-                            openingLine: customCardText.trim(),
+                            title: trimmed,
+                            subtitle: trimmed,
+                            openingLine: `Cuéntame más sobre ${trimmed.toLowerCase()}. ¿Por dónde quieres empezar?`,
                           };
                           handleSelectCard(customCard);
                         }}

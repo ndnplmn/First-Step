@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { SpeakerHigh, SpeakerSlash, Heart, ArrowCounterClockwise } from '@phosphor-icons/react';
-import type { Patient, PatientSession, ExplorationRecord, ExplorationPhase, Stage3Type, FrameworkKey, Interpretation } from '@/lib/types';
-import { getExplorationResponse, synthesizeExploration, generateInterpretation } from '@/actions/ai';
+import { SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
+import type { Patient, PatientSession, ExplorationRecord, ExplorationPhase, Stage3Type, FrameworkKey } from '@/lib/types';
+import { getExplorationResponse, synthesizeExploration } from '@/actions/ai';
 import { AIThinking } from '@/components/ai/ai-thinking';
-import { AICard } from '@/components/ai/ai-card';
 import { VoiceMicButton } from '@/components/ui/voice-mic-button';
 import { useVoice } from '@/hooks/use-voice';
-import { useAIStream } from '@/hooks/use-ai-stream';
 import { useLanguage } from '@/contexts/language-context';
 
 type Message = { role: 'patient' | 'therapist'; text: string; isInsight?: boolean };
@@ -18,7 +16,7 @@ type Props = {
   session: PatientSession;
   patient: Patient;
   priorSessions?: PatientSession[];
-  onAdvance: (record: ExplorationRecord, interpretation: Interpretation) => void;
+  onAdvance: (record: ExplorationRecord) => void;
   onUpdate: (session: PatientSession) => void;
 };
 
@@ -39,7 +37,8 @@ const FRAMEWORK_NAMES: Record<Stage3Type, string> = {
 };
 
 
-const MIN_TURNS_TO_END = 3;
+const MIN_TURNS_DEFAULT = 3;
+const MIN_TURNS_LIGHT = 2; // when wellbeing on arrival is very low (1-2/5)
 
 export function StageExploration({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
@@ -72,20 +71,16 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
   const [currentInput, setCurrentInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<ExplorationPhase>('exploring');
+  const [phaseTransitionMsg, setPhaseTransitionMsg] = useState<string | null>(null);
+  const prevPhaseRef = useRef<ExplorationPhase>('exploring');
 
   // Synthesis + action step
   const [synthesisState, setSynthesisState] = useState<'idle' | 'loading' | 'done'>('idle');
   const [explorationRecord, setExplorationRecord] = useState<ExplorationRecord | null>(null);
   const [showActionStep, setShowActionStep] = useState(false);
+  const [actionPhase, setActionPhase] = useState<'obstacle' | 'experiment'>('obstacle');
+  const [obstacleText, setObstacleText] = useState('');
   const [actionInput, setActionInput] = useState('');
-
-  // Interpretation (merged from Stage 4)
-  const [interpretationPhase, setInterpretationPhase] = useState<'hidden' | 'consent' | 'pause' | 'generating' | 'done'>('hidden');
-  const [fullInterpretation, setFullInterpretation] = useState<Interpretation | null>(null);
-  const [resonated, setResonated] = useState(false);
-  const [showRing, setShowRing] = useState(false);
-  const [showReframeConfirm, setShowReframeConfirm] = useState(false);
-  const { text: streamText, isStreaming, isDone: streamDone, startStream } = useAIStream();
 
   // Voice
   const {
@@ -96,6 +91,9 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const isLightMode = (session.wellbeingBefore ?? 5) <= 2;
+  const MIN_TURNS_TO_END = isLightMode ? MIN_TURNS_LIGHT : MIN_TURNS_DEFAULT;
+
   const patientTurns = messages.filter(m => m.role === 'patient').length;
   const lastMessage = messages[messages.length - 1];
   const awaitingPatient = lastMessage?.role === 'therapist' && !showActionStep && synthesisState === 'idle';
@@ -104,6 +102,19 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
   const lastExploration = [...priorSessions].reverse().find(s => s.explorationRecord)?.explorationRecord;
   const lastActionCommitment = lastExploration?.actionCommitment;
   const lastTherapistMsg = [...messages].reverse().find(m => m.role === 'therapist');
+
+  // Phase transition notification
+  useEffect(() => {
+    if (currentPhase === prevPhaseRef.current) return;
+    const transitionKey = `stage3.phase.transition.${currentPhase}` as Parameters<typeof t>[0];
+    const msg = currentPhase !== 'exploring' ? t(transitionKey) : null;
+    prevPhaseRef.current = currentPhase;
+    if (!msg) return;
+    setPhaseTransitionMsg(msg);
+    const timer = setTimeout(() => setPhaseTransitionMsg(null), 3000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPhase]);
 
   // Auto-scroll
   useEffect(() => {
@@ -157,6 +168,11 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         currentPhase,
         priorSessions,
         locale,
+        lifeChanges: session.lifeChanges,
+        sessionIntention: session.sessionIntention,
+        wellbeingBefore: session.wellbeingBefore,
+        phq9: session.phq9,
+        gad7: session.gad7,
       });
 
       setCurrentPhase(result.nextPhase);
@@ -181,19 +197,23 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
   const handleEndEarly = () => setShowActionStep(true);
 
   const handleActionCommit = () => {
-    const commitment = actionInput.trim();
-    handleSynthesize(messages, commitment);
+    if (actionPhase === 'obstacle') {
+      setActionPhase('experiment');
+      return;
+    }
+    handleSynthesize(messages, actionInput.trim(), obstacleText.trim());
   };
 
-  const handleSkipAction = () => handleSynthesize(messages, '');
+  const handleSkipAction = () => handleSynthesize(messages, '', '');
 
-  const handleSynthesize = async (finalMessages: Message[], commitment: string) => {
+  const handleSynthesize = async (finalMessages: Message[], commitment: string, obstacle: string) => {
     setSynthesisState('loading');
     setShowActionStep(false);
     const rawData = [
       finalMessages
         .map(m => `${m.role === 'therapist' ? 'Terapeuta' : 'Paciente'}: ${m.text}`)
         .join('\n\n'),
+      obstacle ? `\nObstáculo identificado por el paciente: "${obstacle}"` : '',
       commitment ? `\nCompromiso de acción del paciente: "${commitment}"` : '',
     ].join('');
 
@@ -205,44 +225,17 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         sessionNumber: session.sessionNumber, priorExplorations,
         locale,
       });
-      setExplorationRecord({ ...record, actionCommitment: commitment || undefined });
+      const fullCommitment = obstacle && commitment
+        ? `Obstáculo: ${obstacle} → ${commitment}`
+        : commitment || undefined;
+      setExplorationRecord({ ...record, actionCommitment: fullCommitment });
       setSynthesisState('done');
     } catch {
       setSynthesisState('idle');
       onAdvance(
         { sessionNumber: session.sessionNumber, framework: frameworkKey, frameworkName, stage3Type, insights: [], aiReflection: '', completedAt: Date.now(), actionCommitment: commitment || undefined },
-        { text: '', groundingSources: [] },
       );
     }
-  };
-
-  const generateInterp = async () => {
-    setInterpretationPhase('generating');
-    setFullInterpretation(null);
-    try {
-      const result = await generateInterpretation({
-        conflicts: session.conflicts,
-        frameworkMatches: session.frameworkMatches,
-        memories: session.memories,
-        patient,
-        lifeChanges: session.lifeChanges,
-        explorationRecord: explorationRecord ?? undefined,
-        priorSessions,
-        locale,
-      });
-      setFullInterpretation(result);
-      startStream(result.text);
-      setInterpretationPhase('done');
-    } catch {
-      onAdvance(explorationRecord!, { text: '', groundingSources: [] });
-    }
-  };
-
-  const handleResonate = () => {
-    if (!fullInterpretation) return;
-    setResonated(true);
-    setShowRing(true);
-    setTimeout(() => setShowRing(false), 600);
   };
 
   const textareaStyle: React.CSSProperties = {
@@ -364,159 +357,50 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
               </div>
             )}
           </div>
-          {interpretationPhase === 'hidden' && (
-            <motion.button
-              type="button"
-              onClick={() => setInterpretationPhase('consent')}
-              whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              style={{ background: 'var(--color-violet)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--shadow-card)', alignSelf: 'stretch', textAlign: 'center' }}
-            >
-              {t('stage3.interp.receive')}
-            </motion.button>
-          )}
-        </motion.div>
-      )}
-
-      {/* Interpretation — consent gate */}
-      {synthesisState === 'done' && interpretationPhase === 'consent' && (
-        <motion.div
-          initial={shouldReduce ? false : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          style={{ padding: '1.5rem', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', gap: '1rem' }}
-        >
-          <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '1.0625rem', lineHeight: 1.5, margin: 0 }}>
-            {t('stage3.interp.consent.title')}
-          </p>
-          <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>
-            {t('stage3.interp.consent.subtitle')}
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.25rem' }}>
-            <motion.button type="button" onClick={generateInterp} whileTap={shouldReduce ? {} : { scale: 0.97 }} style={{ padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
-              {t('stage3.interp.consent.yes')}
-            </motion.button>
-            <motion.button type="button" onClick={() => setInterpretationPhase('pause')} whileTap={shouldReduce ? {} : { scale: 0.98 }} style={{ padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-inner)', background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer' }}>
-              {t('stage3.interp.consent.wait')}
-            </motion.button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Interpretation — pause mode */}
-      {synthesisState === 'done' && interpretationPhase === 'pause' && (
-        <motion.div
-          initial={shouldReduce ? false : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ padding: '1.5rem', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}
-        >
-          <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', lineHeight: 1.6, margin: 0 }}>
-            {t('stage3.interp.pause')}
-          </p>
-          <motion.button type="button" onClick={generateInterp} whileTap={shouldReduce ? {} : { scale: 0.97 }} style={{ padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
-            {t('stage3.interp.pause.ready')}
+          <motion.button
+            type="button"
+            onClick={() => onAdvance(explorationRecord!)}
+            whileTap={shouldReduce ? {} : { scale: 0.97 }}
+            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
+          >
+            {t('stage3.close')}
           </motion.button>
-        </motion.div>
-      )}
-
-      {/* Interpretation — generating */}
-      {synthesisState === 'done' && interpretationPhase === 'generating' && (
-        <motion.div initial={shouldReduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: '0.5rem' }}>
-          <AIThinking phrases={[t('stage3.interp.loading.1'), t('stage3.interp.loading.2'), t('stage3.interp.loading.3')]} />
-        </motion.div>
-      )}
-
-      {/* Interpretation — streaming + done */}
-      {synthesisState === 'done' && interpretationPhase === 'done' && (
-        <motion.div
-          initial={shouldReduce ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
-        >
-          <div>
-            <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontSize: '0.75rem', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {t('stage3.interp.label')}
-            </p>
-            <AICard sources={[]}>
-              <p style={{ lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
-                {shouldReduce ? (fullInterpretation?.text ?? '') : streamText}
-                {isStreaming && !shouldReduce && (
-                  <motion.span
-                    animate={{ opacity: [1, 0, 1] }}
-                    transition={{ duration: 0.9, repeat: Infinity }}
-                    style={{ color: 'var(--color-sage)', marginLeft: 1 }}
-                  >|</motion.span>
-                )}
-              </p>
-            </AICard>
-          </div>
-
-          {(streamDone || shouldReduce) && (
-            <>
-              <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative' }}>
-                  <motion.button
-                    type="button"
-                    onClick={handleResonate}
-                    disabled={resonated}
-                    whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.875rem', borderRadius: '9999px', fontSize: '0.8125rem', background: resonated ? 'var(--color-terracotta)' : 'var(--color-surface)', color: resonated ? 'white' : 'var(--color-muted)', border: 'none', cursor: resonated ? 'default' : 'pointer', boxShadow: 'var(--shadow-card)', transition: 'all 0.2s ease' }}
-                  >
-                    <motion.span animate={resonated && !shouldReduce ? { scale: [1, 1.4, 1] } : { scale: 1 }} transition={{ duration: 0.4 }}>
-                      <Heart size={14} weight={resonated ? 'fill' : 'regular'} />
-                    </motion.span>
-                    {resonated ? t('stage3.interp.resonated') : t('stage3.interp.resonate')}
-                  </motion.button>
-                  <AnimatePresence>
-                    {showRing && !shouldReduce && (
-                      <motion.div
-                        style={{ position: 'absolute', inset: 0, borderRadius: '9999px', border: '2px solid var(--color-terracotta)', pointerEvents: 'none' }}
-                        initial={{ scale: 1, opacity: 0.5 }}
-                        animate={{ scale: 2, opacity: 0 }}
-                        exit={{}}
-                        transition={{ duration: 0.5 }}
-                      />
-                    )}
-                  </AnimatePresence>
-                </div>
-                <motion.button
-                  type="button"
-                  onClick={() => resonated ? setShowReframeConfirm(true) : generateInterp()}
-                  whileTap={shouldReduce ? {} : { scale: 0.98 }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 0.875rem', borderRadius: '9999px', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-muted)', border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-card)' }}
-                >
-                  <ArrowCounterClockwise size={14} />
-                  {t('stage3.interp.reframe')}
-                </motion.button>
-              </div>
-
-              <motion.button
-                type="button"
-                onClick={() => onAdvance(explorationRecord!, fullInterpretation ?? { text: '', groundingSources: [] })}
-                initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
-              >
-                {t('stage3.close')}
-              </motion.button>
-            </>
-          )}
         </motion.div>
       )}
 
       {/* Active conversation */}
       {synthesisState === 'idle' && !showActionStep && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Thin progress line (phase-based, no fixed max) */}
-          <div style={{ height: '2px', borderRadius: '9999px', background: 'var(--color-border)', overflow: 'hidden' }}>
-            <motion.div
-              style={{ height: '100%', borderRadius: '9999px', background: currentPhase === 'insight' ? 'var(--color-violet)' : 'var(--color-sage)' }}
-              animate={{
-                width: `${Math.round({ exploring: 10, deepening: 30, pattern_linking: 50, challenging: 65, insight: 80, consolidating: 92 }[currentPhase] ?? 10)}%`,
-              }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-            />
+          {/* Progress line + phase label */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+            <div style={{ height: '2px', borderRadius: '9999px', background: 'var(--color-border)', overflow: 'hidden' }}>
+              <motion.div
+                style={{ height: '100%', borderRadius: '9999px', background: currentPhase === 'insight' ? 'var(--color-violet)' : 'var(--color-sage)' }}
+                animate={{
+                  width: `${Math.round({ exploring: 10, deepening: 30, pattern_linking: 50, challenging: 65, insight: 80, consolidating: 92 }[currentPhase] ?? 10)}%`,
+                }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: currentPhase === 'insight' ? 'var(--color-violet)' : 'var(--color-muted)', margin: 0, letterSpacing: '0.04em' }}>
+                {PHASE_LABELS[currentPhase]}
+              </p>
+              <AnimatePresence>
+                {phaseTransitionMsg && (
+                  <motion.p
+                    key={phaseTransitionMsg}
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: currentPhase === 'insight' ? 'var(--color-violet)' : 'var(--color-sage)', margin: 0, letterSpacing: '0.04em' }}
+                  >
+                    {phaseTransitionMsg}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Conversation history */}
@@ -711,6 +595,21 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
             </motion.div>
           )}
 
+          {/* Soft nudge after 8 turns without insight */}
+          <AnimatePresence>
+            {patientTurns >= 8 && awaitingPatient && !isThinking &&
+             currentPhase !== 'insight' && currentPhase !== 'consolidating' && (
+              <motion.p
+                initial={shouldReduce ? {} : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{ fontSize: '0.75rem', color: 'var(--color-muted)', textAlign: 'center', fontStyle: 'italic', margin: 0 }}
+              >
+                {t('stage3.nudge.long')}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
           {/* Patient-controlled early end */}
           <AnimatePresence>
             {canEndEarly && awaitingPatient && !isThinking && (
@@ -718,126 +617,137 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
                 initial={shouldReduce ? {} : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={shouldReduce ? {} : { opacity: 0 }}
-                style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.5rem' }}
+                style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.75rem' }}
               >
-                <button
+                <motion.button
                   type="button"
                   onClick={handleEndEarly}
-                  style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.5rem 1rem', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+                  whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                  style={{ background: 'none', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-inner)', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.625rem 1.25rem', transition: 'border-color 0.2s, color 0.2s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-sage)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-sage)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-muted)'; }}
                 >
                   {t('stage3.end.early')}
-                </button>
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       )}
 
-      {/* Reframe confirmation modal */}
-      <AnimatePresence>
-        {showReframeConfirm && (
-          <motion.div
-            initial={shouldReduce ? {} : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={shouldReduce ? {} : { opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)', padding: '1.5rem' }}
-            onClick={() => setShowReframeConfirm(false)}
-          >
-            <motion.div
-              initial={shouldReduce ? {} : { y: 24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={shouldReduce ? {} : { y: 24, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              onClick={e => e.stopPropagation()}
-              style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)', padding: '1.5rem', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.15)' }}
-            >
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.0625rem', color: 'var(--color-deep)', margin: 0, lineHeight: 1.4 }}>
-                {t('stage3.interp.reframe.title')}
-              </p>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', margin: 0, lineHeight: 1.6 }}>
-                {t('stage3.interp.reframe.body')}
-              </p>
-              <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.25rem' }}>
-                <motion.button
-                  type="button"
-                  onClick={() => { setShowReframeConfirm(false); setResonated(false); generateInterp(); }}
-                  whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                  style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-inner)', background: 'var(--color-sage)', color: 'white', border: 'none', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  {t('stage3.interp.reframe.confirm')}
-                </motion.button>
-                <motion.button
-                  type="button"
-                  onClick={() => setShowReframeConfirm(false)}
-                  whileTap={shouldReduce ? {} : { scale: 0.98 }}
-                  style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-inner)', background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer' }}
-                >
-                  {t('stage3.interp.reframe.cancel')}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Action step — micro-experiment */}
       <AnimatePresence>
         {showActionStep && (
-          <motion.div
-            initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={shouldReduce ? {} : { opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
-          >
-            <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}>
-              <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {t('stage3.action.title')}
-              </p>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: '0 0 0.5rem' }}>
-                {t('stage3.action.question.pre')}<em>{workCard.title.toLowerCase()}</em>{t('stage3.action.question.post')}
-              </p>
-              <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
-                {t('stage3.action.subtitle')}
-              </p>
-            </div>
-
-            <textarea
-              value={actionInput}
-              onChange={e => setActionInput(e.target.value)}
-              placeholder={t('stage3.action.placeholder')}
-              autoFocus
-              rows={3}
-              style={textareaStyle}
-              onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-            />
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <AnimatePresence>
-                {actionInput.trim().length >= 5 && (
-                  <motion.button
-                    type="button"
-                    onClick={handleActionCommit}
-                    initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={shouldReduce ? {} : { opacity: 0 }}
-                    whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                    style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '0.9375rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
-                  >
-                    {t('stage3.action.commit')}
-                  </motion.button>
-                )}
-              </AnimatePresence>
-              <button
-                type="button"
-                onClick={handleSkipAction}
-                style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center' }}
+          <AnimatePresence mode="wait">
+            {actionPhase === 'obstacle' ? (
+              <motion.div
+                key="obstacle"
+                initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={shouldReduce ? {} : { opacity: 0, y: -8 }}
+                transition={{ duration: 0.4 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
               >
-                {t('stage3.action.skip')}
-              </button>
-            </div>
-          </motion.div>
+                <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {t('stage3.action.title')}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: '0 0 0.5rem' }}>
+                    {t('stage3.action.obstacle.q.pre')}<em>{workCard.title.toLowerCase()}</em>{t('stage3.action.obstacle.q.post')}
+                  </p>
+                </div>
+                <textarea
+                  value={obstacleText}
+                  onChange={e => setObstacleText(e.target.value)}
+                  placeholder={t('stage3.action.obstacle.placeholder')}
+                  autoFocus
+                  rows={3}
+                  style={textareaStyle}
+                  onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+                  onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <AnimatePresence>
+                    {obstacleText.trim().length >= 5 && (
+                      <motion.button
+                        type="button"
+                        onClick={handleActionCommit}
+                        initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={shouldReduce ? {} : { opacity: 0 }}
+                        whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                        style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '0.9375rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
+                      >
+                        {t('stage3.action.obstacle.next')}
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                  <button
+                    type="button"
+                    onClick={handleSkipAction}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center' }}
+                  >
+                    {t('stage3.action.skip')}
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="experiment"
+                initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={shouldReduce ? {} : { opacity: 0, y: -8 }}
+                transition={{ duration: 0.4 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+              >
+                <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-card)', background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.7rem', fontWeight: 600, margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {t('stage3.action.title')}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2vw, 1.25rem)', color: 'var(--color-deep)', lineHeight: 1.45, margin: '0 0 0.5rem' }}>
+                    {t('stage3.action.experiment.q')}
+                  </p>
+                  <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
+                    {t('stage3.action.subtitle')}
+                  </p>
+                </div>
+                <textarea
+                  value={actionInput}
+                  onChange={e => setActionInput(e.target.value)}
+                  placeholder={t('stage3.action.placeholder')}
+                  autoFocus
+                  rows={3}
+                  style={textareaStyle}
+                  onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+                  onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <AnimatePresence>
+                    {actionInput.trim().length >= 5 && (
+                      <motion.button
+                        type="button"
+                        onClick={handleActionCommit}
+                        initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={shouldReduce ? {} : { opacity: 0 }}
+                        whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                        style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '0.9375rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
+                      >
+                        {t('stage3.action.commit')}
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                  <button
+                    type="button"
+                    onClick={handleSkipAction}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center' }}
+                  >
+                    {t('stage3.action.skip')}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
       </AnimatePresence>
 

@@ -42,7 +42,15 @@ export const GAD7_SEVERITY_COLORS: Record<GAD7Response['severity'], { bg: string
 
 /* ── Trigger logic ─────────────────────────────────────── */
 
-/** Show assessments on session 1, then every 4 sessions (1, 5, 9, 13…) */
+/** Show assessment at sessions 2, 3 (baseline split), then 6, 10, 14… (follow-up) */
 export function shouldShowAssessment(sessionNumber: number): boolean {
-  return sessionNumber === 1 || (sessionNumber - 1) % 4 === 0;
+  if (sessionNumber === 2 || sessionNumber === 3) return true;
+  return sessionNumber >= 6 && (sessionNumber - 6) % 4 === 0;
+}
+
+/** Which instrument(s) to show at a given session */
+export function getAssessmentInstrument(sessionNumber: number): 'phq9' | 'gad7' | 'both' {
+  if (sessionNumber === 2) return 'phq9';
+  if (sessionNumber === 3) return 'gad7';
+  return 'both';
 }

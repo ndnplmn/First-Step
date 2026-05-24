@@ -18,7 +18,7 @@ import { ClinicalAssessment } from '@/components/stages/clinical-assessment';
 import { db } from '@/lib/db';
 import { createClient } from '@/lib/supabase';
 import { generateId } from '@/lib/id';
-import { shouldShowAssessment } from '@/lib/clinical';
+import { shouldShowAssessment, getAssessmentInstrument } from '@/lib/clinical';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import type { Patient, PatientSession, DiaryEntry, AppView } from '@/lib/types';
 
@@ -49,6 +49,7 @@ export default function Home() {
   const [recordSessions, setRecordSessions] = useState<PatientSession[]>([]);
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [preSettingsView, setPreSettingsView] = useState<AppView>('DASHBOARD');
+  const [lastDiaryEntry, setLastDiaryEntry] = useState<DiaryEntry | null>(null);
 
   const initApp = async () => {
     const supabase = createClient();
@@ -81,6 +82,10 @@ export default function Home() {
     setSessions(allSessions);
     const active = allSessions.find(s => s.stage < 6) ?? null;
     if (active) setActiveSession(active);
+
+    const diaryEntries = await db.getDiaryEntries().catch(() => []);
+    const recent = diaryEntries.sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+    setLastDiaryEntry(recent);
 
     setView('DASHBOARD');
     setLoading(false);
@@ -176,9 +181,29 @@ export default function Home() {
   };
 
   const handleCheckInComplete = async (updatedSession: PatientSession) => {
-    await db.saveSession(updatedSession);
-    setActiveSession(updatedSession);
-    if (shouldShowAssessment(updatedSession.sessionNumber)) {
+    let sessionToSave = updatedSession;
+
+    if (updatedSession.quickSession) {
+      // Pre-fill from the most recent completed session so Stage 2 can be skipped
+      const lastCompleted = sessions
+        .filter(s => s.stage === 6 && s.selectedWorkCard)
+        .sort((a, b) => b.sessionNumber - a.sessionNumber)[0];
+      if (lastCompleted) {
+        sessionToSave = {
+          ...updatedSession,
+          conflicts: lastCompleted.conflicts,
+          frameworkMatches: lastCompleted.frameworkMatches,
+          gestaltActivity: lastCompleted.gestaltActivity,
+          stage3Type: lastCompleted.stage3Type,
+          selectedWorkCard: lastCompleted.selectedWorkCard,
+          stage: 3,
+        };
+      }
+    }
+
+    await db.saveSession(sessionToSave);
+    setActiveSession(sessionToSave);
+    if (!sessionToSave.quickSession && shouldShowAssessment(sessionToSave.sessionNumber)) {
       setView('ASSESSMENT');
     } else {
       setView('SESSION');
@@ -196,7 +221,7 @@ export default function Home() {
     setActiveSession(updated);
   };
 
-  const handleComplete = async (action: 'dashboard' | 'record' | 'new-session') => {
+  const handleComplete = async (action: 'dashboard' | 'record' | 'new-session' | 'diary') => {
     const allSessions = await db.getSessions();
     setSessions(allSessions);
     if (action === 'dashboard') {
@@ -204,6 +229,8 @@ export default function Home() {
     } else if (action === 'record') {
       setRecordSessions(allSessions);
       setView('RECORD');
+    } else if (action === 'diary') {
+      setView('DIARY');
     } else if (action === 'new-session' && activePatient) {
       const newSession = createNewSession(activePatient);
       await db.saveSession(newSession);
@@ -315,6 +342,7 @@ export default function Home() {
         patient={activePatient}
         session={activeSession}
         priorSessions={priorCheckInSessions}
+        lastDiaryEntry={lastDiaryEntry}
         onComplete={handleCheckInComplete}
         onViewSettings={handleViewSettings}
       />
@@ -325,6 +353,7 @@ export default function Home() {
     return (
       <ClinicalAssessment
         session={activeSession}
+        instrument={getAssessmentInstrument(activeSession.sessionNumber)}
         onComplete={handleAssessmentComplete}
       />
     );

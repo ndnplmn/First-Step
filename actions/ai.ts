@@ -2,7 +2,7 @@
 
 import Groq from 'groq-sdk';
 import { FRAMEWORKS_DICTIONARY, GESTALT_ACTIVITIES } from '@/lib/theories';
-import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type, WorkCard, PatientSession, ExplorationRecord, ExplorationInsight, FrameworkKey, ExplorationPhase } from '@/lib/types';
+import { Patient, Conflict, Memory, FrameworkMatch, GestaltActivity, Interpretation, Closure, LifeChanges, Stage3Type, WorkCard, PatientSession, ExplorationRecord, ExplorationInsight, FrameworkKey, ExplorationPhase, PHQ9Response, GAD7Response } from '@/lib/types';
 import { generateId } from '@/lib/id';
 
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -77,6 +77,32 @@ function buildSessionHistory(priorSessions: PatientSession[]): string {
 
   if (!completed.length) return '';
 
+  // Build wellbeing trend across all completed sessions (not just last 3)
+  const allCompleted = priorSessions.filter(s => s.stage === 6).sort((a, b) => a.sessionNumber - b.sessionNumber);
+  const wellbeingTrend = allCompleted
+    .filter(s => s.wellbeingAfter != null)
+    .map(s => `s${s.sessionNumber}:${s.wellbeingAfter}/5`)
+    .join(' → ');
+
+  // PHQ-9/GAD-7 trend (last 3 available)
+  const clinicalTrend = allCompleted
+    .filter(s => s.phq9 || s.gad7)
+    .slice(-3)
+    .map(s => {
+      const parts = [];
+      if (s.phq9) parts.push(`PHQ-9:${s.phq9.score}`);
+      if (s.gad7) parts.push(`GAD-7:${s.gad7.score}`);
+      return `s${s.sessionNumber}(${parts.join(',')})`;
+    })
+    .join(' → ');
+
+  // Commitment adherence pattern
+  const commitmentPattern = allCompleted
+    .filter(s => s.commitmentFollowUp)
+    .slice(-3)
+    .map(s => `s${s.sessionNumber}:${s.commitmentFollowUp!.status}`)
+    .join(' → ');
+
   const lines = completed.map(s => {
     const date = new Date(s.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
     const conflictos = s.conflicts.map(c => c.synthesized).join(', ');
@@ -88,16 +114,48 @@ function buildSessionHistory(priorSessions: PatientSession[]): string {
     const explorationLine = exploration?.insights?.length
       ? `  Exploración (${exploration.frameworkName}): ${exploration.insights.map(i => i.theme).join(' · ')}`
       : null;
+    const interpResponseLine = s.interpretationResponse
+      ? `  Respuesta del paciente a la interpretación: "${s.interpretationResponse.slice(0, 120)}"`
+      : null;
+    const wellbeingLine = (s.wellbeingBefore != null && s.wellbeingAfter != null)
+      ? `  Bienestar: ${s.wellbeingBefore}/5 → ${s.wellbeingAfter}/5`
+      : null;
     return [
       `Sesión ${s.sessionNumber} (${date}):`,
       `  Conflictos trabajados: ${conflictos}`,
       `  Marco terapéutico: ${marco}`,
+      wellbeingLine,
       explorationLine,
+      interpResponseLine,
       interpretacion ? `  Interpretación (extracto): "${interpretacion}"` : null,
     ].filter(Boolean).join('\n');
   });
 
-  return `\nHistorial de sesiones anteriores (${completed.length} sesión/es completada/s):\n${lines.join('\n\n')}\n`;
+  const trendSection = [
+    wellbeingTrend ? `  Tendencia de bienestar: ${wellbeingTrend}` : null,
+    clinicalTrend ? `  Evolución clínica: ${clinicalTrend}` : null,
+    commitmentPattern ? `  Adherencia a compromisos: ${commitmentPattern}` : null,
+  ].filter(Boolean).join('\n');
+
+  return `\nHistorial de sesiones anteriores (${completed.length} sesión/es completada/s):\n${lines.join('\n\n')}\n${trendSection ? `\nPatrones longitudinales:\n${trendSection}\n` : ''}`;
+}
+
+function buildClinicalContext(phq9?: PHQ9Response | null, gad7?: GAD7Response | null): string {
+  if (!phq9 && !gad7) return '';
+  const sevES: Record<string, string> = {
+    minimal: 'mínima', mild: 'leve', moderate: 'moderada', 'moderately-severe': 'moderadamente grave', severe: 'grave',
+  };
+  const lines: string[] = ['\nEvaluación clínica de esta sesión:'];
+  if (phq9) {
+    lines.push(`  Depresión PHQ-9: ${phq9.score}/27 — ${sevES[phq9.severity] ?? phq9.severity}`);
+    if (phq9.score >= 10) lines.push('  → Puntaje clínicamente significativo: considera el impacto en motivación y estado de ánimo al formular preguntas');
+  }
+  if (gad7) {
+    lines.push(`  Ansiedad GAD-7: ${gad7.score}/21 — ${sevES[gad7.severity] ?? gad7.severity}`);
+    if (gad7.score >= 10) lines.push('  → Puntaje clínicamente significativo: considera cómo la ansiedad puede estar estructurando el conflicto actual');
+  }
+  lines.push('  Nota: calibra profundidad y tono con estos datos. No los menciones directamente al paciente.');
+  return lines.join('\n');
 }
 
 // --- ACTION 1: Sintetizar conflictos y mapear a marco terapeutico clasico ---
@@ -107,7 +165,9 @@ export async function synthesizeConflicts(
   lifeChanges?: LifeChanges,
   sessionIntention?: string,
   priorSessions?: PatientSession[],
-  locale?: string
+  locale?: string,
+  phq9?: PHQ9Response | null,
+  gad7?: GAD7Response | null,
 ): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity | null; stage3Type: Stage3Type; unmappedPhrases: string[]; narrativeSummary: string }> {
   const frameworksDesc = Object.entries(FRAMEWORKS_DICTIONARY)
     .map(([key, fw]) => `- ${key}: ${fw.name} — ${fw.description}`)
@@ -125,7 +185,7 @@ export async function synthesizeConflicts(
     Motivos: ${rawConflicts.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
     Contexto del paciente:
-    ${buildPatientContext(patient, lifeChanges, sessionIntention)}
+    ${buildPatientContext(patient, lifeChanges, sessionIntention)}${buildClinicalContext(phq9, gad7)}
 ${sessionHistory ? `${sessionHistory}\n    Nota: Si algún conflicto actual es recurrente (aparece en sesiones anteriores), refleja esa continuidad en el narrativeSummary.\n` : ''}
     Marcos Terapéuticos Disponibles:
     ${frameworksDesc}
@@ -328,6 +388,14 @@ export async function synthesizeExploration(params: {
       ).join('\n\n')}\n`
     : '';
 
+  const nextPhaseHint: Record<Stage3Type, string> = {
+    memories: 'observar si ese recuerdo sigue vivo en sus relaciones y decisiones presentes',
+    bodywork: 'volver a su cuerpo cuando sienta esta emoción durante la semana, con curiosidad en lugar de juicio',
+    social_context: 'notar el patrón en sus interacciones cotidianas — ¿cuándo aparece ese mismo movimiento?',
+    gestalt_activity: 'recibir el momento de cierre de la sesión con apertura — algo está listo para integrarse',
+    exposure: 'identificar el siguiente pequeño paso que se siente alcanzable, sin necesidad de dar el salto completo',
+  };
+
   const prompt = `
 Eres un psicoterapeuta magistral. Un paciente acaba de completar una actividad de exploración profunda.
 
@@ -342,8 +410,8 @@ Tu tarea:
 1. Extrae 3-5 insights clave de lo que el paciente exploró. Cada insight es una pieza del rompecabezas que la IA acumula para entender mejor a este paciente.
 2. Escribe una reflexión cálida (aiReflection) en voz de terapeuta (segunda persona "tú"), 2-3 oraciones:
    - Reconoce qué emergió en esta exploración
-   - Si hay exploraciones previas, nombra brevemente la continuidad ("Lo que exploramosen la sesión X se conecta con...")
-   - Invita a profundizar en la siguiente fase
+   - Si hay exploraciones previas, nombra brevemente la continuidad ("Lo que exploramos en la sesión X se conecta con...")
+   - Cierra invitando al paciente a: ${nextPhaseHint[stage3Type]}
 
 Reglas para los insights:
 - "theme": etiqueta descriptiva de 2-4 palabras en español (ej: "Vínculo paterno ambivalente", "Ansiedad social compensada")
@@ -403,10 +471,19 @@ export async function generateClosure(params: {
 }): Promise<Closure> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
   const closureHistory = buildSessionHistory(params.priorSessions ?? []);
-  const greetingMap: Record<string, string> = { es: `Querido/a`, en: `Dear`, ru: `Дорогой/ая` };
+  const { gender } = params.patient;
+  const greeting = params.locale === 'ru'
+    ? (gender === 'female' ? 'Дорогая' : gender === 'male' ? 'Дорогой' : 'Дорогой/ая')
+    : params.locale === 'en'
+    ? 'Dear'
+    : (gender === 'female' ? 'Querida' : gender === 'male' ? 'Querido' : 'Queride');
   const closingMap: Record<string, string> = { es: `Con cariño,\n    Tend`, en: `With love,\n    Tend`, ru: `С теплом,\n    Tend` };
-  const greeting = greetingMap[params.locale ?? 'es'] ?? greetingMap.es;
   const closing = closingMap[params.locale ?? 'es'] ?? closingMap.es;
+  const parrafo2 = gestaltActivity
+    ? `Presenta la actividad de exploración que viene: "${gestaltActivity.title}". Descríbela como una invitación concreta, no una tarea — algo que el paciente puede explorar con curiosidad fuera de sesión.`
+    : params.deepWorkSynthesis
+    ? `Refuerza lo que el paciente descubrió en el trabajo activo de hoy. Invítalo a seguir observando ese hilo en su vida cotidiana — no como tarea, sino como curiosidad.`
+    : `Invita al paciente a llevar algo concreto de lo trabajado hoy hacia sus próximos días. Sin presión — solo una invitación a notar lo que surge.`;
 
   const prompt = `
     Eres un psicoterapeuta magistral.
@@ -438,7 +515,7 @@ ${params.deepWorkSynthesis
     Quita el peso de la culpa. Reencuadra su sentimiento negativo como una necesidad humana comprensible. Dale una nueva perspectiva sanadora. Usa lenguaje poético y cálido.
 
     PÁRRAFO 2 (2-3 oraciones):
-    Prepáralo para la siguiente fase de exploración que viene. Menciónala como una invitación cálida a ir más profundo. Conecta esta fase con lo que se ha trabajado.
+    ${parrafo2}
 
     PÁRRAFO 3 (2-3 oraciones):
     ${closureHistory
@@ -471,9 +548,14 @@ export async function generateReflectionQuestions(params: {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
   closure: string;
+  explorationRecord?: ExplorationRecord;
   locale?: string;
 }): Promise<string[]> {
   const { conflicts, frameworkMatches, closure } = params;
+
+  const explorationContext = params.explorationRecord?.insights?.length
+    ? `\n    Insights que emergieron en la exploración de esta sesión (úsalos para personalizar las preguntas):\n${params.explorationRecord.insights.map(i => `    - ${i.theme}: ${i.observation}`).join('\n')}\n`
+    : '';
 
   const prompt = `
     Eres un psicoterapeuta que acaba de completar una sesión con un paciente.
@@ -484,11 +566,11 @@ export async function generateReflectionQuestions(params: {
     Sus conflictos principales fueron: ${conflicts.map(c => c.synthesized).join(', ')}.
     El cierre simbólico que recibió fue:
     "${closure}"
-
+${explorationContext}
     Genera exactamente 3 preguntas de reflexión profunda y personalizada para que el paciente
     lleve consigo después de la sesión. Las preguntas deben:
     - Surgir directamente de sus conflictos y el marco terapéutico del caso
-    - Al menos una pregunta debe invitar a la exploración emocional o corporal relevante para el marco terapéutico
+    - Al menos una pregunta debe invitar a la exploración emocional; incluye una dimensión corporal SOLO si el marco terapéutico es bioenergético o gestalt
     - Invitar a la contemplación sin requerir respuesta inmediata
     - Usar segunda persona singular ("¿Qué sientes cuando...", "¿En qué momentos...")
     - Ser abiertas, no retóricas ni con respuesta obvia
@@ -518,16 +600,26 @@ export async function generateReflectionQuestions(params: {
 export async function generateSessionWorkCards(params: {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
+  stage3Type?: Stage3Type;
+  patient?: Patient;
   locale?: string;
 }): Promise<WorkCard[]> {
   const { conflicts, frameworkMatches } = params;
+
+  const explorationTypeHint: Record<Stage3Type, string> = {
+    memories: 'El openingLine debe invitar a recordar — cálido, retrospectivo, orientado a situaciones pasadas concretas.',
+    bodywork: 'El openingLine debe orientar hacia el cuerpo — directo, presente, invitando a notar sensaciones físicas.',
+    social_context: 'El openingLine debe orientar hacia las relaciones y roles — curioso, indagando en patrones sociales.',
+    gestalt_activity: 'El openingLine debe ser presente e inmediato — ¿qué está vivo ahora en el paciente respecto a este tema?',
+    exposure: 'El openingLine debe nombrar el patrón de evitación con claridad y proponer empezar a mirarlo directamente.',
+  };
 
   const prompt = `
 Eres un psicoterapeuta que acaba de identificar los conflictos de un paciente y propones tres áreas concretas de exploración para la sesión de hoy.
 
 Conflictos identificados: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco terapéutico: ${formatFrameworks(frameworkMatches)}
-
+${params.patient ? `Contexto del paciente: ${buildPatientContext(params.patient)}\n` : ''}${params.stage3Type ? `Tipo de exploración que viene: ${params.stage3Type}. ${explorationTypeHint[params.stage3Type]}\n` : ''}
 Genera exactamente 3 tarjetas de enfoque de sesión, cada una representando un ángulo distinto de los conflictos. Para cada tarjeta:
 - "title": frase en infinitivo, 4-8 palabras, específica al conflicto (ej: "Explorar la raíz del miedo", "Entender el patrón con mi familia")
 - "subtitle": pregunta reflexiva que invita al paciente a explorar, 10-20 palabras, segunda persona singular
@@ -615,11 +707,17 @@ export async function getExplorationResponse(params: {
   currentPhase: ExplorationPhase;
   priorSessions?: PatientSession[];
   locale?: string;
+  lifeChanges?: LifeChanges;
+  sessionIntention?: string;
+  wellbeingBefore?: number;
+  phq9?: PHQ9Response | null;
+  gad7?: GAD7Response | null;
 }): Promise<{ done: boolean; response: string; nextPhase: ExplorationPhase; insightDetected: boolean }> {
   const { selectedCard, messages, conflicts, frameworkMatches, patient, stage3Type, currentPhase, priorSessions = [] } = params;
 
   const patientTurns = messages.filter(m => m.role === 'patient').length;
-  const canClose = patientTurns >= 4; // minimum turns before allowing closure
+  const isLightMode = params.wellbeingBefore !== undefined && params.wellbeingBefore <= 2;
+  const canClose = patientTurns >= (isLightMode ? 3 : 4);
 
   const frameworkLens: Record<Stage3Type, string> = {
     memories: 'Psicoanálisis freudiano: conecta el relato del paciente con figuras de apego tempranas, patrones de repetición, y el significado inconsciente que el paciente no puede ver directamente.',
@@ -637,6 +735,28 @@ export async function getExplorationResponse(params: {
     exposure: `Tono conductual: preciso y sin rodeos sobre los patrones de evitación: "Eso es evitación. Cada vez que evitas, el miedo crece. ¿Qué crees que pasaría si no lo evitaras esta vez?" Construyes hacia la exposición con firmeza, no con suavidad excesiva.`,
   };
 
+  const patternLinkingQuestion = stage3Type === 'gestalt_activity'
+    ? '"¿Dónde notas esta misma dinámica en tu vida ahora mismo — no en el pasado?"'
+    : stage3Type === 'exposure'
+    ? '"¿En qué otras situaciones aparece este mismo patrón de evitación?"'
+    : stage3Type === 'bodywork'
+    ? '"¿Qué parte de ti lleva este peso más tiempo — y desde cuándo?"'
+    : '"¿Cuándo fue la primera vez que sentiste algo así?"'; // freudiano / adleriano
+
+  const challengingExample = stage3Type === 'exposure'
+    ? '"Si un amigo te contara exactamente esto, ¿qué le dirías?"'
+    : stage3Type === 'gestalt_activity'
+    ? '"¿Qué parte de ti está defendiendo esa creencia — y qué está protegiendo?"'
+    : stage3Type === 'social_context'
+    ? '"¿Qué necesitas demostrar con eso, y a quién?"'
+    : stage3Type === 'bodywork'
+    ? '"¿Qué pasaría en tu cuerpo si no necesitaras creer eso?"'
+    : '"¿Esto que sientes es un hecho sobre ti, o es una historia que aprendiste a contar?"'; // freudiano
+
+  const bodyAnchorInstruction = (stage3Type === 'bodywork' || stage3Type === 'gestalt_activity')
+    ? '- Anclaje corporal: "¿Dónde sientes esto en tu cuerpo ahora mismo?" — OBLIGATORIO para este marco terapéutico'
+    : '- Anclaje corporal: solo si el paciente ha mencionado síntomas físicos espontáneamente — NO lo preguntes de forma rutinaria en este marco';
+
   const phaseInstructions: Record<ExplorationPhase, string> = {
     exploring: `FASE: EXPLORANDO
 Objetivo: anclar en una situación concreta y específica — nada abstracto.
@@ -646,7 +766,7 @@ Objetivo: anclar en una situación concreta y específica — nada abstracto.
 
     deepening: `FASE: PROFUNDIZANDO
 Objetivo: del relato intelectual al contacto emocional directo.
-- Anclaje corporal: "¿Dónde sientes esto en tu cuerpo ahora mismo?" — obligatorio en esta fase
+${bodyAnchorInstruction}
 - Emoción precisa: vergüenza / miedo / rabia / tristeza / no genérico "mal"
 - Impulso de acción: "¿Qué quieres hacer cuando sientes eso?" — revela la función de la emoción
 - Si intelectualiza: "Noto que describes esto como si te estuviera pasando a otra persona. ¿Qué pasa si te acercas más?"`,
@@ -655,14 +775,14 @@ Objetivo: del relato intelectual al contacto emocional directo.
 Objetivo: el paciente reconoce que esto no es un episodio aislado.
 - Usa el lente: ${frameworkLens[stage3Type]}
 - "¿Esto te suena familiar de otras relaciones o situaciones en tu vida?"
-- "¿Cuándo fue la primera vez que sentiste algo así?"
+- ${patternLinkingQuestion}
 - Nombra el patrón tentativamente: "Me pregunto si..." / "Parece que hay un hilo aquí..."`,
 
     challenging: `FASE: EXAMINANDO CREENCIAS
 Objetivo: cuestionar la creencia o defensa que mantiene el conflicto activo.
 - Socratic nivel 3-4: implica, contrasta, lleva a las consecuencias lógicas
 - "¿Qué tendría que ser verdad sobre ti para que esto te afecte tanto?"
-- "Si un amigo te contara exactamente esto, ¿qué le dirías?"
+- ${challengingExample}
 - Si hay defensa: "Noto que tienes una respuesta muy ordenada para esto. ¿Qué pasaría si no supieras la respuesta?"
 - Si hay autosabot o narrativa negativa: no la valides — desafíala: "¿Eso es un hecho o una interpretación?"`,
 
@@ -693,7 +813,7 @@ CUÁNDO MARCAR done: true (solo si canClose es true — ya hay ${patientTurns} t
   const phaseTransitionRules = `
 TRANSICIÓN DE FASE:
 - exploring → deepening: cuando el paciente da detalles concretos y empieza a activarse emocionalmente
-- deepening → pattern_linking: cuando ha habido contacto emocional y nombramiento de sensaciones
+- deepening → pattern_linking: cuando el paciente ha accedido a material emocional concreto y ha nombrado la emoción dominante${(stage3Type === 'bodywork' || stage3Type === 'gestalt_activity') ? ' (en este marco, también incluye nombramiento de sensaciones físicas)' : ''}
 - pattern_linking → challenging: cuando el paciente conecta el conflicto con algo más amplio
 - challenging → insight: cuando el paciente dice algo que revela comprensión nueva (insightDetected: true)
 - insight → consolidating: cuando el paciente profundizó en el momento de insight
@@ -745,7 +865,7 @@ Eres un psicoterapeuta magistral. Tu trabajo no es hacer que el paciente se sien
 ═══════════════════════════════════════
 CONTEXTO DEL CASO
 ═══════════════════════════════════════
-Paciente: ${buildPatientContext(patient)}
+Paciente: ${buildPatientContext(patient, params.lifeChanges, params.sessionIntention)}${buildClinicalContext(params.phq9, params.gad7)}${params.wellbeingBefore !== undefined ? `\nEstado al llegar a sesión: ${params.wellbeingBefore}/5` : ''}${isLightMode ? `\n\n⚠ MODO SUAVE ACTIVADO: El paciente llegó con bienestar muy bajo (${params.wellbeingBefore}/5). Prioriza contención y presencia sobre insight profundo. No empujes hacia fases de challenging o pattern_linking. El objetivo es que salga mejor de como entró. Sé especialmente cálido y no presiones si hay resistencia.` : ''}
 Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco: ${formatFrameworks(frameworkMatches)}
 ${priorContext}
@@ -753,7 +873,8 @@ ${priorContext}
 FOCO DE ESTA SESIÓN
 ═══════════════════════════════════════
 Tema: "${selectedCard.title}"
-Eje: "${selectedCard.subtitle}"
+Eje: "${selectedCard.subtitle}"${params.sessionIntention ? `\nIntención del paciente para hoy: "${params.sessionIntention}"
+→ Alrededor del turno 4-5, si el material lo permite, conecta brevemente lo explorado con esta intención. No lo fuerces — solo si es natural.` : ''}
 
 ═══════════════════════════════════════
 CONVERSACIÓN — turno ${patientTurns} del paciente
@@ -823,6 +944,7 @@ export async function getDeepWorkResponse(params: {
   frameworkMatches: FrameworkMatch[];
   interpretation: string;
   patient: Patient;
+  stage3Type: Stage3Type;
   locale?: string;
   earlyClose?: boolean;
 }): Promise<{ done: boolean; response: string; synthesis?: string }> {
@@ -830,6 +952,14 @@ export async function getDeepWorkResponse(params: {
 
   const patientTurns = messages.filter(m => m.role === 'patient').length;
   const forceClose = params.earlyClose === true || patientTurns >= 5;
+
+  const deepWorkLens: Record<Stage3Type, string> = {
+    memories: 'Profundiza en qué figura significativa está en el centro de este patrón y qué necesitaba el paciente que no recibió.',
+    bodywork: 'Dirige hacia el cuerpo: qué quiere hacer esa emoción física si la dejara expresarse.',
+    social_context: 'Examina el rol social asumido y la necesidad de demostración: a quién, para qué, con qué coste personal.',
+    gestalt_activity: 'Trabaja el presente inmediato: qué necesita completar, expresar o recibir el paciente ahora mismo.',
+    exposure: 'Identifica exactamente qué evita el paciente y construye hacia el primer paso posible sin evitación.',
+  };
 
   const history = messages.map(m =>
     `${m.role === 'therapist' ? 'Terapeuta' : 'Paciente'}: ${m.text}`
@@ -841,6 +971,7 @@ Eres un psicoterapeuta en una sesión activa. Ya conoces al paciente a fondo y a
 Paciente: ${buildPatientContext(patient)}
 Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco: ${formatFrameworks(frameworkMatches)}
+Lente terapéutico para este trabajo: ${deepWorkLens[params.stage3Type]}
 Interpretación dada: "${interpretation}"
 
 Línea de trabajo elegida por el paciente: "${selectedCard.title}"
@@ -888,9 +1019,14 @@ export async function generateStrategies(params: {
   interpretation: string;
   gestaltActivity: GestaltActivity | null;
   patient: Patient;
+  explorationRecord?: ExplorationRecord;
   locale?: string;
 }): Promise<{ title: string; description: string }[]> {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
+
+  const explorationContext = params.explorationRecord?.insights?.length
+    ? `\n    Lo que emergió en la exploración de esta sesión (basa al menos una estrategia en estos insights concretos):\n${params.explorationRecord.insights.map(i => `    - ${i.theme}: ${i.observation}`).join('\n')}\n`
+    : '';
 
   const prompt = `
     Eres un psicoterapeuta experto que integra múltiples marcos terapéuticos.
@@ -905,12 +1041,12 @@ export async function generateStrategies(params: {
 
     Se le ha dado esta interpretación:
     "${interpretation}"
-
+${explorationContext}
     ${gestaltActivity ? `Actividad Gestalt del caso:\nTipo: ${gestaltActivity.type}\nTítulo: "${gestaltActivity.title}"\nDescripción: "${gestaltActivity.description}"` : ''}
 
     Genera exactamente 3 ESTRATEGIAS PRÁCTICAS que el paciente pueda aplicar en su vida diaria para confrontar su problema. Las estrategias deben:
     - Derivar del marco terapéutico principal (y secundario si hay) del caso
-    - Al menos una estrategia debe invitar al awareness emocional o corporal
+    - Al menos una estrategia debe invitar al awareness emocional; incluye consciencia corporal SOLO si el marco terapéutico es bioenergético o gestalt
     - Ser concretas, realizables y específicas (no genéricas como "medita" o "haz ejercicio")
     - Estar fundamentadas en los marcos pero explicadas en lenguaje cotidiano
     - Incluir un título corto (3-5 palabras) y una descripción práctica (2-3 oraciones max)
@@ -950,6 +1086,9 @@ export async function getNextTherapistQuestion(params: {
   forceClose?: boolean;
   priorSessions?: PatientSession[];
   locale?: string;
+  phq9?: PHQ9Response | null;
+  gad7?: GAD7Response | null;
+  commitmentFollowUp?: { status: 'yes' | 'partial' | 'no'; note?: string } | null;
 }): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
   const questionHistory = buildSessionHistory(params.priorSessions ?? []);
@@ -963,7 +1102,12 @@ ${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
 ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
 
 Contexto del paciente (ya conocido — NO preguntes sobre esto):
-${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}
+${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}${buildClinicalContext(params.phq9, params.gad7)}
+${params.commitmentFollowUp?.status === 'no'
+  ? `\nNota clínica: El paciente reportó que NO pudo cumplir su compromiso de la semana pasada${params.commitmentFollowUp.note ? ` ("${params.commitmentFollowUp.note}")` : ''}. Puede ser relevante — nómbralo si surge naturalmente, sin generar culpa.\n`
+  : params.commitmentFollowUp?.status === 'partial'
+  ? `\nNota clínica: El paciente intentó su compromiso pero fue difícil${params.commitmentFollowUp.note ? ` ("${params.commitmentFollowUp.note}")` : ''}. Puede valer explorar qué lo dificultó si surge en la conversación.\n`
+  : ''}
 ${questionHistory ? `${questionHistory}\nNota: Usa este historial para evitar re-explorar lo ya trabajado. Si el paciente menciona temas recurrentes, reconócelo cálidamente en la "reflection".\n` : ''}
 
 ─────────────────────────────────────────────────────────────
@@ -980,6 +1124,7 @@ Para cada dimensión decide: CUBIERTA | PARCIAL | AUSENTE.
 
 3. CUERPO — Manifestación física (dónde lo siente, tensión, síntomas somáticos).
    → Especialmente relevante para: bioenergetico, gestalt, conductual.
+   → IMPORTANTE: marca como AUSENTE solo si el paciente ya mencionó síntomas físicos y no los exploró, O si hay indicios claros de somatización. NO solicites información corporal de forma rutinaria — es la dimensión de menor prioridad para marcos freudiano y adleriano.
 
 4. TIEMPO — Dimensión temporal (cuándo empezó, si es patrón, si ha ocurrido antes).
    → Especialmente relevante para: freudiano, adleriano, conductual.
@@ -1030,7 +1175,7 @@ Identifica la dimensión AUSENTE más importante para este caso y genera UNA pre
     CUERPO: "¿Dónde lo notas en el cuerpo cuando piensas en eso?"
     TIEMPO: "¿Cuándo empezaste a sentirte así — fue gradual o hubo un momento específico?"
     RELACIÓN: "¿Hay alguien en tu vida que esté en el centro de todo esto?"
-    CONDUCTA: "¿Qué has intentado hacer para salir de esto, aunque sea algo pequeño?"
+    CONDUCTA: "¿Qué has intentado hacer para manejarlo?"
 
 "reflection": micro-reflejo empático ANTES de la pregunta (1-2 oraciones):
   - Reconoce la emoción o esfuerzo del paciente. Cálido y breve.

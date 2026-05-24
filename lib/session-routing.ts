@@ -4,9 +4,9 @@ import type { Patient, PatientSession, AppView } from './types';
 export function getViewAfterSessionStart(
   session: PatientSession,
 ): AppView {
-  // Session 1: skip check-in, go straight to session (or assessment)
+  // Session 1: skip check-in and assessment, go straight to session
   if (session.sessionNumber === 1) {
-    return shouldShowAssessment(session.sessionNumber) ? 'ASSESSMENT' : 'SESSION';
+    return 'SESSION';
   }
   return 'CHECK_IN';
 }

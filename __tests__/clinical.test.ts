@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scorePHQ9, scoreGAD7, shouldShowAssessment } from '../lib/clinical';
+import { scorePHQ9, scoreGAD7, shouldShowAssessment, getAssessmentInstrument } from '../lib/clinical';
 
 describe('scorePHQ9', () => {
   it('classifies 0–4 as minimal', () => {
@@ -53,25 +53,49 @@ describe('scoreGAD7', () => {
 });
 
 describe('shouldShowAssessment', () => {
-  it('returns true for session 1', () => {
-    expect(shouldShowAssessment(1)).toBe(true);
+  it('returns false for session 1 (no assessment on first session)', () => {
+    expect(shouldShowAssessment(1)).toBe(false);
   });
 
-  it('returns true every 4 sessions after session 1 (5, 9, 13)', () => {
-    expect(shouldShowAssessment(5)).toBe(true);
-    expect(shouldShowAssessment(9)).toBe(true);
-    expect(shouldShowAssessment(13)).toBe(true);
+  it('returns true for session 2 (PHQ-9 baseline)', () => {
+    expect(shouldShowAssessment(2)).toBe(true);
   });
 
-  it('returns false for sessions 2, 3, 4', () => {
-    expect(shouldShowAssessment(2)).toBe(false);
-    expect(shouldShowAssessment(3)).toBe(false);
+  it('returns true for session 3 (GAD-7 baseline)', () => {
+    expect(shouldShowAssessment(3)).toBe(true);
+  });
+
+  it('returns true every 4 sessions from session 6 (6, 10, 14)', () => {
+    expect(shouldShowAssessment(6)).toBe(true);
+    expect(shouldShowAssessment(10)).toBe(true);
+    expect(shouldShowAssessment(14)).toBe(true);
+  });
+
+  it('returns false for sessions 1, 4, 5', () => {
+    expect(shouldShowAssessment(1)).toBe(false);
     expect(shouldShowAssessment(4)).toBe(false);
+    expect(shouldShowAssessment(5)).toBe(false);
   });
 
-  it('returns false for sessions 6, 7, 8', () => {
-    expect(shouldShowAssessment(6)).toBe(false);
+  it('returns false for sessions 7, 8, 9', () => {
     expect(shouldShowAssessment(7)).toBe(false);
     expect(shouldShowAssessment(8)).toBe(false);
+    expect(shouldShowAssessment(9)).toBe(false);
+  });
+});
+
+describe('getAssessmentInstrument', () => {
+  it('returns phq9 for session 2', () => {
+    expect(getAssessmentInstrument(2)).toBe('phq9');
+  });
+
+  it('returns gad7 for session 3', () => {
+    expect(getAssessmentInstrument(3)).toBe('gad7');
+  });
+
+  it('returns both for follow-up sessions (6, 10, 14)', () => {
+    expect(getAssessmentInstrument(6)).toBe('both');
+    expect(getAssessmentInstrument(10)).toBe('both');
+    expect(getAssessmentInstrument(14)).toBe('both');
   });
 });

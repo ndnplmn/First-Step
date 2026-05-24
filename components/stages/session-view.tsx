@@ -24,7 +24,7 @@ interface SessionViewProps {
   session: PatientSession;
   priorSessions?: PatientSession[];
   onSessionUpdate: (session: PatientSession) => void;
-  onComplete: (action: 'dashboard' | 'record' | 'new-session') => void;
+  onComplete: (action: 'dashboard' | 'record' | 'new-session' | 'diary') => void;
   onViewSettings?: () => void;
 }
 
@@ -81,8 +81,8 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
     });
   };
 
-  const handleStage3Advance = (record: ExplorationRecord, interpretation: Interpretation) => {
-    advanceStage({ explorationRecord: record, interpretation }, 6);
+  const handleStage3Advance = (record: ExplorationRecord) => {
+    advanceStage({ explorationRecord: record, interpretation: null }, 4);
   };
 
 

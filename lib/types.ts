@@ -194,11 +194,15 @@ export type PatientSession = {
   wellbeingAfter?: number;   // 1-5 scale
   lifeChanges?: LifeChanges;
   sessionIntention?: string;  // what the patient wants to work on this session
+  intentionOutcome?: 'yes' | 'related' | 'no';  // did they work what they wanted? set at end of session
   commitmentFollowUp?: { status: 'yes' | 'partial' | 'no'; note?: string };
   gestaltActivityResponse?: string;
   phq9?: PHQ9Response;
   gad7?: GAD7Response;
   explorationRecord?: ExplorationRecord;
+  interpretationResponse?: string;  // patient's reflection after reading the interpretation
+  quickSession?: boolean;           // skips Stage 2, inherits last session's work
+  resolutionAnswer?: 'much_better' | 'better' | 'still_working';  // session 5+ milestone question
   createdAt: number;
   updatedAt: number;
 };

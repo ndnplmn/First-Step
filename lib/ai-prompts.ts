@@ -94,6 +94,7 @@ export function buildInterpretationPrompt(params: {
   stage3Notes?: string;
   explorationRecord?: ExplorationRecord;
   priorSessions?: PatientSession[];
+  priorInterpretation?: string;
   locale?: string;
 }): string {
   const { conflicts, frameworkMatches, memories } = params;
@@ -106,9 +107,13 @@ export function buildInterpretationPrompt(params: {
 
   const sessionHistory = buildSessionHistory(params.priorSessions ?? []);
 
+  const reframeInstruction = params.priorInterpretation
+    ? `\n    Interpretación anterior que el paciente quiere reformular:\n    "${params.priorInterpretation.slice(0, 300)}${params.priorInterpretation.length > 300 ? '…' : ''}"\n    → Genera una perspectiva genuinamente distinta. No repitas las mismas metáforas ni los mismos marcos de comprensión. Busca un ángulo nuevo — otra dimensión del mismo material.\n`
+    : '';
+
   return `
     Eres un psicoterapeuta magistral que integra múltiples marcos terapéuticos.
-
+${reframeInstruction}
     Combinación de marcos para este caso:
     ${formatFrameworks(frameworkMatches)}
 
@@ -148,8 +153,10 @@ export function buildClosurePrompt(params: {
   memories: Memory[];
   interpretation: string;
   gestaltActivity: GestaltActivity | null;
+  gestaltActivityResponse?: string;
   patient: Patient;
   deepWorkSynthesis?: string;
+  interpretationResponse?: string;
   priorSessions?: PatientSession[];
   locale?: string;
 }): string {
@@ -173,8 +180,10 @@ ${closureHistory}
 
     Se le ha dado esta interpretación:
     "${interpretation}"
+    ${params.interpretationResponse ? `\n    El paciente respondió a la interpretación con:\n    "${params.interpretationResponse}"\n    → Si esta respuesta revela algo importante — acuerdo, resistencia, sorpresa — recógela en la carta. No la ignores.` : ''}
 
     ${gestaltActivity ? `Actividad Gestalt preparada para el paciente:\nTipo: ${gestaltActivity.type}\nTítulo: "${gestaltActivity.title}"\nDescripción: "${gestaltActivity.description}"` : ''}
+    ${params.gestaltActivityResponse ? `El paciente completó una actividad Gestalt en una sesión anterior y esto fue lo que escribió:\n"${params.gestaltActivityResponse}"\nIncorpora esta experiencia vivida si es relevante para la carta.` : ''}
 ${params.deepWorkSynthesis
   ? `\nEl paciente también trabajó activamente durante la sesión y llegó a esto:\n"${params.deepWorkSynthesis}"\nReconoce este trabajo activo en la carta — menciónalo como un logro concreto de esta sesión.`
   : ''}

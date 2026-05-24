@@ -89,22 +89,18 @@ const INITIAL_VALUES: IntakeValues = {
 /* ------------------------------------------------------------------ */
 
 // Step order (0-indexed):
-// 0: consultationReason  ← first question (no wellbeing gate)
+// 0: consultationReason
 // 1: name
-// 2: age
-// 3: gender
-// 4: maritalStatus
-// 5: children
-// 6: livingSituation
-// 7: employment
-// 8: supportNetwork
-// 9: previousTherapy
-// 10: medication
-// 11: specificEvents     ← structured event narration
-// 12: feelingsSensations ← feelings & bodily sensations
-// 13: wellbeingAtIntake  ← emotional baseline before first session
+// 2: age + gender        (combined)
+// 3: maritalStatus + children (combined)
+// 4: livingSituation + employment (combined)
+// 5: supportNetwork
+// 6: previousTherapy + medication (combined)
+// 7: specificEvents
+// 8: feelingsSensations
+// 9: wellbeingAtIntake
 
-const TOTAL_STEPS = 14;
+const TOTAL_STEPS = 10;
 
 function getStepQuestion(
   step: number,
@@ -117,21 +113,17 @@ function getStepQuestion(
     case 2: return values.name
       ? t('intake.q2.named').replace('{name}', values.name)
       : t('intake.q2');
-    case 3: return t('intake.q3');
-    case 4: return t('intake.q4');
-    case 5: return t('intake.q5');
-    case 6: return t('intake.q6');
-    case 7: return t('intake.q7');
-    case 8: return t('intake.q8');
-    case 9: return t('intake.q9');
-    case 10: return t('intake.q10');
-    case 11: return values.name
+    case 3: return t('intake.q4');
+    case 4: return t('intake.q6');
+    case 5: return t('intake.q8');
+    case 6: return t('intake.q9');
+    case 7: return values.name
       ? t('intake.q11.named').replace('{name}', values.name)
       : t('intake.q11');
-    case 12: return values.name
+    case 8: return values.name
       ? t('intake.q12.named').replace('{name}', values.name)
       : t('intake.q12');
-    case 13: return t('intake.wellbeing.question');
+    case 9: return t('intake.wellbeing.question');
     default: return '';
   }
 }
@@ -177,55 +169,58 @@ function getStepAnswer(
   switch (step) {
     case 0: return values.consultationReason.trim() || null;
     case 1: return values.name.trim() || null;
-    case 2: return values.age || null;
-    case 3: return genderLabel[values.gender] ?? values.gender;
-    case 4: return maritalLabel[values.maritalStatus] ?? values.maritalStatus;
-    case 5: {
-      if (values.hasChildren === null) return null;
-      if (!values.hasChildren) return t('intake.no');
-      return values.childrenCount
-        ? t('intake.yes.detail').replace('{detail}', values.childrenCount)
-        : t('intake.yes');
-    }
-    case 6: {
-      if (values.livingSituation === 'other' && values.livingSituationDetail.trim()) {
-        return values.livingSituationDetail.trim();
-      }
-      return livingLabel[values.livingSituation] ?? values.livingSituation;
-    }
-    case 7: {
-      const parts: string[] = [employmentLabel[values.employment] ?? values.employment];
-      if (values.occupation.trim()) parts.push(values.occupation.trim());
+    case 2: {
+      const parts: string[] = [];
+      if (values.age) parts.push(values.age);
+      parts.push(genderLabel[values.gender] ?? values.gender);
       return parts.join(' · ');
     }
-    case 8: {
+    case 3: {
+      const parts: string[] = [maritalLabel[values.maritalStatus] ?? values.maritalStatus];
+      if (values.hasChildren === false) parts.push(t('intake.no'));
+      else if (values.hasChildren && values.childrenCount)
+        parts.push(t('intake.yes.detail').replace('{detail}', values.childrenCount));
+      else if (values.hasChildren) parts.push(t('intake.yes'));
+      return parts.join(' · ') || null;
+    }
+    case 4: {
+      const livingPart = values.livingSituation === 'other' && values.livingSituationDetail.trim()
+        ? values.livingSituationDetail.trim()
+        : livingLabel[values.livingSituation] ?? values.livingSituation;
+      const employParts: string[] = [employmentLabel[values.employment] ?? values.employment];
+      if (values.occupation.trim()) employParts.push(values.occupation.trim());
+      return [livingPart, employParts.join(' · ')].join(' · ');
+    }
+    case 5: {
       if (values.hasSupportNetwork === null) return null;
       if (!values.hasSupportNetwork) return t('intake.no');
       return values.supportDescription.trim()
         ? t('intake.yes.detail').replace('{detail}', values.supportDescription.trim())
         : t('intake.yes');
     }
-    case 9: {
-      if (values.previousTherapy === null) return null;
-      if (!values.previousTherapy) return t('intake.no');
-      return values.previousTherapyDetail.trim()
-        ? t('intake.yes.detail').replace('{detail}', values.previousTherapyDetail.trim())
-        : t('intake.yes');
+    case 6: {
+      const parts: string[] = [];
+      if (values.previousTherapy !== null) {
+        parts.push(!values.previousTherapy ? t('intake.no')
+          : values.previousTherapyDetail.trim()
+            ? t('intake.yes.detail').replace('{detail}', values.previousTherapyDetail.trim())
+            : t('intake.yes'));
+      }
+      if (values.takingMedication !== null) {
+        parts.push(!values.takingMedication ? t('intake.no')
+          : values.medicationDetail.trim()
+            ? t('intake.yes.detail').replace('{detail}', values.medicationDetail.trim())
+            : t('intake.yes'));
+      }
+      return parts.join(' · ') || null;
     }
-    case 10: {
-      if (values.takingMedication === null) return null;
-      if (!values.takingMedication) return t('intake.no');
-      return values.medicationDetail.trim()
-        ? t('intake.yes.detail').replace('{detail}', values.medicationDetail.trim())
-        : t('intake.yes');
-    }
-    case 11: return specificEvents
+    case 7: return specificEvents
       ? specificEvents.slice(0, 80) + (specificEvents.length > 80 ? '...' : '')
       : null;
-    case 12: return feelingsSensations
+    case 8: return feelingsSensations
       ? feelingsSensations.slice(0, 80) + (feelingsSensations.length > 80 ? '...' : '')
       : null;
-    case 13: return wellbeingAtIntake
+    case 9: return wellbeingAtIntake
       ? t(`checkin.wellbeing.${wellbeingAtIntake}`)
       : null;
     default: return null;
@@ -243,17 +238,13 @@ function canProceed(
     case 0: return values.consultationReason.trim().length > 0;
     case 1: return values.name.trim().length > 0;
     case 2: { const n = parseInt(values.age); return n >= 18 && n < 120; }
-    case 3: return true;
-    case 4: return true;
-    case 5: return values.hasChildren !== null;
-    case 6: return values.livingSituation !== 'other' || values.livingSituationDetail.trim().length > 0;
-    case 7: return true;
-    case 8: return values.hasSupportNetwork !== null;
-    case 9: return values.previousTherapy !== null;
-    case 10: return values.takingMedication !== null;
-    case 11: return specificEvents.trim().length >= 20;
-    case 12: return feelingsSensations.trim().length >= 10;
-    case 13: return wellbeingAtIntake !== null;
+    case 3: return values.hasChildren !== null;
+    case 4: return values.livingSituation !== 'other' || values.livingSituationDetail.trim().length > 0;
+    case 5: return values.hasSupportNetwork !== null;
+    case 6: return values.previousTherapy !== null && values.takingMedication !== null;
+    case 7: return specificEvents.trim().length >= 20;
+    case 8: return feelingsSensations.trim().length >= 10;
+    case 9: return wellbeingAtIntake !== null;
     default: return false;
   }
 }
@@ -646,12 +637,20 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
             >
               {/* Welcome message shown only on first step */}
               {step === 0 && (
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-display)' }}
-                >
-                  {t('intake.welcome')}
-                </p>
+                <div className="space-y-1">
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-display)' }}
+                  >
+                    {t('intake.welcome')}
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)', opacity: 0.7 }}
+                  >
+                    {t('intake.time.estimate')}
+                  </p>
+                </div>
               )}
 
               <p
@@ -787,7 +786,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
             </motion.button>
             <button
               type="button"
-              onClick={() => { setIntakeProcessing('idle'); setStep(12); }}
+              onClick={() => { setIntakeProcessing('idle'); setStep(8); }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -888,6 +887,10 @@ function StepInput({
     { value: 'other', label: t('intake.employment.other') },
   ];
 
+  const subLabel = (text: string) => (
+    <p className="text-sm" style={{ color: 'var(--color-muted)', marginBottom: '0.5rem' }}>{text}</p>
+  );
+
   switch (step) {
     case 0:
       return (
@@ -914,121 +917,123 @@ function StepInput({
       const ageNum = parseInt(values.age);
       const isTooYoung = values.age.length > 0 && !isNaN(ageNum) && ageNum < 18;
       return (
-        <div className="space-y-3">
-          <TextInput
-            value={values.age}
-            onChange={v => set('age', v)}
-            placeholder={t('intake.placeholder.age')}
-            type="number"
-            min={18}
-            max={120}
-            autoFocus
-          />
-          {isTooYoung && (
-            <motion.p
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-sm leading-relaxed px-1"
-              style={{ color: 'var(--color-terracotta)' }}
-            >
-              {t('intake.age.tooyoung')}
-            </motion.p>
-          )}
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <TextInput
+              value={values.age}
+              onChange={v => set('age', v)}
+              placeholder={t('intake.placeholder.age')}
+              type="number"
+              min={18}
+              max={120}
+              autoFocus
+            />
+            {isTooYoung && (
+              <motion.p
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-sm leading-relaxed px-1"
+                style={{ color: 'var(--color-terracotta)' }}
+              >
+                {t('intake.age.tooyoung')}
+              </motion.p>
+            )}
+          </div>
+          <div>
+            {subLabel(t('intake.q3'))}
+            <div className="flex flex-wrap gap-3">
+              {genderOptions.map(({ value, label }) => (
+                <Chip key={value} label={label} active={values.gender === value} onClick={() => set('gender', value)} reduce={reduce} />
+              ))}
+            </div>
+          </div>
         </div>
       );
     }
 
     case 3:
       return (
-        <div className="flex flex-wrap gap-3">
-          {genderOptions.map(({ value, label }) => (
-            <Chip key={value} label={label} active={values.gender === value} onClick={() => set('gender', value)} reduce={reduce} />
-          ))}
+        <div className="space-y-5">
+          <div className="flex flex-wrap gap-3">
+            {maritalOptions.map(({ value, label }) => (
+              <Chip key={value} label={label} active={values.maritalStatus === value} onClick={() => set('maritalStatus', value)} reduce={reduce} />
+            ))}
+          </div>
+          <div>
+            {subLabel(t('intake.q5'))}
+            <div className="space-y-3">
+              <YesNo value={values.hasChildren} onChange={v => set('hasChildren', v)} reduce={reduce} />
+              <AnimatePresence>
+                {values.hasChildren && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <TextInput
+                      value={values.childrenCount}
+                      onChange={v => set('childrenCount', v)}
+                      placeholder={t('intake.placeholder.children')}
+                      type="number"
+                      min={1}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       );
 
     case 4:
       return (
-        <div className="flex flex-wrap gap-3">
-          {maritalOptions.map(({ value, label }) => (
-            <Chip key={value} label={label} active={values.maritalStatus === value} onClick={() => set('maritalStatus', value)} reduce={reduce} />
-          ))}
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-3">
+              {livingOptions.map(({ value, label }) => (
+                <Chip key={value} label={label} active={values.livingSituation === value} onClick={() => set('livingSituation', value)} reduce={reduce} />
+              ))}
+            </div>
+            <AnimatePresence>
+              {values.livingSituation === 'other' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <TextInput
+                    value={values.livingSituationDetail}
+                    onChange={v => set('livingSituationDetail', v)}
+                    placeholder={t('intake.placeholder.living.detail')}
+                    autoFocus
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div>
+            {subLabel(t('intake.q7'))}
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-3">
+                {employmentOptions.map(({ value, label }) => (
+                  <Chip key={value} label={label} active={values.employment === value} onClick={() => set('employment', value)} reduce={reduce} />
+                ))}
+              </div>
+              <TextInput
+                value={values.occupation}
+                onChange={v => set('occupation', v)}
+                placeholder={t('intake.placeholder.occupation')}
+              />
+            </div>
+          </div>
         </div>
       );
 
     case 5:
-      return (
-        <div className="space-y-3">
-          <YesNo value={values.hasChildren} onChange={v => set('hasChildren', v)} reduce={reduce} />
-          <AnimatePresence>
-            {values.hasChildren && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <TextInput
-                  value={values.childrenCount}
-                  onChange={v => set('childrenCount', v)}
-                  placeholder={t('intake.placeholder.children')}
-                  type="number"
-                  min={1}
-                  autoFocus
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      );
-
-    case 6:
-      return (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-3">
-            {livingOptions.map(({ value, label }) => (
-              <Chip key={value} label={label} active={values.livingSituation === value} onClick={() => set('livingSituation', value)} reduce={reduce} />
-            ))}
-          </div>
-          <AnimatePresence>
-            {values.livingSituation === 'other' && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <TextInput
-                  value={values.livingSituationDetail}
-                  onChange={v => set('livingSituationDetail', v)}
-                  placeholder={t('intake.placeholder.living.detail')}
-                  autoFocus
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      );
-
-    case 7:
-      return (
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-3">
-            {employmentOptions.map(({ value, label }) => (
-              <Chip key={value} label={label} active={values.employment === value} onClick={() => set('employment', value)} reduce={reduce} />
-            ))}
-          </div>
-          <TextInput
-            value={values.occupation}
-            onChange={v => set('occupation', v)}
-            placeholder={t('intake.placeholder.occupation')}
-          />
-        </div>
-      );
-
-    case 8:
       return (
         <div className="space-y-3">
           <YesNo value={values.hasSupportNetwork} onChange={v => set('hasSupportNetwork', v)} reduce={reduce} />
@@ -1053,57 +1058,57 @@ function StepInput({
         </div>
       );
 
-    case 9:
+    case 6:
       return (
-        <div className="space-y-3">
-          <YesNo value={values.previousTherapy} onChange={v => set('previousTherapy', v)} reduce={reduce} />
-          <AnimatePresence>
-            {values.previousTherapy && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <TextInput
-                  value={values.previousTherapyDetail}
-                  onChange={v => set('previousTherapyDetail', v)}
-                  placeholder={t('intake.placeholder.therapy')}
-                  autoFocus
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <YesNo value={values.previousTherapy} onChange={v => set('previousTherapy', v)} reduce={reduce} />
+            <AnimatePresence>
+              {values.previousTherapy && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <TextInput
+                    value={values.previousTherapyDetail}
+                    onChange={v => set('previousTherapyDetail', v)}
+                    placeholder={t('intake.placeholder.therapy')}
+                    autoFocus
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div>
+            {subLabel(t('intake.q10'))}
+            <div className="space-y-3">
+              <YesNo value={values.takingMedication} onChange={v => set('takingMedication', v)} reduce={reduce} />
+              <AnimatePresence>
+                {values.takingMedication && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <TextInput
+                      value={values.medicationDetail}
+                      onChange={v => set('medicationDetail', v)}
+                      placeholder={t('intake.placeholder.medication')}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       );
 
-    case 10:
-      return (
-        <div className="space-y-3">
-          <YesNo value={values.takingMedication} onChange={v => set('takingMedication', v)} reduce={reduce} />
-          <AnimatePresence>
-            {values.takingMedication && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <TextInput
-                  value={values.medicationDetail}
-                  onChange={v => set('medicationDetail', v)}
-                  placeholder={t('intake.placeholder.medication')}
-                  autoFocus
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      );
-
-    case 11:
+    case 7:
       return (
         <TextArea
           value={specificEvents}
@@ -1114,7 +1119,7 @@ function StepInput({
         />
       );
 
-    case 12:
+    case 8:
       return (
         <TextArea
           value={feelingsSensations}
@@ -1125,7 +1130,7 @@ function StepInput({
         />
       );
 
-    case 13: {
+    case 9: {
       const wellbeingOpts = [1,2,3,4,5].map(v => ({ value: v, label: t(`checkin.wellbeing.${v}`) }));
       return (
         <div className="flex flex-wrap gap-3">

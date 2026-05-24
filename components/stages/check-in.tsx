@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import type { Patient, PatientSession } from '@/lib/types';
+import type { Patient, PatientSession, DiaryEntry } from '@/lib/types';
 import { FloatingBar } from '@/components/ui/floating-bar';
 import { VoiceFillButton } from '@/components/ui/voice-fill-button';
 import { TendLogo } from '@/components/ui/logo';
@@ -17,6 +17,7 @@ interface CheckInProps {
   patient: Patient;
   session: PatientSession;
   priorSessions?: PatientSession[];
+  lastDiaryEntry?: DiaryEntry | null;
   onComplete: (session: PatientSession) => void;
   onViewSettings: () => void;
 }
@@ -54,7 +55,7 @@ function Chip({
 
 /* ── main component ────────────────────────────────────── */
 
-export function CheckIn({ patient, session, priorSessions = [], onComplete, onViewSettings }: CheckInProps) {
+export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, onComplete, onViewSettings }: CheckInProps) {
   const shouldReduce = useReducedMotion();
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
@@ -63,6 +64,11 @@ export function CheckIn({ patient, session, priorSessions = [], onComplete, onVi
     .filter(s => s.stage >= 6 && s.explorationRecord?.actionCommitment)
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.explorationRecord?.actionCommitment ?? null;
+
+  const lastMissedIntention = priorSessions
+    .filter(s => s.stage >= 6 && s.intentionOutcome === 'no' && s.sessionIntention)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.sessionIntention ?? null;
 
   // Step 0
   const [wellbeing, setWellbeing] = useState<number | null>(null);
@@ -179,6 +185,14 @@ export function CheckIn({ patient, session, priorSessions = [], onComplete, onVi
     advanceStep();
   };
 
+  const handleQuickSession = () => {
+    onComplete({
+      ...session,
+      wellbeingBefore: wellbeing ?? undefined,
+      quickSession: true,
+    });
+  };
+
   return (
     <div
       className="min-h-dvh flex flex-col"
@@ -215,25 +229,97 @@ export function CheckIn({ patient, session, priorSessions = [], onComplete, onVi
       <div className="flex-1 flex flex-col max-w-[680px] mx-auto w-full px-6 pt-6 pb-48">
 
       {/* Prior session commitment */}
-      {lastCommitment && (
+      {lastCommitment && (() => {
+        const isStructured = lastCommitment.startsWith('Obstáculo:') && lastCommitment.includes(' → ');
+        const parts = isStructured ? lastCommitment.split(' → ') : null;
+        const obstacleText = parts ? parts[0].replace('Obstáculo: ', '') : null;
+        const experimentText = parts ? parts.slice(1).join(' → ') : null;
+        return (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mb-4 p-4 rounded-[var(--radius-card)] space-y-2"
+            style={{ background: 'rgba(61,107,71,0.07)', borderLeft: '3px solid var(--color-sage)' }}
+          >
+            <p
+              className="text-[10px] font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)' }}
+            >
+              {t('stage3.prior.commitment')}
+            </p>
+            {isStructured ? (
+              <div className="space-y-1.5">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+                    {t('checkin.commitment.obstacle')}
+                  </p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>{obstacleText}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+                    {t('checkin.commitment.experiment')}
+                  </p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>{experimentText}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+                {lastCommitment}
+              </p>
+            )}
+          </motion.div>
+        );
+      })()}
+
+      {/* Prior session unworked intention */}
+      {lastMissedIntention && (
         <motion.div
           initial={shouldReduce ? false : { opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.4, delay: lastCommitment ? 0.08 : 0 }}
           className="mb-6 p-4 rounded-[var(--radius-card)] space-y-1"
-          style={{ background: 'rgba(61,107,71,0.07)', borderLeft: '3px solid var(--color-sage)' }}
+          style={{ background: 'rgba(107,94,158,0.06)', borderLeft: '3px solid var(--color-violet)' }}
         >
           <p
             className="text-[10px] font-medium uppercase tracking-widest"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)' }}
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-violet)' }}
           >
-            {t('stage3.prior.commitment')}
+            {t('checkin.prior_intention.label')}
           </p>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
-            {lastCommitment}
+            {lastMissedIntention}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+            {t('checkin.prior_intention.missed')}
           </p>
         </motion.div>
       )}
+
+      {/* Recent diary entry */}
+      {lastDiaryEntry && (() => {
+        const daysAgo = Math.floor((Date.now() - lastDiaryEntry.createdAt) / (1000 * 60 * 60 * 24));
+        if (daysAgo > 3) return null;
+        return (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.12 }}
+            className="mb-4 p-4 rounded-[var(--radius-card)] space-y-1"
+            style={{ background: 'rgba(180,110,69,0.06)', borderLeft: '3px solid var(--color-terracotta)' }}
+          >
+            <p
+              className="text-[10px] font-medium uppercase tracking-widest"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-terracotta)' }}
+            >
+              {t('checkin.diary.recent.label')} · {t('checkin.diary.recent.sub').replace('{n}', String(daysAgo || 1))}
+            </p>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+              {lastDiaryEntry.emotion}{lastDiaryEntry.note ? ` — ${lastDiaryEntry.note}` : ''}
+            </p>
+          </motion.div>
+        );
+      })()}
 
       {/* Progress bar */}
       <div className="flex gap-0.5 mb-8">
@@ -441,6 +527,24 @@ export function CheckIn({ patient, session, priorSessions = [], onComplete, onVi
             >
               {t('checkin.skip')}
             </button>
+          )}
+          {step === 0 && wellbeing !== null && wellbeing <= 2 && priorSessions.some(s => s.selectedWorkCard) && (
+            <div className="pt-1 space-y-1">
+              <p className="text-xs text-center" style={{ color: 'var(--color-muted)' }}>
+                {t('checkin.quick.offer')}
+              </p>
+              <button
+                type="button"
+                onClick={handleQuickSession}
+                className="w-full py-2.5 text-sm font-medium text-center rounded-xl border hover:opacity-80 transition-opacity"
+                style={{ color: 'var(--color-sage)', borderColor: 'var(--color-sage)', background: 'transparent' }}
+              >
+                {t('checkin.quick.cta')}
+              </button>
+              <p className="text-[10px] text-center" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+                {t('checkin.quick.note')}
+              </p>
+            </div>
           )}
         </div>
       </FloatingBar>
