@@ -14,7 +14,8 @@ import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
 import { useLanguage } from '@/contexts/language-context';
 
-const SOFT_CAP_DEFAULT = 5;
+const SOFT_CAP_SESSION1 = 5;
+const SOFT_CAP_DEFAULT = 3;
 const SOFT_CAP_WITH_INTENTION = 2;
 
 
@@ -25,6 +26,7 @@ interface StageConflictsProps {
   session: PatientSession;
   patient: Patient;
   priorSessions?: PatientSession[];
+  lastDiaryEntry?: import('@/lib/types').DiaryEntry | null;
   onAdvance: (conflicts: Conflict[], frameworkMatches: FrameworkMatch[], gestaltActivity: GestaltActivity | null, unmappedPhrases: string[], narrativeSummary: string, stage3Type: Stage3Type, selectedWorkCard: WorkCard) => void;
   onUpdate: (updates: Partial<PatientSession>) => void;
 }
@@ -67,10 +69,12 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
 }
 
 
-export function StageConflicts({ session, patient, priorSessions = [], onAdvance, onUpdate }: StageConflictsProps) {
+export function StageConflicts({ session, patient, priorSessions = [], lastDiaryEntry, onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
   const { t, locale } = useLanguage();
-  const SOFT_CAP = session.sessionIntention ? SOFT_CAP_WITH_INTENTION : SOFT_CAP_DEFAULT;
+  const SOFT_CAP = session.sessionIntention
+    ? SOFT_CAP_WITH_INTENTION
+    : session.sessionNumber === 1 ? SOFT_CAP_SESSION1 : SOFT_CAP_DEFAULT;
   const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
 
   const STARTER_PROMPTS = [
@@ -92,16 +96,35 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
     .filter(s => s.stage >= 6 && s.intentionOutcome === 'no')
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0] ?? null;
 
+  const lastCommitment = priorSessions
+    .filter(s => s.stage >= 6 && s.explorationRecord?.actionCommitment)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.explorationRecord?.actionCommitment ?? null;
+
   const lastSessionWithExploration = [...priorSessions]
     .sort((a, b) => b.sessionNumber - a.sessionNumber)
     .find(s => s.stage >= 6 && s.explorationRecord?.insights?.length);
+
+  const lastInterpretation = priorSessions
+    .filter(s => s.interpretation?.text)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.interpretation?.text ?? undefined;
 
   const openingGreeting = (() => {
     if (session.sessionIntention) {
       return t('stage2.greeting.intention').replace('{intention}', session.sessionIntention);
     }
+    if (session.commitmentFollowUp?.status === 'yes') {
+      const commitment = lastCommitment ?? t('stage2.commitment.generic');
+      return t('stage2.greeting.commitment_yes').replace('{commitment}', commitment);
+    }
+    if (session.commitmentFollowUp?.status === 'partial') {
+      const commitment = lastCommitment ?? t('stage2.commitment.generic');
+      return t('stage2.greeting.commitment_partial').replace('{commitment}', commitment);
+    }
     if (session.commitmentFollowUp?.status === 'no') {
-      return t('stage2.greeting.commitment_missed');
+      const commitment = lastCommitment ?? t('stage2.commitment.generic');
+      return t('stage2.greeting.commitment_missed').replace('{commitment}', commitment);
     }
     if (lastMissedIntention) {
       return t('stage2.greeting.intention_missed');
@@ -111,6 +134,13 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         ?? lastSessionWithExploration.conflicts[0]?.synthesized
         ?? '';
       return t('stage2.greeting.continuity').replace('{conflict}', conflictTheme);
+    }
+    // Use check-in wellbeing data instead of generic "how have you been"
+    if (session.wellbeingBefore !== undefined && priorSessions.length > 0) {
+      if (session.wellbeingBefore <= 2) {
+        return t('stage2.greeting.checkin_low');
+      }
+      return t('stage2.greeting.checkin').replace('{wb}', String(session.wellbeingBefore));
     }
     return priorSessions.length > 0
       ? t('stage2.greeting.returning')
@@ -215,6 +245,8 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         phq9: session.phq9,
         gad7: session.gad7,
         commitmentFollowUp: session.commitmentFollowUp,
+        recentDiaryEntry: lastDiaryEntry?.note ? `${lastDiaryEntry.emotion}: ${lastDiaryEntry.note}` : (lastDiaryEntry ? lastDiaryEntry.emotion : undefined),
+        priorInterpretation: lastInterpretation,
       });
 
       if (done || !question) {
@@ -266,6 +298,8 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         phq9: session.phq9,
         gad7: session.gad7,
         commitmentFollowUp: session.commitmentFollowUp,
+        recentDiaryEntry: lastDiaryEntry?.note ? `${lastDiaryEntry.emotion}: ${lastDiaryEntry.note}` : (lastDiaryEntry ? lastDiaryEntry.emotion : undefined),
+        priorInterpretation: lastInterpretation,
       });
       if (done || !question) {
         if (bridgeMsg) {
@@ -314,6 +348,24 @@ export function StageConflicts({ session, patient, priorSessions = [], onAdvance
         patient,
         locale,
       }).then(cards => {
+        // For session 3+, prepend a continuity card that picks up from the last exploration
+        if (session.sessionNumber >= 3 && lastSessionWithExploration) {
+          const r = lastSessionWithExploration.explorationRecord!;
+          const theme = r.insights[0]?.theme ?? lastSessionWithExploration.conflicts[0]?.synthesized ?? '';
+          const insight = r.insights[0]?.observation ?? '';
+          if (theme) {
+            const continuityCard: WorkCard = {
+              id: 'continuity',
+              title: `${t('stage2.cards.continuity.badge')}: ${theme}`,
+              subtitle: insight || `¿Qué ha movido en ti lo que exploramos la última vez?`,
+              openingLine: r.actionCommitment
+                ? `La última vez te propusiste "${r.actionCommitment.replace('Obstáculo: ', '').split(' → ')[0]}". ¿Cómo estuvo eso?`
+                : `La última vez llegamos a "${theme}". ¿Qué ha surgido desde entonces?`,
+            };
+            setSessionCards([continuityCard, ...cards]);
+            return;
+          }
+        }
         setSessionCards(cards);
       }).catch(() => {
         setCardsFailed(true);

@@ -712,6 +712,7 @@ export async function getExplorationResponse(params: {
   wellbeingBefore?: number;
   phq9?: PHQ9Response | null;
   gad7?: GAD7Response | null;
+  recentDiaryEntry?: string;
 }): Promise<{ done: boolean; response: string; nextPhase: ExplorationPhase; insightDetected: boolean }> {
   const { selectedCard, messages, conflicts, frameworkMatches, patient, stage3Type, currentPhase, priorSessions = [] } = params;
 
@@ -865,7 +866,7 @@ Eres un psicoterapeuta magistral. Tu trabajo no es hacer que el paciente se sien
 ═══════════════════════════════════════
 CONTEXTO DEL CASO
 ═══════════════════════════════════════
-Paciente: ${buildPatientContext(patient, params.lifeChanges, params.sessionIntention)}${buildClinicalContext(params.phq9, params.gad7)}${params.wellbeingBefore !== undefined ? `\nEstado al llegar a sesión: ${params.wellbeingBefore}/5` : ''}${isLightMode ? `\n\n⚠ MODO SUAVE ACTIVADO: El paciente llegó con bienestar muy bajo (${params.wellbeingBefore}/5). Prioriza contención y presencia sobre insight profundo. No empujes hacia fases de challenging o pattern_linking. El objetivo es que salga mejor de como entró. Sé especialmente cálido y no presiones si hay resistencia.` : ''}
+Paciente: ${buildPatientContext(patient, params.lifeChanges, params.sessionIntention)}${buildClinicalContext(params.phq9, params.gad7)}${params.recentDiaryEntry ? `\nEntrada reciente en diario: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo. No lo menciones directamente — úsalo como contexto de fondo.` : ''}${params.wellbeingBefore !== undefined ? `\nEstado al llegar a sesión: ${params.wellbeingBefore}/5` : ''}${isLightMode ? `\n\n⚠ MODO SUAVE ACTIVADO: El paciente llegó con bienestar muy bajo (${params.wellbeingBefore}/5). Prioriza contención y presencia sobre insight profundo. No empujes hacia fases de challenging o pattern_linking. El objetivo es que salga mejor de como entró. Sé especialmente cálido y no presiones si hay resistencia.` : ''}
 Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco: ${formatFrameworks(frameworkMatches)}
 ${priorContext}
@@ -1089,6 +1090,8 @@ export async function getNextTherapistQuestion(params: {
   phq9?: PHQ9Response | null;
   gad7?: GAD7Response | null;
   commitmentFollowUp?: { status: 'yes' | 'partial' | 'no'; note?: string } | null;
+  recentDiaryEntry?: string;
+  priorInterpretation?: string;
 }): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
   const questionHistory = buildSessionHistory(params.priorSessions ?? []);
@@ -1103,6 +1106,8 @@ ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) =
 
 Contexto del paciente (ya conocido — NO preguntes sobre esto):
 ${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}${buildClinicalContext(params.phq9, params.gad7)}
+${params.recentDiaryEntry ? `\nNota: El paciente escribió en su diario recientemente: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo con lo que trae hoy.\n` : ''}
+${params.priorInterpretation ? `\nInterpretación de la sesión anterior: "${params.priorInterpretation.slice(0, 300)}${params.priorInterpretation.length > 300 ? '…' : ''}". Si el conflicto actual parece relacionado con ese tema, reconócelo brevemente en la reflexión — sin repetir el análisis, solo el hilo de continuidad.\n` : ''}
 ${params.commitmentFollowUp?.status === 'no'
   ? `\nNota clínica: El paciente reportó que NO pudo cumplir su compromiso de la semana pasada${params.commitmentFollowUp.note ? ` ("${params.commitmentFollowUp.note}")` : ''}. Puede ser relevante — nómbralo si surge naturalmente, sin generar culpa.\n`
   : params.commitmentFollowUp?.status === 'partial'

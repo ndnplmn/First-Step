@@ -176,8 +176,13 @@ export default function Home() {
     setSessions(allSessions);
     setActivePatient(patient);
     setActiveSession(session);
-    // Session 1 always triggers the clinical baseline assessment
-    setView(shouldShowAssessment(session.sessionNumber) ? 'ASSESSMENT' : 'SESSION');
+    // Session 1: show a brief interstitial so the user can start later if overwhelmed
+    setView(session.sessionNumber === 1 ? 'SESSION_INTRO' : (shouldShowAssessment(session.sessionNumber) ? 'ASSESSMENT' : 'SESSION'));
+  };
+
+  const handleSessionIntroStart = () => {
+    if (!activeSession) return;
+    setView(shouldShowAssessment(activeSession.sessionNumber) ? 'ASSESSMENT' : 'SESSION');
   };
 
   const handleCheckInComplete = async (updatedSession: PatientSession) => {
@@ -333,6 +338,49 @@ export default function Home() {
     );
   }
 
+  if (view === 'SESSION_INTRO' && activePatient) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center px-6 py-12 gap-8 max-w-[480px] mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-3 text-center"
+        >
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.75rem, 6vw, 2.5rem)', color: 'var(--color-deep)', lineHeight: 1.2 }}>
+            Tu espacio está listo.
+          </p>
+          <p style={{ color: 'var(--color-muted)', fontSize: '1rem', lineHeight: 1.6 }}>
+            Cuando estés preparado/a, empieza tu primera sesión.
+          </p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="w-full space-y-3"
+        >
+          <button
+            type="button"
+            onClick={handleSessionIntroStart}
+            className="w-full py-4 rounded-2xl font-semibold text-white tracking-wide"
+            style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)' }}
+          >
+            Empezar ahora →
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('DASHBOARD')}
+            className="w-full py-3 rounded-2xl text-sm font-medium"
+            style={{ color: 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            Continuar después
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (view === 'CHECK_IN' && activePatient && activeSession) {
     const priorCheckInSessions = sessions.filter(
       s => s.stage >= 6 && s.sessionNumber < activeSession.sessionNumber
@@ -369,6 +417,7 @@ export default function Home() {
           patient={activePatient}
           session={activeSession}
           priorSessions={priorSessions}
+          lastDiaryEntry={lastDiaryEntry}
           onSessionUpdate={handleSessionUpdate}
           onComplete={handleComplete}
           onViewSettings={handleViewSettings}

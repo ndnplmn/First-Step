@@ -253,7 +253,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             color: 'var(--color-deep)',
           }}
         >
-          {t('stage6.celebrate.line')}
+          {resolutionAnswer === 'much_better' ? t('stage6.celebrate.line.resolved') : t('stage6.celebrate.line')}
         </motion.p>
         <motion.p
           initial={shouldReduce ? {} : { opacity: 0 }}
@@ -261,7 +261,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
           transition={{ delay: 0.4 }}
           style={{ color: 'var(--color-muted)', fontSize: '1rem' }}
         >
-          {t('stage6.celebrate.sub')}
+          {resolutionAnswer === 'much_better' ? t('stage6.celebrate.sub.resolved') : t('stage6.celebrate.sub')}
         </motion.p>
       </motion.div>
     );
@@ -505,11 +505,22 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             initial={shouldReduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="text-center py-4"
+            className="text-center py-4 space-y-1"
           >
             <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
               {t('stage6.thanks')}
             </p>
+            {session.wellbeingBefore !== undefined && (
+              <p className="text-xs" style={{ color: 'var(--color-muted)', fontStyle: 'italic' }}>
+                {wellbeingAfter > session.wellbeingBefore
+                  ? t('stage6.wellbeing.delta.up')
+                      .replace('{before}', String(session.wellbeingBefore))
+                      .replace('{after}', String(wellbeingAfter))
+                  : wellbeingAfter === session.wellbeingBefore
+                    ? t('stage6.wellbeing.delta.same').replace('{after}', String(wellbeingAfter))
+                    : t('stage6.wellbeing.delta.down')}
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

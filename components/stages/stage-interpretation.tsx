@@ -318,6 +318,9 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '17px', lineHeight: 1.4 }}>
               {t('stage4.response.question')}
             </p>
+            <p className="text-xs" style={{ color: 'var(--color-muted)', fontStyle: 'italic' }}>
+              {t('stage4.response.hint')}
+            </p>
             {responseSaved ? (
               <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)', fontStyle: 'italic' }}>
                 {responseText}

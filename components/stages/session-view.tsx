@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import type { Patient, PatientSession, Conflict, FrameworkMatch, GestaltActivity, Interpretation, UnmappedPhrase, Stage3Type, ExplorationRecord, WorkCard } from '@/lib/types';
+import type { Patient, PatientSession, DiaryEntry, Conflict, FrameworkMatch, GestaltActivity, Interpretation, UnmappedPhrase, Stage3Type, ExplorationRecord, WorkCard } from '@/lib/types';
 import { useLanguage } from '@/contexts/language-context';
 import { SessionHeader } from '@/components/ui/session-header';
 import { ChapterTransition } from '@/components/ui/chapter-transition';
@@ -23,12 +23,13 @@ interface SessionViewProps {
   patient: Patient;
   session: PatientSession;
   priorSessions?: PatientSession[];
+  lastDiaryEntry?: DiaryEntry | null;
   onSessionUpdate: (session: PatientSession) => void;
   onComplete: (action: 'dashboard' | 'record' | 'new-session' | 'diary') => void;
   onViewSettings?: () => void;
 }
 
-export function SessionView({ patient, session, priorSessions = [], onSessionUpdate, onComplete, onViewSettings }: SessionViewProps) {
+export function SessionView({ patient, session, priorSessions = [], lastDiaryEntry, onSessionUpdate, onComplete, onViewSettings }: SessionViewProps) {
   const { t } = useLanguage();
   const [pendingUpdates, setPendingUpdates] = useState<Partial<PatientSession> | null>(null);
   const [showTransition, setShowTransition] = useState(false);
@@ -82,7 +83,12 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
   };
 
   const handleStage3Advance = (record: ExplorationRecord) => {
-    advanceStage({ explorationRecord: record, interpretation: null }, 4);
+    // Quick session users skip interpretation — go directly to closure
+    if (session.quickSession) {
+      advanceStage({ explorationRecord: record, interpretation: null }, 6);
+    } else {
+      advanceStage({ explorationRecord: record, interpretation: null }, 4);
+    }
   };
 
 
@@ -102,6 +108,7 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
             session={session}
             patient={patient}
             priorSessions={priorSessions}
+            lastDiaryEntry={lastDiaryEntry}
             onAdvance={handleStage2Advance}
             onUpdate={updateSession}
           />
@@ -137,6 +144,7 @@ export function SessionView({ patient, session, priorSessions = [], onSessionUpd
             session={session}
             patient={patient}
             priorSessions={priorSessions}
+            lastDiaryEntry={lastDiaryEntry}
             onAdvance={handleStage3Advance}
             onUpdate={updateSession}
           />

@@ -16,6 +16,7 @@ type Props = {
   session: PatientSession;
   patient: Patient;
   priorSessions?: PatientSession[];
+  lastDiaryEntry?: import('@/lib/types').DiaryEntry | null;
   onAdvance: (record: ExplorationRecord) => void;
   onUpdate: (session: PatientSession) => void;
 };
@@ -40,7 +41,7 @@ const FRAMEWORK_NAMES: Record<Stage3Type, string> = {
 const MIN_TURNS_DEFAULT = 3;
 const MIN_TURNS_LIGHT = 2; // when wellbeing on arrival is very low (1-2/5)
 
-export function StageExploration({ session, patient, priorSessions = [], onAdvance, onUpdate: _onUpdate }: Props) {
+export function StageExploration({ session, patient, priorSessions = [], lastDiaryEntry, onAdvance, onUpdate: _onUpdate }: Props) {
   const shouldReduce = useReducedMotion();
   const { t, locale } = useLanguage();
 
@@ -173,6 +174,9 @@ export function StageExploration({ session, patient, priorSessions = [], onAdvan
         wellbeingBefore: session.wellbeingBefore,
         phq9: session.phq9,
         gad7: session.gad7,
+        recentDiaryEntry: lastDiaryEntry?.note
+          ? `${lastDiaryEntry.emotion}: ${lastDiaryEntry.note}`
+          : (lastDiaryEntry ? lastDiaryEntry.emotion : undefined),
       });
 
       setCurrentPhase(result.nextPhase);

@@ -9,7 +9,8 @@ import { TendLogo } from '@/components/ui/logo';
 import { Gear } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
-const TOTAL_STEPS = 4;
+const BASE_STEPS = 4;
+const ALIGNMENT_SESSION_NUMBERS = [3, 6, 9];
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -59,6 +60,8 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
   const shouldReduce = useReducedMotion();
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
+  const showAlignment = ALIGNMENT_SESSION_NUMBERS.includes(session.sessionNumber);
+  const TOTAL_STEPS = showAlignment ? BASE_STEPS + 1 : BASE_STEPS;
 
   const lastCommitment = priorSessions
     .filter(s => s.stage >= 6 && s.explorationRecord?.actionCommitment)
@@ -70,6 +73,11 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.sessionIntention ?? null;
 
+  const lastReflectionQuestion = priorSessions
+    .filter(s => s.stage >= 6 && s.reflectionQuestions?.length)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.reflectionQuestions?.[0] ?? null;
+
   // Step 0
   const [wellbeing, setWellbeing] = useState<number | null>(null);
   // Step 1
@@ -80,6 +88,8 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
   const [commitmentNote, setCommitmentNote] = useState('');
   // Step 3 — session intention
   const [sessionIntention, setSessionIntention] = useState('');
+  // Step 4 — consultation alignment (only on sessions 3/6/9)
+  const [consultationAlignment, setConsultationAlignment] = useState<'yes' | 'partial' | 'no' | null>(null);
 
   const WELLBEING_OPTIONS = [
     { value: 1, label: t('checkin.wellbeing.1') },
@@ -106,6 +116,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
       case 1: return t('checkin.step1.question');
       case 2: return t('checkin.step2.question');
       case 3: return t('checkin.step3.question');
+      case 4: return t('checkin.alignment.question');
       default: return '';
     }
   }
@@ -133,6 +144,12 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
         return cn.trim() ? `${label} — ${cn.trim()}` : label;
       }
       case 3: return si.trim() || t('checkin.intention.placeholder').replace('... (opcional)', '').replace('... (optional)', '').replace('... (необязательно)', '') || null;
+      case 4: {
+        if (!consultationAlignment) return null;
+        return consultationAlignment === 'yes' ? t('checkin.alignment.yes')
+          : consultationAlignment === 'partial' ? t('checkin.alignment.partial')
+          : t('checkin.alignment.no');
+      }
       default: return null;
     }
   }
@@ -146,7 +163,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
   const canProceed = (): boolean => {
     if (step === 0) return wellbeing !== null;
     if (step === 2 && lastCommitment) return commitmentStatus !== null;
-    return true; // steps 1, (3) and skipped-2 are skippable
+    return true; // steps 1, 3, 4 and skipped-2 are skippable
   };
 
   const buildUpdatedSession = (): PatientSession => ({
@@ -159,6 +176,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
       ? { status: commitmentStatus, note: commitmentNote.trim() || undefined }
       : undefined,
     sessionIntention: sessionIntention.trim() || undefined,
+    consultationAlignment: consultationAlignment ?? undefined,
   });
 
   const advanceStep = () => {
@@ -485,19 +503,69 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
               </div>
             )}
 
+            {/* Step 4: Consultation alignment (sessions 3/6/9) */}
+            {step === 4 && showAlignment && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+                  {t('checkin.alignment.step')}
+                </p>
+                <div className="flex flex-col gap-3">
+                  {([
+                    { value: 'yes' as const, label: t('checkin.alignment.yes') },
+                    { value: 'partial' as const, label: t('checkin.alignment.partial') },
+                    { value: 'no' as const, label: t('checkin.alignment.no') },
+                  ]).map(({ value, label }) => (
+                    <Chip
+                      key={value}
+                      label={label}
+                      active={consultationAlignment === value}
+                      onClick={() => setConsultationAlignment(value)}
+                      reduce={shouldReduce}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Step 3: Session intention */}
             {step === 3 && (
-              <div style={{ position: 'relative' }}>
-                <textarea
-                  value={sessionIntention}
-                  onChange={e => setSessionIntention(e.target.value)}
-                  placeholder={t('checkin.intention.placeholder')}
-                  rows={3}
-                  className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
-                />
-                <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
-                  <VoiceFillButton onFill={text => setSessionIntention(prev => prev ? prev + ' ' + text : text)} />
+              <div className="space-y-3">
+                {lastReflectionQuestion && !sessionIntention && (
+                  <motion.div
+                    initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className="p-4 rounded-[var(--radius-inner)] space-y-2"
+                    style={{ background: 'rgba(61,107,71,0.06)', borderLeft: '3px solid var(--color-sage)' }}
+                  >
+                    <p className="text-[10px] font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)' }}>
+                      {t('checkin.reflection.label')}
+                    </p>
+                    <p className="text-sm leading-relaxed italic" style={{ color: 'var(--color-deep)' }}>
+                      {lastReflectionQuestion}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setSessionIntention(lastReflectionQuestion)}
+                      className="text-xs font-medium"
+                      style={{ color: 'var(--color-sage)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.125rem 0' }}
+                    >
+                      {t('checkin.reflection.use')} →
+                    </button>
+                  </motion.div>
+                )}
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    value={sessionIntention}
+                    onChange={e => setSessionIntention(e.target.value)}
+                    placeholder={t('checkin.intention.placeholder')}
+                    rows={3}
+                    className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
+                  />
+                  <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
+                    <VoiceFillButton onFill={text => setSessionIntention(prev => prev ? prev + ' ' + text : text)} />
+                  </div>
                 </div>
               </div>
             )}
@@ -518,7 +586,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
           >
             {step === TOTAL_STEPS - 1 ? t('checkin.start') : t('checkin.next')}
           </motion.button>
-          {(step === 1 || step === 3) && (
+          {(step === 1 || step === 3 || step === 4) && (
             <button
               type="button"
               onClick={handleSkip}

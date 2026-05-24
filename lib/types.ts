@@ -203,6 +203,7 @@ export type PatientSession = {
   interpretationResponse?: string;  // patient's reflection after reading the interpretation
   quickSession?: boolean;           // skips Stage 2, inherits last session's work
   resolutionAnswer?: 'much_better' | 'better' | 'still_working';  // session 5+ milestone question
+  consultationAlignment?: 'yes' | 'partial' | 'no';  // sessions 3/6/9: are we still working on the original issue?
   createdAt: number;
   updatedAt: number;
 };
@@ -213,6 +214,7 @@ export type AppView =
   | 'WELCOME'
   | 'DASHBOARD'
   | 'INTAKE'
+  | 'SESSION_INTRO'
   | 'CHECK_IN'
   | 'ASSESSMENT'
   | 'SESSION'
