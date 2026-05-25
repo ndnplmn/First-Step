@@ -52,6 +52,7 @@ export type Patient = {
   takingMedication: boolean;
   medicationDetail?: string;
   consultationReason: string;
+  solutionVision?: string;
   createdAt: number;
 };
 
@@ -195,7 +196,7 @@ export type PatientSession = {
   lifeChanges?: LifeChanges;
   sessionIntention?: string;  // what the patient wants to work on this session
   intentionOutcome?: 'yes' | 'related' | 'no';  // did they work what they wanted? set at end of session
-  commitmentFollowUp?: { status: 'yes' | 'partial' | 'no'; note?: string };
+  commitmentFollowUp?: { status: 'yes' | 'partial' | 'no'; note?: string; obstacle?: string };
   gestaltActivityResponse?: string;
   phq9?: PHQ9Response;
   gad7?: GAD7Response;

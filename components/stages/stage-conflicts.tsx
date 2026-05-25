@@ -14,9 +14,9 @@ import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
 import { useLanguage } from '@/contexts/language-context';
 
-const SOFT_CAP_SESSION1 = 5;
-const SOFT_CAP_DEFAULT = 3;
-const SOFT_CAP_WITH_INTENTION = 2;
+const SOFT_CAP_SESSION1 = 6;
+const SOFT_CAP_DEFAULT = 4;
+const SOFT_CAP_WITH_INTENTION = 3;
 
 
 type MessageRole = 'patient' | 'therapist';
@@ -371,6 +371,7 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
         frameworkMatches: data.frameworkMatches,
         stage3Type: data.stage3Type,
         patient,
+        consultationAlignment: session.consultationAlignment,
         locale,
       }).then(cards => {
         // For session 3+, prepend a continuity card that picks up from the last exploration

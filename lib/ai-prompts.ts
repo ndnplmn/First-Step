@@ -28,6 +28,10 @@ export function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges,
     `Motivo de consulta: ${patient.consultationReason}`,
   ];
 
+  if (patient.solutionVision) {
+    lines.push(`Visión de éxito del paciente: "${patient.solutionVision}"`);
+  }
+
   if (lifeChanges && lifeChanges.categories.length > 0) {
     lines.push(`Cambios recientes en su vida: ${lifeChanges.categories.join(', ')}${lifeChanges.detail ? `. Detalle: ${lifeChanges.detail}` : ''}`);
   }
@@ -73,12 +77,17 @@ function buildSessionHistory(priorSessions: PatientSession[]): string {
     const explorationLine = exploration?.insights?.length
       ? `  Exploración (${exploration.frameworkName}): ${exploration.insights.map(i => i.theme).join(' · ')}`
       : null;
+    const clinicalLine = [
+      s.phq9 ? `PHQ-9: ${s.phq9.score}/27 (${s.phq9.severity})` : null,
+      s.gad7 ? `GAD-7: ${s.gad7.score}/21 (${s.gad7.severity})` : null,
+    ].filter(Boolean).join(', ');
     return [
       `Sesión ${s.sessionNumber} (${date}):`,
       `  Conflictos trabajados: ${conflictos}`,
       `  Marco terapéutico: ${marco}`,
       explorationLine,
       interpretacion ? `  Interpretación (extracto): "${interpretacion}"` : null,
+      clinicalLine ? `  Clínico: ${clinicalLine}` : null,
     ].filter(Boolean).join('\n');
   });
 

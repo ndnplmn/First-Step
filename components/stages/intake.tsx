@@ -53,6 +53,7 @@ type IntakeValues = {
   takingMedication: boolean | null;
   medicationDetail: string;
   consultationReason: string;
+  solutionVision: string;
 };
 
 type IntakeSynthesis = {
@@ -82,6 +83,7 @@ const INITIAL_VALUES: IntakeValues = {
   takingMedication: null,
   medicationDetail: '',
   consultationReason: '',
+  solutionVision: '',
 };
 
 /* ------------------------------------------------------------------ */
@@ -91,16 +93,17 @@ const INITIAL_VALUES: IntakeValues = {
 // Step order (0-indexed):
 // 0: consultationReason
 // 1: name
-// 2: age + gender        (combined)
-// 3: maritalStatus + children (combined)
-// 4: livingSituation + employment (combined)
-// 5: supportNetwork
-// 6: previousTherapy + medication (combined)
-// 7: specificEvents
-// 8: feelingsSensations
-// 9: wellbeingAtIntake
+// 2: specificEvents      (moved earlier — hear the story before demographics)
+// 3: feelingsSensations  (moved earlier)
+// 4: solutionVision      (new — what does success look like?)
+// 5: age + gender        (combined)
+// 6: maritalStatus + children (combined)
+// 7: livingSituation + employment (combined)
+// 8: supportNetwork
+// 9: previousTherapy + medication (combined)
+// 10: wellbeingAtIntake
 
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 11;
 
 function getStepQuestion(
   step: number,
@@ -111,19 +114,22 @@ function getStepQuestion(
     case 0: return t('intake.q0');
     case 1: return t('intake.q1');
     case 2: return values.name
-      ? t('intake.q2.named').replace('{name}', values.name)
-      : t('intake.q2');
-    case 3: return t('intake.q4');
-    case 4: return t('intake.q6');
-    case 5: return t('intake.q8');
-    case 6: return t('intake.q9');
-    case 7: return values.name
       ? t('intake.q11.named').replace('{name}', values.name)
       : t('intake.q11');
-    case 8: return values.name
+    case 3: return values.name
       ? t('intake.q12.named').replace('{name}', values.name)
       : t('intake.q12');
-    case 9: return t('intake.wellbeing.question');
+    case 4: return values.name
+      ? t('intake.q.goal.named').replace('{name}', values.name)
+      : t('intake.q.goal');
+    case 5: return values.name
+      ? t('intake.q2.named').replace('{name}', values.name)
+      : t('intake.q2');
+    case 6: return t('intake.q4');
+    case 7: return t('intake.q6');
+    case 8: return t('intake.q8');
+    case 9: return t('intake.q9');
+    case 10: return t('intake.wellbeing.question');
     default: return '';
   }
 }
@@ -169,13 +175,22 @@ function getStepAnswer(
   switch (step) {
     case 0: return values.consultationReason.trim() || null;
     case 1: return values.name.trim() || null;
-    case 2: {
+    case 2: return specificEvents
+      ? specificEvents.slice(0, 80) + (specificEvents.length > 80 ? '...' : '')
+      : null;
+    case 3: return feelingsSensations
+      ? feelingsSensations.slice(0, 80) + (feelingsSensations.length > 80 ? '...' : '')
+      : null;
+    case 4: return values.solutionVision.trim()
+      ? values.solutionVision.trim().slice(0, 80) + (values.solutionVision.trim().length > 80 ? '...' : '')
+      : null;
+    case 5: {
       const parts: string[] = [];
       if (values.age) parts.push(values.age);
       parts.push(genderLabel[values.gender] ?? values.gender);
       return parts.join(' · ');
     }
-    case 3: {
+    case 6: {
       const parts: string[] = [maritalLabel[values.maritalStatus] ?? values.maritalStatus];
       if (values.hasChildren === false) parts.push(t('intake.no'));
       else if (values.hasChildren && values.childrenCount)
@@ -183,7 +198,7 @@ function getStepAnswer(
       else if (values.hasChildren) parts.push(t('intake.yes'));
       return parts.join(' · ') || null;
     }
-    case 4: {
+    case 7: {
       const livingPart = values.livingSituation === 'other' && values.livingSituationDetail.trim()
         ? values.livingSituationDetail.trim()
         : livingLabel[values.livingSituation] ?? values.livingSituation;
@@ -191,14 +206,14 @@ function getStepAnswer(
       if (values.occupation.trim()) employParts.push(values.occupation.trim());
       return [livingPart, employParts.join(' · ')].join(' · ');
     }
-    case 5: {
+    case 8: {
       if (values.hasSupportNetwork === null) return null;
       if (!values.hasSupportNetwork) return t('intake.no');
       return values.supportDescription.trim()
         ? t('intake.yes.detail').replace('{detail}', values.supportDescription.trim())
         : t('intake.yes');
     }
-    case 6: {
+    case 9: {
       const parts: string[] = [];
       if (values.previousTherapy !== null) {
         parts.push(!values.previousTherapy ? t('intake.no')
@@ -214,13 +229,7 @@ function getStepAnswer(
       }
       return parts.join(' · ') || null;
     }
-    case 7: return specificEvents
-      ? specificEvents.slice(0, 80) + (specificEvents.length > 80 ? '...' : '')
-      : null;
-    case 8: return feelingsSensations
-      ? feelingsSensations.slice(0, 80) + (feelingsSensations.length > 80 ? '...' : '')
-      : null;
-    case 9: return wellbeingAtIntake
+    case 10: return wellbeingAtIntake
       ? t(`checkin.wellbeing.${wellbeingAtIntake}`)
       : null;
     default: return null;
@@ -237,14 +246,15 @@ function canProceed(
   switch (step) {
     case 0: return values.consultationReason.trim().length > 0;
     case 1: return values.name.trim().length > 0;
-    case 2: { const n = parseInt(values.age); return n >= 18 && n < 120; }
-    case 3: return values.hasChildren !== null;
-    case 4: return values.livingSituation !== 'other' || values.livingSituationDetail.trim().length > 0;
-    case 5: return values.hasSupportNetwork !== null;
-    case 6: return values.previousTherapy !== null && values.takingMedication !== null;
-    case 7: return specificEvents.trim().length >= 20;
-    case 8: return feelingsSensations.trim().length >= 10;
-    case 9: return wellbeingAtIntake !== null;
+    case 2: return specificEvents.trim().length >= 20;
+    case 3: return feelingsSensations.trim().length >= 10;
+    case 4: return true; // solutionVision is optional — skip allowed
+    case 5: { const n = parseInt(values.age); return n >= 18 && n < 120; }
+    case 6: return values.hasChildren !== null;
+    case 7: return values.livingSituation !== 'other' || values.livingSituationDetail.trim().length > 0;
+    case 8: return values.hasSupportNetwork !== null;
+    case 9: return values.previousTherapy !== null && values.takingMedication !== null;
+    case 10: return wellbeingAtIntake !== null;
     default: return false;
   }
 }
@@ -480,6 +490,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
           ? values.medicationDetail.trim()
           : undefined,
       consultationReason: values.consultationReason.trim(),
+      solutionVision: values.solutionVision.trim() || undefined,
       createdAt: Date.now(),
     };
   };
@@ -786,7 +797,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
             </motion.button>
             <button
               type="button"
-              onClick={() => { setIntakeProcessing('idle'); setStep(8); }}
+              onClick={() => { setIntakeProcessing('idle'); setStep(10); }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -913,7 +924,40 @@ function StepInput({
         />
       );
 
-    case 2: {
+    case 2:
+      return (
+        <TextArea
+          value={specificEvents}
+          onChange={setSpecificEvents}
+          placeholder={t('intake.placeholder.events')}
+          autoFocus
+          rows={5}
+        />
+      );
+
+    case 3:
+      return (
+        <TextArea
+          value={feelingsSensations}
+          onChange={setFeelingsSensations}
+          placeholder={t('intake.placeholder.feelings')}
+          autoFocus
+          rows={5}
+        />
+      );
+
+    case 4:
+      return (
+        <TextArea
+          value={values.solutionVision}
+          onChange={v => set('solutionVision', v)}
+          placeholder={t('intake.placeholder.goal')}
+          autoFocus
+          rows={4}
+        />
+      );
+
+    case 5: {
       const ageNum = parseInt(values.age);
       const isTooYoung = values.age.length > 0 && !isNaN(ageNum) && ageNum < 18;
       return (
@@ -951,7 +995,7 @@ function StepInput({
       );
     }
 
-    case 3:
+    case 6:
       return (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3">
@@ -987,7 +1031,7 @@ function StepInput({
         </div>
       );
 
-    case 4:
+    case 7:
       return (
         <div className="space-y-5">
           <div className="space-y-3">
@@ -1033,7 +1077,7 @@ function StepInput({
         </div>
       );
 
-    case 5:
+    case 8:
       return (
         <div className="space-y-3">
           <YesNo value={values.hasSupportNetwork} onChange={v => set('hasSupportNetwork', v)} reduce={reduce} />
@@ -1058,7 +1102,7 @@ function StepInput({
         </div>
       );
 
-    case 6:
+    case 9:
       return (
         <div className="space-y-5">
           <div className="space-y-3">
@@ -1108,29 +1152,7 @@ function StepInput({
         </div>
       );
 
-    case 7:
-      return (
-        <TextArea
-          value={specificEvents}
-          onChange={setSpecificEvents}
-          placeholder={t('intake.placeholder.events')}
-          autoFocus
-          rows={5}
-        />
-      );
-
-    case 8:
-      return (
-        <TextArea
-          value={feelingsSensations}
-          onChange={setFeelingsSensations}
-          placeholder={t('intake.placeholder.feelings')}
-          autoFocus
-          rows={5}
-        />
-      );
-
-    case 9: {
+    case 10: {
       const wellbeingOpts = [1,2,3,4,5].map(v => ({ value: v, label: t(`checkin.wellbeing.${v}`) }));
       return (
         <div className="flex flex-wrap gap-3">

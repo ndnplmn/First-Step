@@ -86,6 +86,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
   // Step 2 — commitment follow-up (only shown when there's a lastCommitment)
   const [commitmentStatus, setCommitmentStatus] = useState<'yes' | 'partial' | 'no' | null>(null);
   const [commitmentNote, setCommitmentNote] = useState('');
+  const [commitmentObstacle, setCommitmentObstacle] = useState('');
   // Step 3 — session intention
   const [sessionIntention, setSessionIntention] = useState('');
   // Step 4 — consultation alignment (only on sessions 3/6/9)
@@ -173,7 +174,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
       ? { categories: lifeChanges, detail: lifeDetail.trim() || undefined }
       : undefined,
     commitmentFollowUp: commitmentStatus
-      ? { status: commitmentStatus, note: commitmentNote.trim() || undefined }
+      ? { status: commitmentStatus, note: commitmentNote.trim() || undefined, obstacle: commitmentObstacle.trim() || undefined }
       : undefined,
     sessionIntention: sessionIntention.trim() || undefined,
     consultationAlignment: consultationAlignment ?? undefined,
@@ -487,7 +488,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
+                      className="overflow-hidden space-y-3"
                     >
                       <textarea
                         value={commitmentNote}
@@ -497,6 +498,25 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                         className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
                         style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)' }}
                       />
+                      {(commitmentStatus === 'no' || commitmentStatus === 'partial') && (
+                        <motion.div
+                          initial={shouldReduce ? false : { opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="overflow-hidden"
+                        >
+                          <p className="text-xs font-medium mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            {t('checkin.commitment.obstacle.q')}
+                          </p>
+                          <textarea
+                            value={commitmentObstacle}
+                            onChange={e => setCommitmentObstacle(e.target.value)}
+                            placeholder={t('checkin.commitment.obstacle.placeholder')}
+                            rows={2}
+                            className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
+                            style={{ borderColor: 'rgba(61,107,71,0.35)', color: 'var(--color-deep)' }}
+                          />
+                        </motion.div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

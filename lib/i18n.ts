@@ -403,6 +403,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'stage6.consultation.not_yet': 'Todavía no',
     'stage6.celebrate.line': 'Sesión completada.',
     'stage6.celebrate.sub': 'Buen trabajo hoy.',
+    'stage6.celebrate.delta': '+{delta} en bienestar. {before}/5 → {after}/5',
+    'checkin.commitment.obstacle.q': '¿Qué te dificultó hacerlo?',
+    'checkin.commitment.obstacle.placeholder': 'Puedo hablar de esto en la sesión de hoy...',
 
     // Voice
     'voice.recording': 'Grabando',
@@ -779,6 +782,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'intake.q11.named': '{name}, ¿puedes contarme una situación concreta en la que aparece lo que me has descrito?',
     'intake.q12': '¿Qué sentimientos o sensaciones surgen en tu cuerpo cuando lo recuerdas?',
     'intake.q12.named': '{name}, ¿qué sentimientos o sensaciones surgen en tu cuerpo cuando lo recuerdas?',
+    'intake.q.goal': '¿Cómo te darías cuenta de que las cosas han mejorado? ¿Qué sería diferente en tu vida?',
+    'intake.q.goal.named': '{name}, ¿cómo te darías cuenta de que las cosas han mejorado? ¿Qué sería diferente?',
+    'intake.placeholder.goal': 'Por ejemplo: dejaría de evitar conversaciones difíciles, me sentiría menos ansioso/a...',
     'intake.welcome': 'Bienvenido. Este es un espacio seguro, sin juicios.',
     'intake.time.estimate': 'Esto toma unos 5 minutos.',
     'intake.yes': 'Sí',
@@ -1266,6 +1272,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'stage6.consultation.not_yet': 'Not yet',
     'stage6.celebrate.line': 'Session complete.',
     'stage6.celebrate.sub': 'Good work today.',
+    'stage6.celebrate.delta': '+{delta} in wellbeing. {before}/5 → {after}/5',
+    'checkin.commitment.obstacle.q': 'What got in the way?',
+    'checkin.commitment.obstacle.placeholder': 'I can explore this in today\'s session...',
 
     // Voice
     'voice.recording': 'Recording',
@@ -1642,6 +1651,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'intake.q11.named': '{name}, can you share a concrete situation where what you described shows up?',
     'intake.q12': 'What feelings or sensations come up in your body when you think about it?',
     'intake.q12.named': '{name}, what feelings or sensations come up in your body when you think about it?',
+    'intake.q.goal': 'How would you know things have improved? What would be different in your life?',
+    'intake.q.goal.named': '{name}, how would you know things have improved? What would be different?',
+    'intake.placeholder.goal': 'For example: I\'d stop avoiding difficult conversations, I\'d feel less anxious...',
     'intake.welcome': 'Welcome. This is a safe, judgment-free space.',
     'intake.time.estimate': 'This takes about 5 minutes.',
     'intake.yes': 'Yes',
@@ -2129,6 +2141,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'stage6.consultation.not_yet': 'Ещё нет',
     'stage6.celebrate.line': 'Сессия завершена.',
     'stage6.celebrate.sub': 'Хорошая работа сегодня.',
+    'stage6.celebrate.delta': '+{delta} к самочувствию. {before}/5 → {after}/5',
+    'checkin.commitment.obstacle.q': 'Что вам помешало?',
+    'checkin.commitment.obstacle.placeholder': 'Могу разобрать это в сегодняшней сессии...',
 
     // Voice
     'voice.recording': 'Запись',
@@ -2505,6 +2520,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'intake.q11.named': '{name}, расскажите о конкретной ситуации, в которой проявляется то, что вы описали?',
     'intake.q12': 'Какие чувства или ощущения возникают в теле, когда вы об этом вспоминаете?',
     'intake.q12.named': '{name}, какие чувства или ощущения возникают в вашем теле, когда вы об этом вспоминаете?',
+    'intake.q.goal': 'Как бы вы поняли, что ситуация улучшилась? Что было бы иначе в вашей жизни?',
+    'intake.q.goal.named': '{name}, как бы вы поняли, что ситуация улучшилась? Что было бы иначе?',
+    'intake.placeholder.goal': 'Например: я бы перестал(а) избегать трудных разговоров, чувствовал(а) бы себя спокойнее...',
     'intake.welcome': 'Добро пожаловать. Это безопасное место без осуждений.',
     'intake.time.estimate': 'Это займёт около 5 минут.',
     'intake.yes': 'Да',

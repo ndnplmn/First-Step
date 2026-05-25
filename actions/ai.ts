@@ -611,6 +611,7 @@ export async function generateSessionWorkCards(params: {
   frameworkMatches: FrameworkMatch[];
   stage3Type?: Stage3Type;
   patient?: Patient;
+  consultationAlignment?: 'yes' | 'partial' | 'no';
   locale?: string;
 }): Promise<WorkCard[]> {
   const { conflicts, frameworkMatches } = params;
@@ -623,12 +624,16 @@ export async function generateSessionWorkCards(params: {
     exposure: 'El openingLine debe nombrar el patrón de evitación con claridad y proponer empezar a mirarlo directamente.',
   };
 
+  const recalibrateAnchor = params.consultationAlignment === 'no' && params.patient?.consultationReason
+    ? `\nATENCIÓN: El paciente siente que no está trabajando su motivo de consulta original ("${params.patient.consultationReason.slice(0, 100)}"). Al menos una de las tres tarjetas DEBE recalibrar hacia ese motivo original, ayudando al paciente a reconectar con lo que le trajo aquí.\n`
+    : '';
+
   const prompt = `
 Eres un psicoterapeuta que acaba de identificar los conflictos de un paciente y propones tres áreas concretas de exploración para la sesión de hoy.
 
 Conflictos identificados: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco terapéutico: ${formatFrameworks(frameworkMatches)}
-${params.patient ? `Contexto del paciente: ${buildPatientContext(params.patient)}\n` : ''}${params.stage3Type ? `Tipo de exploración que viene: ${params.stage3Type}. ${explorationTypeHint[params.stage3Type]}\n` : ''}
+${params.patient ? `Contexto del paciente: ${buildPatientContext(params.patient)}\n` : ''}${params.stage3Type ? `Tipo de exploración que viene: ${params.stage3Type}. ${explorationTypeHint[params.stage3Type]}\n` : ''}${recalibrateAnchor}
 Genera exactamente 3 tarjetas de enfoque de sesión, cada una representando un ángulo distinto de los conflictos. Para cada tarjeta:
 - "title": frase en infinitivo, 4-8 palabras, específica al conflicto (ej: "Explorar la raíz del miedo", "Entender el patrón con mi familia")
 - "subtitle": pregunta reflexiva que invita al paciente a explorar, 10-20 palabras, segunda persona singular

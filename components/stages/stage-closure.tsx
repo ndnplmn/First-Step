@@ -15,7 +15,7 @@ type ClosureAction = 'dashboard' | 'record' | 'new-session' | 'diary';
 type ClosurePhase = 'checkout' | 'content' | 'complete';
 
 function StrategiesSection({ strategies, label, shouldReduce }: { strategies: Strategy[]; label: string; shouldReduce: boolean }) {
-  const [expanded, setExpanded] = useState<number>(0);
+  const [expanded, setExpanded] = useState<number>(-1);
   return (
     <motion.div
       initial={shouldReduce ? false : { opacity: 0, y: 16 }}
@@ -305,6 +305,19 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         >
           {resolutionAnswer === 'much_better' ? t('stage6.celebrate.sub.resolved') : t('stage6.celebrate.sub')}
         </motion.p>
+        {wellbeingAfter != null && session.wellbeingBefore != null && wellbeingAfter > session.wellbeingBefore && (
+          <motion.p
+            initial={shouldReduce ? {} : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            style={{ color: 'var(--color-sage)', fontSize: '0.875rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}
+          >
+            {t('stage6.celebrate.delta')
+              .replace('{delta}', String(wellbeingAfter - session.wellbeingBefore))
+              .replace('{before}', String(session.wellbeingBefore))
+              .replace('{after}', String(wellbeingAfter))}
+          </motion.p>
+        )}
       </motion.div>
     );
   }
