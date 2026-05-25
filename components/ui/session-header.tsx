@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { Gear } from '@phosphor-icons/react';
 import type { Patient, PatientSession } from '@/lib/types';
 import { ChapterProgress } from './chapter-progress';
+import { useLanguage } from '@/contexts/language-context';
 
 interface SessionHeaderProps {
   patient: Patient;
@@ -13,6 +14,7 @@ interface SessionHeaderProps {
 
 export function SessionHeader({ patient, session, onSettings }: SessionHeaderProps) {
   const shouldReduce = useReducedMotion();
+  const { t } = useLanguage();
 
   return (
     <header
@@ -25,12 +27,22 @@ export function SessionHeader({ patient, session, onSettings }: SessionHeaderPro
       }}
     >
       <div className="max-w-[680px] mx-auto flex items-center justify-between px-6 py-3.5">
-        <p
-          className="text-sm font-semibold"
-          style={{ color: 'var(--color-deep)' }}
-        >
-          {patient.name}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <p
+            className="text-sm font-semibold"
+            style={{ color: 'var(--color-deep)' }}
+          >
+            {patient.name}
+          </p>
+          {session.quickSession && (
+            <span
+              className="text-[10px] font-medium uppercase tracking-widest px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(61,107,71,0.1)', color: 'var(--color-sage)', fontFamily: 'var(--font-mono)' }}
+            >
+              {t('session.quick.badge')}
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <ChapterProgress currentStage={session.stage} />
           {onSettings && (

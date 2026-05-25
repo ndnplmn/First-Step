@@ -9,35 +9,63 @@ import type {
   PatientSession,
 } from '@/lib/types';
 
-export function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges, sessionIntention?: string): string {
+export function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges, sessionIntention?: string, locale?: string): string {
+  const isEn = locale === 'en';
+  const isRu = locale === 'ru';
+  const L = isEn ? {
+    name: 'Name', age: 'years', maritalStatus: 'Marital status', children: 'Children',
+    noChildren: 'No children', lives: 'Lives', occupation: 'Occupation',
+    supportYes: 'Support network: yes', noSupport: 'No identified support network',
+    therapyYes: 'Previous therapy: yes', noTherapy: 'No previous therapy',
+    medicationYes: 'Medication: yes', noMedication: 'No medication',
+    reason: 'Reason for consultation', vision: "Patient's vision of success",
+    lifeChanges: 'Recent life changes', detail: 'Detail', intention: 'Intention for this session',
+  } : isRu ? {
+    name: 'Имя', age: 'лет', maritalStatus: 'Семейное положение', children: 'Дети',
+    noChildren: 'Без детей', lives: 'Проживает', occupation: 'Занятость',
+    supportYes: 'Сеть поддержки: да', noSupport: 'Без сети поддержки',
+    therapyYes: 'Предыдущая терапия: да', noTherapy: 'Без предыдущей терапии',
+    medicationYes: 'Медикаменты: да', noMedication: 'Без медикаментов',
+    reason: 'Причина обращения', vision: 'Видение успеха пациента',
+    lifeChanges: 'Недавние изменения в жизни', detail: 'Подробности', intention: 'Намерение для этой сессии',
+  } : {
+    name: 'Nombre', age: 'años', maritalStatus: 'Estado civil', children: 'Hijos',
+    noChildren: 'Sin hijos', lives: 'Vive', occupation: 'Ocupación',
+    supportYes: 'Red de apoyo: sí', noSupport: 'Sin red de apoyo identificada',
+    therapyYes: 'Terapia previa: sí', noTherapy: 'Sin terapia previa',
+    medicationYes: 'Medicación: sí', noMedication: 'Sin medicación',
+    reason: 'Motivo de consulta', vision: 'Visión de éxito del paciente',
+    lifeChanges: 'Cambios recientes en su vida', detail: 'Detalle', intention: 'Intención para esta sesión',
+  };
+
   const lines = [
-    `Nombre: ${patient.name}, ${patient.age} años, ${patient.gender}`,
-    `Estado civil: ${patient.maritalStatus}`,
-    patient.hasChildren ? `Hijos: ${patient.childrenCount || 'sí'}` : 'Sin hijos',
-    `Vive: ${patient.livingSituation}${patient.livingSituationDetail ? ` (${patient.livingSituationDetail})` : ''}`,
-    `Ocupación: ${patient.employment}${patient.occupation ? ` — ${patient.occupation}` : ''}`,
+    `${L.name}: ${patient.name}, ${patient.age} ${L.age}, ${patient.gender}`,
+    `${L.maritalStatus}: ${patient.maritalStatus}`,
+    patient.hasChildren ? `${L.children}: ${patient.childrenCount || 'sí'}` : L.noChildren,
+    `${L.lives}: ${patient.livingSituation}${patient.livingSituationDetail ? ` (${patient.livingSituationDetail})` : ''}`,
+    `${L.occupation}: ${patient.employment}${patient.occupation ? ` — ${patient.occupation}` : ''}`,
     patient.hasSupportNetwork
-      ? `Red de apoyo: sí${patient.supportDescription ? ` (${patient.supportDescription})` : ''}`
-      : 'Sin red de apoyo identificada',
+      ? `${L.supportYes}${patient.supportDescription ? ` (${patient.supportDescription})` : ''}`
+      : L.noSupport,
     patient.previousTherapy
-      ? `Terapia previa: sí${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}`
-      : 'Sin terapia previa',
+      ? `${L.therapyYes}${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}`
+      : L.noTherapy,
     patient.takingMedication
-      ? `Medicación: sí${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}`
-      : 'Sin medicación',
-    `Motivo de consulta: ${patient.consultationReason}`,
+      ? `${L.medicationYes}${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}`
+      : L.noMedication,
+    `${L.reason}: ${patient.consultationReason}`,
   ];
 
   if (patient.solutionVision) {
-    lines.push(`Visión de éxito del paciente: "${patient.solutionVision}"`);
+    lines.push(`${L.vision}: "${patient.solutionVision}"`);
   }
 
   if (lifeChanges && lifeChanges.categories.length > 0) {
-    lines.push(`Cambios recientes en su vida: ${lifeChanges.categories.join(', ')}${lifeChanges.detail ? `. Detalle: ${lifeChanges.detail}` : ''}`);
+    lines.push(`${L.lifeChanges}: ${lifeChanges.categories.join(', ')}${lifeChanges.detail ? `. ${L.detail}: ${lifeChanges.detail}` : ''}`);
   }
 
   if (sessionIntention) {
-    lines.push(`Intención para esta sesión: "${sessionIntention}"`);
+    lines.push(`${L.intention}: "${sessionIntention}"`);
   }
 
   return lines.join('\n');
@@ -158,7 +186,7 @@ ${reframeInstruction}
     ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
-    ${buildPatientContext(params.patient, params.lifeChanges)}
+    ${buildPatientContext(params.patient, params.lifeChanges, undefined, params.locale)}
 
     Conflictos del paciente:
     ${conflicts.map(c => `- ${c.synthesized} (${c.frameworkKey}: ${c.subCategory})`).join('\n')}
@@ -230,7 +258,7 @@ export function buildClosurePrompt(params: {
     ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
-    ${buildPatientContext(params.patient)}
+    ${buildPatientContext(params.patient, undefined, undefined, params.locale)}
 ${closureHistory}${wellbeingTrendNote}${closureClinicalNote}${solutionVisionNote}
     Se le ha dado esta interpretación:
     "${interpretation}"

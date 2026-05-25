@@ -16,7 +16,7 @@ import { useLanguage } from '@/contexts/language-context';
 
 const SOFT_CAP_SESSION1 = 6;
 const SOFT_CAP_DEFAULT = 4;
-const SOFT_CAP_WITH_INTENTION = 3;
+const SOFT_CAP_WITH_INTENTION = 4;
 
 
 type MessageRole = 'patient' | 'therapist';

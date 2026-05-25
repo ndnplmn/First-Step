@@ -10,7 +10,7 @@ import { Gear } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
 const BASE_STEPS = 4;
-const ALIGNMENT_SESSION_NUMBERS = [3, 6, 9];
+const ALIGNMENT_SESSION_NUMBERS = [3, 5, 6, 9];
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -86,6 +86,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
   // Step 0
   const [wellbeing, setWellbeing] = useState<number | null>(null);
   // Step 1
+  const [lifeChangeDecision, setLifeChangeDecision] = useState<'yes' | 'no' | null>(null);
   const [lifeChanges, setLifeChanges] = useState<string[]>([]);
   const [lifeDetail, setLifeDetail] = useState('');
   // Step 2 — commitment follow-up (only shown when there's a lastCommitment)
@@ -247,6 +248,9 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
       >
         <div className="max-w-[680px] mx-auto flex items-center justify-between px-6 py-3">
           <TendLogo size={26} />
+          <p className="text-xs font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+            {t('checkin.session.number').replace('{n}', String(session.sessionNumber))}
+          </p>
           <motion.button
             type="button"
             onClick={onViewSettings}
@@ -442,42 +446,70 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
               </div>
             )}
 
-            {/* Step 1: Life changes */}
+            {/* Step 1: Life changes — binary pre-filter then categories */}
             {step === 1 && (
               <div className="space-y-4">
-                <div className="flex flex-wrap gap-3">
-                  {LIFE_CHANGE_OPTIONS.map(option => (
+                {!lifeChangeDecision && (
+                  <div className="flex flex-wrap gap-3">
                     <Chip
-                      key={option}
-                      label={option}
-                      active={lifeChanges.includes(option)}
-                      onClick={() => toggleLifeChange(option)}
+                      label={t('checkin.lifechange.changed')}
+                      active={false}
+                      onClick={() => setLifeChangeDecision('yes')}
                       reduce={shouldReduce}
                     />
-                  ))}
-                </div>
+                    <Chip
+                      label={t('checkin.lifechange.none')}
+                      active={false}
+                      onClick={() => { setLifeChangeDecision('no'); advanceStep(); }}
+                      reduce={shouldReduce}
+                    />
+                  </div>
+                )}
                 <AnimatePresence>
-                  {lifeChanges.length > 0 && (
+                  {lifeChangeDecision === 'yes' && (
                     <motion.div
-                      initial={shouldReduce ? false : { opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
+                      initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
                       transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
+                      className="space-y-4"
                     >
-                      <div style={{ position: 'relative' }}>
-                        <textarea
-                          value={lifeDetail}
-                          onChange={e => setLifeDetail(e.target.value)}
-                          placeholder={t('checkin.lifechange.detail')}
-                          rows={3}
-                          className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
-                          style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
-                        />
-                        <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
-                          <VoiceFillButton onFill={text => setLifeDetail(prev => prev ? prev + ' ' + text : text)} />
-                        </div>
+                      <div className="flex flex-wrap gap-3">
+                        {LIFE_CHANGE_OPTIONS.map(option => (
+                          <Chip
+                            key={option}
+                            label={option}
+                            active={lifeChanges.includes(option)}
+                            onClick={() => toggleLifeChange(option)}
+                            reduce={shouldReduce}
+                          />
+                        ))}
                       </div>
+                      <AnimatePresence>
+                        {lifeChanges.length > 0 && (
+                          <motion.div
+                            initial={shouldReduce ? false : { opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="overflow-hidden"
+                          >
+                            <div style={{ position: 'relative' }}>
+                              <textarea
+                                value={lifeDetail}
+                                onChange={e => setLifeDetail(e.target.value)}
+                                placeholder={t('checkin.lifechange.detail')}
+                                rows={3}
+                                className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
+                                style={{ borderColor: 'var(--color-border)', color: 'var(--color-deep)', paddingBottom: '2.75rem' }}
+                              />
+                              <div style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem' }}>
+                                <VoiceFillButton onFill={text => setLifeDetail(prev => prev ? prev + ' ' + text : text)} />
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -624,7 +656,12 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                   const lastInsights = lastSession?.explorationRecord?.insights?.slice(0, 3) ?? [];
                   const pendingGestalt = lastSession?.gestaltActivity && !lastSession.gestaltActivityResponse
                     ? lastSession.gestaltActivity : null;
-                  if ((lastInsights.length === 0 && !pendingGestalt) || sessionIntention) return null;
+                  const recentDiary = (() => {
+                    if (!lastDiaryEntry) return null;
+                    const daysAgo = Math.floor((Date.now() - lastDiaryEntry.createdAt) / (1000 * 60 * 60 * 24));
+                    return daysAgo <= 3 ? lastDiaryEntry : null;
+                  })();
+                  if ((lastInsights.length === 0 && !pendingGestalt && !recentDiary) || sessionIntention) return null;
                   return (
                     <motion.div
                       initial={shouldReduce ? false : { opacity: 0, y: 8 }}
@@ -680,6 +717,22 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                             {insight.theme}
                           </button>
                         ))}
+                        {recentDiary && (
+                          <button
+                            key="diary"
+                            type="button"
+                            onClick={() => setSessionIntention(t('checkin.diary.chip').replace('{emotion}', recentDiary.emotion) + (recentDiary.note ? ` — ${recentDiary.note.slice(0, 60)}` : ''))}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style={{
+                              background: 'rgba(180,110,69,0.08)',
+                              color: 'var(--color-terracotta)',
+                              border: '1px solid rgba(180,110,69,0.2)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {t('checkin.diary.chip').replace('{emotion}', recentDiary.emotion)}
+                          </button>
+                        )}
                       </div>
                     </motion.div>
                   );

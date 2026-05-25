@@ -8,31 +8,59 @@ import { generateId } from '@/lib/id';
 const getAI = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = 'llama-3.3-70b-versatile';
 
-function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges, sessionIntention?: string): string {
+function buildPatientContext(patient: Patient, lifeChanges?: LifeChanges, sessionIntention?: string, locale?: string): string {
+  const isEn = locale === 'en';
+  const isRu = locale === 'ru';
+  const L = isEn ? {
+    name: 'Name', age: 'years', maritalStatus: 'Marital status', children: 'Children',
+    noChildren: 'No children', lives: 'Lives', occupation: 'Occupation',
+    supportYes: 'Support network: yes', noSupport: 'No identified support network',
+    therapyYes: 'Previous therapy: yes', noTherapy: 'No previous therapy',
+    medicationYes: 'Medication: yes', noMedication: 'No medication',
+    reason: 'Reason for consultation', vision: "Patient's vision of success",
+    lifeChanges: 'Recent life changes', detail: 'Detail', intention: 'Intention for this session',
+  } : isRu ? {
+    name: 'Имя', age: 'лет', maritalStatus: 'Семейное положение', children: 'Дети',
+    noChildren: 'Без детей', lives: 'Проживает', occupation: 'Занятость',
+    supportYes: 'Сеть поддержки: да', noSupport: 'Без сети поддержки',
+    therapyYes: 'Предыдущая терапия: да', noTherapy: 'Без предыдущей терапии',
+    medicationYes: 'Медикаменты: да', noMedication: 'Без медикаментов',
+    reason: 'Причина обращения', vision: 'Видение успеха пациента',
+    lifeChanges: 'Недавние изменения в жизни', detail: 'Подробности', intention: 'Намерение для этой сессии',
+  } : {
+    name: 'Nombre', age: 'años', maritalStatus: 'Estado civil', children: 'Hijos',
+    noChildren: 'Sin hijos', lives: 'Vive', occupation: 'Ocupación',
+    supportYes: 'Red de apoyo: sí', noSupport: 'Sin red de apoyo identificada',
+    therapyYes: 'Terapia previa: sí', noTherapy: 'Sin terapia previa',
+    medicationYes: 'Medicación: sí', noMedication: 'Sin medicación',
+    reason: 'Motivo de consulta', vision: 'Visión de éxito del paciente',
+    lifeChanges: 'Cambios recientes en su vida', detail: 'Detalle', intention: 'Intención para esta sesión',
+  };
+
   const lines = [
-    `Nombre: ${patient.name}, ${patient.age} años, ${patient.gender}`,
-    `Estado civil: ${patient.maritalStatus}`,
-    patient.hasChildren ? `Hijos: ${patient.childrenCount || 'sí'}` : 'Sin hijos',
-    `Vive: ${patient.livingSituation}${patient.livingSituationDetail ? ` (${patient.livingSituationDetail})` : ''}`,
-    `Ocupación: ${patient.employment}${patient.occupation ? ` — ${patient.occupation}` : ''}`,
+    `${L.name}: ${patient.name}, ${patient.age} ${L.age}, ${patient.gender}`,
+    `${L.maritalStatus}: ${patient.maritalStatus}`,
+    patient.hasChildren ? `${L.children}: ${patient.childrenCount || 'sí'}` : L.noChildren,
+    `${L.lives}: ${patient.livingSituation}${patient.livingSituationDetail ? ` (${patient.livingSituationDetail})` : ''}`,
+    `${L.occupation}: ${patient.employment}${patient.occupation ? ` — ${patient.occupation}` : ''}`,
     patient.hasSupportNetwork
-      ? `Red de apoyo: sí${patient.supportDescription ? ` (${patient.supportDescription})` : ''}`
-      : 'Sin red de apoyo identificada',
+      ? `${L.supportYes}${patient.supportDescription ? ` (${patient.supportDescription})` : ''}`
+      : L.noSupport,
     patient.previousTherapy
-      ? `Terapia previa: sí${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}`
-      : 'Sin terapia previa',
+      ? `${L.therapyYes}${patient.previousTherapyDetail ? ` (${patient.previousTherapyDetail})` : ''}`
+      : L.noTherapy,
     patient.takingMedication
-      ? `Medicación: sí${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}`
-      : 'Sin medicación',
-    `Motivo de consulta: ${patient.consultationReason}`,
+      ? `${L.medicationYes}${patient.medicationDetail ? ` (${patient.medicationDetail})` : ''}`
+      : L.noMedication,
+    `${L.reason}: ${patient.consultationReason}`,
   ];
 
   if (lifeChanges && lifeChanges.categories.length > 0) {
-    lines.push(`Cambios recientes en su vida: ${lifeChanges.categories.join(', ')}${lifeChanges.detail ? `. Detalle: ${lifeChanges.detail}` : ''}`);
+    lines.push(`${L.lifeChanges}: ${lifeChanges.categories.join(', ')}${lifeChanges.detail ? `. ${L.detail}: ${lifeChanges.detail}` : ''}`);
   }
 
   if (sessionIntention) {
-    lines.push(`Intención para esta sesión: "${sessionIntention}"`);
+    lines.push(`${L.intention}: "${sessionIntention}"`);
   }
 
   return lines.join('\n');
@@ -194,7 +222,7 @@ ${alignmentAnchor}
     Motivos: ${rawConflicts.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
     Contexto del paciente:
-    ${buildPatientContext(patient, lifeChanges, sessionIntention)}${buildClinicalContext(phq9, gad7)}
+    ${buildPatientContext(patient, lifeChanges, sessionIntention, locale)}${buildClinicalContext(phq9, gad7)}
 ${sessionHistory ? `${sessionHistory}\n    Nota: Si algún conflicto actual es recurrente (aparece en sesiones anteriores), refleja esa continuidad en el narrativeSummary.\n` : ''}
     Marcos Terapéuticos Disponibles:
     ${frameworksDesc}
@@ -334,7 +362,7 @@ export async function generateInterpretation(params: {
     ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
-    ${buildPatientContext(params.patient, params.lifeChanges)}
+    ${buildPatientContext(params.patient, params.lifeChanges, undefined, params.locale)}
 
     Conflictos del paciente:
     ${conflicts.map(c => `- ${c.synthesized} (${c.frameworkKey}: ${c.subCategory})`).join('\n')}
@@ -410,7 +438,7 @@ Eres un psicoterapeuta magistral. Un paciente acaba de completar una actividad d
 
 Marco terapéutico: ${frameworkName}
 Conflictos del paciente: ${conflicts.map(c => c.synthesized).join(', ')}
-Contexto del paciente: ${buildPatientContext(patient)}
+Contexto del paciente: ${buildPatientContext(patient, undefined, undefined, params.locale)}
 ${priorContext}
 Material explorado en esta sesión:
 ${rawData}
@@ -502,7 +530,7 @@ export async function generateClosure(params: {
     ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
-    ${buildPatientContext(params.patient)}
+    ${buildPatientContext(params.patient, undefined, undefined, params.locale)}
 ${closureHistory}
 
     Se le ha dado esta interpretación:
@@ -640,7 +668,7 @@ Eres un psicoterapeuta que acaba de identificar los conflictos de un paciente y 
 
 Conflictos identificados: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco terapéutico: ${formatFrameworks(frameworkMatches)}
-${params.patient ? `Contexto del paciente: ${buildPatientContext(params.patient, undefined, params.sessionIntention)}\n` : ''}${params.stage3Type ? `Tipo de exploración que viene: ${params.stage3Type}. ${explorationTypeHint[params.stage3Type]}\n` : ''}${recalibrateAnchor}
+${params.patient ? `Contexto del paciente: ${buildPatientContext(params.patient, undefined, params.sessionIntention, params.locale)}\n` : ''}${params.stage3Type ? `Tipo de exploración que viene: ${params.stage3Type}. ${explorationTypeHint[params.stage3Type]}\n` : ''}${recalibrateAnchor}
 Genera exactamente 3 tarjetas de enfoque de sesión, cada una representando un ángulo distinto de los conflictos. Para cada tarjeta:
 - "title": frase en infinitivo, 4-8 palabras, específica al conflicto (ej: "Explorar la raíz del miedo", "Entender el patrón con mi familia")
 - "subtitle": pregunta reflexiva que invita al paciente a explorar, 10-20 palabras, segunda persona singular
@@ -887,7 +915,7 @@ Eres un psicoterapeuta magistral. Tu trabajo no es hacer que el paciente se sien
 ═══════════════════════════════════════
 CONTEXTO DEL CASO
 ═══════════════════════════════════════
-Paciente: ${buildPatientContext(patient, params.lifeChanges, params.sessionIntention)}${buildClinicalContext(params.phq9, params.gad7)}${params.recentDiaryEntry ? `\nEntrada reciente en diario: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo. No lo menciones directamente — úsalo como contexto de fondo.` : ''}${params.wellbeingBefore !== undefined ? `\nEstado al llegar a sesión: ${params.wellbeingBefore}/5` : ''}${isLightMode ? `\n\n⚠ MODO SUAVE ACTIVADO: El paciente llegó con bienestar muy bajo (${params.wellbeingBefore}/5). Prioriza contención y presencia sobre insight profundo. No empujes hacia fases de challenging o pattern_linking. El objetivo es que salga mejor de como entró. Sé especialmente cálido y no presiones si hay resistencia.` : ''}
+Paciente: ${buildPatientContext(patient, params.lifeChanges, params.sessionIntention, params.locale)}${buildClinicalContext(params.phq9, params.gad7)}${params.recentDiaryEntry ? `\nEntrada reciente en diario: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo. No lo menciones directamente — úsalo como contexto de fondo.` : ''}${params.wellbeingBefore !== undefined ? `\nEstado al llegar a sesión: ${params.wellbeingBefore}/5` : ''}${isLightMode ? `\n\n⚠ MODO SUAVE ACTIVADO: El paciente llegó con bienestar muy bajo (${params.wellbeingBefore}/5). Prioriza contención y presencia sobre insight profundo. No empujes hacia fases de challenging o pattern_linking. El objetivo es que salga mejor de como entró. Sé especialmente cálido y no presiones si hay resistencia.` : ''}
 Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco: ${formatFrameworks(frameworkMatches)}
 ${priorContext}
@@ -990,7 +1018,7 @@ export async function getDeepWorkResponse(params: {
   const prompt = `
 Eres un psicoterapeuta en una sesión activa. Ya conoces al paciente a fondo y acabas de darle una interpretación. Ahora estás trabajando un punto específico con él/ella.
 
-Paciente: ${buildPatientContext(patient)}
+Paciente: ${buildPatientContext(patient, undefined, undefined, params.locale)}
 Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco: ${formatFrameworks(frameworkMatches)}
 Lente terapéutico para este trabajo: ${deepWorkLens[params.stage3Type]}
@@ -1062,7 +1090,7 @@ export async function generateStrategies(params: {
     ${formatFrameworks(frameworkMatches)}
 
     Contexto del paciente:
-    ${buildPatientContext(params.patient)}
+    ${buildPatientContext(params.patient, undefined, undefined, params.locale)}
 
     El paciente tiene estos conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 
@@ -1116,7 +1144,7 @@ export async function suggestCommitment(params: {
     Eres un psicoterapeuta que sugiere un compromiso de acción concreto y pequeño.
 
     Contexto del paciente:
-    ${buildPatientContext(params.patient)}
+    ${buildPatientContext(params.patient, undefined, undefined, params.locale)}
 
     Conflictos trabajados: ${params.conflicts.map(c => c.synthesized).join(', ')}
     Interpretación de la sesión: "${params.interpretation}"
@@ -1178,7 +1206,7 @@ ${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
 ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
 
 Contexto del paciente (ya conocido — NO preguntes sobre esto):
-${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention)}${buildClinicalContext(params.phq9, params.gad7)}
+${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention, params.locale)}${buildClinicalContext(params.phq9, params.gad7)}
 ${params.recentDiaryEntry ? `\nNota: El paciente escribió en su diario recientemente: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo con lo que trae hoy.\n` : ''}
 ${params.priorInterpretation ? `\nInterpretación de la sesión anterior: "${params.priorInterpretation.slice(0, 300)}${params.priorInterpretation.length > 300 ? '…' : ''}". Si el conflicto actual parece relacionado con ese tema, reconócelo brevemente en la reflexión — sin repetir el análisis, solo el hilo de continuidad.\n` : ''}
 ${params.commitmentFollowUp?.status === 'no'
