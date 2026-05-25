@@ -47,7 +47,7 @@ export function SessionView({ patient, session, priorSessions = [], lastDiaryEnt
     const updated: PatientSession = {
       ...session,
       ...(pendingUpdates ?? {}),
-      stage: targetStage as 1 | 2 | 3 | 4 | 5 | 6,
+      stage: targetStage as 1 | 2 | 3 | 4 | 6,
       updatedAt: Date.now(),
     };
     setPendingUpdates(null);

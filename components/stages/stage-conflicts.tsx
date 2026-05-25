@@ -16,7 +16,7 @@ import { useLanguage } from '@/contexts/language-context';
 
 const SOFT_CAP_SESSION1 = 6;
 const SOFT_CAP_DEFAULT = 4;
-const SOFT_CAP_WITH_INTENTION = 4;
+const SOFT_CAP_WITH_INTENTION = 3;
 
 
 type MessageRole = 'patient' | 'therapist';
@@ -148,7 +148,7 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
       const commitment = lastCommitment ?? t('stage2.commitment.generic');
       return t('stage2.greeting.commitment_missed').replace('{commitment}', commitment);
     }
-    if (lastConsultationAnswer === 'not_yet') {
+    if (lastConsultationAnswer === 'not_yet' && session.sessionNumber >= 5) {
       return t('stage2.greeting.stuck');
     }
     if (lastMissedIntention) {
@@ -393,8 +393,8 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
               title: `${t('stage2.cards.continuity.badge')}: ${theme}`,
               subtitle: insight || t('stage2.cards.continuity.subtitle'),
               openingLine: r.actionCommitment
-                ? `La última vez te propusiste "${r.actionCommitment.replace('Obstáculo: ', '').split(' → ')[0]}". ¿Cómo estuvo eso?`
-                : `La última vez llegamos a "${theme}". ¿Qué ha surgido desde entonces?`,
+                ? t('stage2.cards.continuity.opening.with_commitment').replace('{commitment}', r.actionCommitment.replace(/^[^:]+: /, '').split(' → ')[0])
+                : t('stage2.cards.continuity.opening.without_commitment').replace('{theme}', theme),
             };
             setSessionCards([continuityCard, ...cards]);
             return;

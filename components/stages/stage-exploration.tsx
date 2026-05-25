@@ -89,7 +89,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const isLightMode = (session.wellbeingBefore ?? 5) <= 2;
+  const isLightMode = (session.wellbeingBefore ?? 3) <= 2;
   const MIN_TURNS_TO_END = isLightMode ? MIN_TURNS_LIGHT : MIN_TURNS_DEFAULT;
 
   const patientTurns = messages.filter(m => m.role === 'patient').length;

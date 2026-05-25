@@ -44,7 +44,7 @@ describe('Session 1 happy path', () => {
 
   it('session is active while stage < 6', () => {
     expect(isSessionActive(makeSession({ stage: 2 }))).toBe(true);
-    expect(isSessionActive(makeSession({ stage: 5 }))).toBe(true);
+    expect(isSessionActive(makeSession({ stage: 4 }))).toBe(true);
   });
 
   it('session is complete at stage 6', () => {

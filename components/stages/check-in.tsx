@@ -267,9 +267,9 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
 
       {/* Prior session commitment */}
       {lastCommitment && (() => {
-        const isStructured = lastCommitment.startsWith('Obstáculo:') && lastCommitment.includes(' → ');
+        const isStructured = lastCommitment.includes(': ') && lastCommitment.includes(' → ');
         const parts = isStructured ? lastCommitment.split(' → ') : null;
-        const obstacleText = parts ? parts[0].replace('Obstáculo: ', '') : null;
+        const obstacleText = parts ? parts[0].replace(/^[^:]+: /, '') : null;
         const experimentText = parts ? parts.slice(1).join(' → ') : null;
         return (
           <motion.div

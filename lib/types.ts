@@ -177,7 +177,7 @@ export type PatientSession = {
   id: string;
   patientId: string;
   sessionNumber: number;
-  stage: 1 | 2 | 3 | 4 | 5 | 6;
+  stage: 1 | 2 | 3 | 4 | 6;
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
   gestaltActivity: GestaltActivity | null;

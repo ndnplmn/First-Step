@@ -204,6 +204,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   }, [phase]);
 
   const handleComplete = (action: ClosureAction) => {
+    if (gestaltResponse.trim().length >= 5 && !gestaltResponseSaved) {
+      onUpdate({ gestaltActivityResponse: gestaltResponse.trim() });
+      setGestaltResponseSaved(true);
+    }
     setPendingAction(action);
     setCelebrating(true);
   };
