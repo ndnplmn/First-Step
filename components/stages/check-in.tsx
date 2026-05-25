@@ -487,6 +487,16 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
             {/* Step 2: Commitment follow-up */}
             {step === 2 && (
               <div className="space-y-4">
+                {lastCommitment && (
+                  <div className="px-4 py-3 rounded-[var(--radius-inner)]" style={{ background: 'rgba(61,107,71,0.07)', border: '1px solid rgba(61,107,71,0.18)' }}>
+                    <p className="text-[10px] font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--color-sage)', fontFamily: 'var(--font-mono)' }}>
+                      {t('checkin.commitment.reminder')}
+                    </p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)', fontStyle: 'italic' }}>
+                      &ldquo;{lastCommitment}&rdquo;
+                    </p>
+                  </div>
+                )}
                 <div className="flex flex-col gap-3">
                   {([
                     { status: 'yes' as const, label: t('checkin.commitment.yes') },
@@ -740,7 +750,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
               {t('checkin.skip')}
             </button>
           )}
-          {step === 0 && wellbeing !== null && wellbeing >= 4 && priorSessions.length > 0 && (
+          {step === 0 && wellbeing !== null && wellbeing >= 4 && priorSessions.length > 0 && !lastCommitment && (
             <button
               type="button"
               onClick={handleStartDirect}

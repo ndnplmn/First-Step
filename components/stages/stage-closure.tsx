@@ -774,81 +774,82 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         )}
       </AnimatePresence>
 
-      {/* Resolution question — odd sessions 5+ */}
+      {/* Process reflection — combined resolution + consultation card, sessions 4+ */}
       <AnimatePresence>
-        {phase === 'complete' && commitmentReady && session.sessionNumber >= 5 && session.sessionNumber % 2 !== 0 && (
+        {phase === 'complete' && commitmentReady && session.sessionNumber >= 4 && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: shouldReduce ? 0 : 2.2 }}
-            className="rounded-[var(--radius-card)] p-6 space-y-4"
+            className="rounded-[var(--radius-card)] p-6 space-y-5"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-sage)' }}
           >
-            <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '17px', lineHeight: 1.4 }}>
-              {t('stage6.resolution.question')}
-            </p>
-            {resolutionAnswer === null ? (
-              <div className="flex flex-col gap-2">
-                {(['much_better', 'better', 'still_working'] as const).map(opt => (
-                  <motion.button
-                    key={opt}
-                    type="button"
-                    onClick={() => {
-                      setResolutionAnswer(opt);
-                      onUpdate({ resolutionAnswer: opt });
-                    }}
-                    whileTap={shouldReduce ? {} : { scale: 0.98 }}
-                    className="w-full text-left px-4 py-3 rounded-[var(--radius-inner)] text-sm"
-                    style={{ background: 'var(--color-base)', border: '1.5px solid var(--color-border)', color: 'var(--color-deep)', cursor: 'pointer' }}
-                  >
-                    {t(`stage6.resolution.${opt}` as Parameters<typeof t>[0])}
-                  </motion.button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm" style={{ color: 'var(--color-sage)', fontStyle: 'italic' }}>
-                {t(`stage6.resolution.${resolutionAnswer}` as Parameters<typeof t>[0])}
+            {/* Resolution sub-question */}
+            <div className="space-y-3">
+              <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '16px', lineHeight: 1.4 }}>
+                {t('stage6.resolution.question')}
               </p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {resolutionAnswer === null ? (
+                <div className="flex flex-col gap-2">
+                  {(['much_better', 'better', 'still_working'] as const).map(opt => (
+                    <motion.button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        setResolutionAnswer(opt);
+                        onUpdate({ resolutionAnswer: opt });
+                      }}
+                      whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                      className="w-full text-left px-4 py-3 rounded-[var(--radius-inner)] text-sm"
+                      style={{ background: 'var(--color-base)', border: '1.5px solid var(--color-border)', color: 'var(--color-deep)', cursor: 'pointer' }}
+                    >
+                      {t(`stage6.resolution.${opt}` as Parameters<typeof t>[0])}
+                    </motion.button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--color-sage)', fontStyle: 'italic' }}>
+                  {t(`stage6.resolution.${resolutionAnswer}` as Parameters<typeof t>[0])}
+                </p>
+              )}
+            </div>
 
-      {/* Consultation reason closing loop — even sessions 6+ */}
-      <AnimatePresence>
-        {phase === 'complete' && commitmentReady && session.sessionNumber >= 6 && session.sessionNumber % 2 === 0 && patient.consultationReason && (
-          <motion.div
-            initial={shouldReduce ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 2.6 }}
-            className="rounded-[var(--radius-card)] p-6 space-y-4"
-            style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-violet)' }}
-          >
-            <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '17px', lineHeight: 1.4 }}>
-              {t('stage6.consultation.question').replace('{reason}', patient.consultationReason.slice(0, 80))}
-            </p>
-            {consultationAnswer === null ? (
-              <div className="flex flex-col gap-2">
-                {(['yes', 'partial', 'not_yet'] as const).map(opt => (
-                  <motion.button
-                    key={opt}
-                    type="button"
-                    onClick={() => {
-                      setConsultationAnswer(opt);
-                      onUpdate({ consultationAnswer: opt });
-                    }}
-                    whileTap={shouldReduce ? {} : { scale: 0.98 }}
-                    className="w-full text-left px-4 py-3 rounded-[var(--radius-inner)] text-sm"
-                    style={{ background: 'var(--color-base)', border: '1.5px solid var(--color-border)', color: 'var(--color-deep)', cursor: 'pointer' }}
-                  >
-                    {t(`stage6.consultation.${opt}` as Parameters<typeof t>[0])}
-                  </motion.button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm" style={{ color: 'var(--color-violet)', fontStyle: 'italic' }}>
-                {t(`stage6.consultation.${consultationAnswer}` as Parameters<typeof t>[0])}
-              </p>
+            {/* Consultation reason sub-question — shown after resolution is answered */}
+            {resolutionAnswer !== null && patient.consultationReason && (
+              <motion.div
+                initial={shouldReduce ? false : { opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.35 }}
+                className="space-y-3 overflow-hidden pt-2"
+                style={{ borderTop: '1px solid var(--color-border)' }}
+              >
+                <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '16px', lineHeight: 1.4 }}>
+                  {t('stage6.consultation.question').replace('{reason}', patient.consultationReason.slice(0, 80))}
+                </p>
+                {consultationAnswer === null ? (
+                  <div className="flex flex-col gap-2">
+                    {(['yes', 'partial', 'not_yet'] as const).map(opt => (
+                      <motion.button
+                        key={opt}
+                        type="button"
+                        onClick={() => {
+                          setConsultationAnswer(opt);
+                          onUpdate({ consultationAnswer: opt });
+                        }}
+                        whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                        className="w-full text-left px-4 py-3 rounded-[var(--radius-inner)] text-sm"
+                        style={{ background: 'var(--color-base)', border: '1.5px solid var(--color-border)', color: 'var(--color-deep)', cursor: 'pointer' }}
+                      >
+                        {t(`stage6.consultation.${opt}` as Parameters<typeof t>[0])}
+                      </motion.button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm" style={{ color: 'var(--color-violet)', fontStyle: 'italic' }}>
+                    {t(`stage6.consultation.${consultationAnswer}` as Parameters<typeof t>[0])}
+                  </p>
+                )}
+              </motion.div>
             )}
           </motion.div>
         )}

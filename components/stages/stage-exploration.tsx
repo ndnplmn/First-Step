@@ -29,12 +29,12 @@ const STAGE3_TO_FRAMEWORK: Record<Stage3Type, FrameworkKey> = {
   exposure: 'conductual',
 };
 
-const FRAMEWORK_NAMES: Record<Stage3Type, string> = {
-  memories: 'Psicoanálisis',
-  bodywork: 'Bioenergética',
-  social_context: 'Psicología Individual de Adler',
-  gestalt_activity: 'Terapia Gestalt',
-  exposure: 'Terapia Conductual',
+const FRAMEWORK_KEYS: Record<Stage3Type, string> = {
+  memories: 'stage3.framework.memories',
+  bodywork: 'stage3.framework.bodywork',
+  social_context: 'stage3.framework.social_context',
+  gestalt_activity: 'stage3.framework.gestalt_activity',
+  exposure: 'stage3.framework.exposure',
 };
 
 
@@ -56,13 +56,14 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
 
   const stage3Type = (session.stage3Type ?? 'memories') as Stage3Type;
   const frameworkKey = STAGE3_TO_FRAMEWORK[stage3Type];
-  const frameworkName = session.frameworkMatches[0]?.name ?? FRAMEWORK_NAMES[stage3Type];
+  const frameworkName = session.frameworkMatches[0]?.name ?? t(FRAMEWORK_KEYS[stage3Type] as Parameters<typeof t>[0]);
 
+  const fallbackTitle = session.conflicts[0]?.synthesized ?? t('stage3.fallback.title');
   const workCard = session.selectedWorkCard ?? {
     id: '0',
-    title: session.conflicts[0]?.synthesized ?? 'Lo que te trajo aquí',
-    subtitle: session.conflicts[0]?.synthesized ?? 'Lo que te trajo aquí',
-    openingLine: '¿Qué es lo primero que surge cuando piensas en lo que compartiste?',
+    title: fallbackTitle,
+    subtitle: fallbackTitle,
+    openingLine: t('stage3.fallback.opening'),
   };
 
   // Conversation state

@@ -252,7 +252,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                     )}
                   </AnimatePresence>
                 </div>
-                {reframeCount < 2 && (
+                {reframeCount < 2 ? (
                   <motion.button
                     type="button"
                     onClick={() => { setReframeCount(c => c + 1); generate(fullInterpretation?.text ?? (text || undefined)); }}
@@ -267,6 +267,10 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                     <ArrowCounterClockwise size={14} />
                     {t('stage4.reframe')}
                   </motion.button>
+                ) : (
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--color-muted)', fontStyle: 'italic', maxWidth: '24rem' }}>
+                    {t('stage4.reframe.limit')}
+                  </p>
                 )}
               </>
             ) : null

@@ -211,9 +211,15 @@ export function buildClosurePrompt(params: {
   const solutionVisionNote = params.patient.solutionVision && (params.priorSessions?.length ?? 0) >= 3
     ? `\n    El paciente definió su visión de éxito al inicio del proceso: "${params.patient.solutionVision}"\n    → En la carta, relaciona sutilmente lo trabajado hoy con esa visión. ¿Nos estamos acercando? ¿Hay nuevos pasos visibles? No la cites textualmente — interpreta si existe conexión.\n`
     : '';
-  const greetingMap: Record<string, string> = { es: `Querido/a`, en: `Dear`, ru: `Дорогой/ая` };
+  const gender = params.patient.gender;
+  const greetingMap: Record<string, Record<string, string>> = {
+    es: { female: 'Querida', male: 'Querido', other: 'Querido/a' },
+    en: { female: 'Dear', male: 'Dear', other: 'Dear' },
+    ru: { female: 'Дорогая', male: 'Дорогой', other: 'Дорогой/ая' },
+  };
   const closingMap: Record<string, string> = { es: `Con cariño,\n    Tend`, en: `With love,\n    Tend`, ru: `С теплом,\n    Tend` };
-  const greeting = greetingMap[params.locale ?? 'es'] ?? greetingMap.es;
+  const localeGreetings = greetingMap[params.locale ?? 'es'] ?? greetingMap.es;
+  const greeting = localeGreetings[gender] ?? localeGreetings.other;
   const closing = closingMap[params.locale ?? 'es'] ?? closingMap.es;
 
   return `
