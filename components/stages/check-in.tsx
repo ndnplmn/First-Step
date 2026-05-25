@@ -78,6 +78,11 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.reflectionQuestions?.[0] ?? null;
 
+  const lastSessionWellbeing = priorSessions
+    .filter(s => s.stage >= 6 && typeof s.wellbeingAfter === 'number')
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.wellbeingAfter ?? null;
+
   // Step 0
   const [wellbeing, setWellbeing] = useState<number | null>(null);
   // Step 1
@@ -211,6 +216,13 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
       ...session,
       wellbeingBefore: wellbeing ?? undefined,
       quickSession: true,
+    });
+  };
+
+  const handleStartDirect = () => {
+    onComplete({
+      ...buildUpdatedSession(),
+      wellbeingBefore: wellbeing ?? undefined,
     });
   };
 
@@ -410,16 +422,23 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
 
             {/* Step 0: Wellbeing */}
             {step === 0 && (
-              <div className="flex flex-wrap gap-3">
-                {WELLBEING_OPTIONS.map(opt => (
-                  <Chip
-                    key={opt.value}
-                    label={opt.label}
-                    active={wellbeing === opt.value}
-                    onClick={() => setWellbeing(opt.value)}
-                    reduce={shouldReduce}
-                  />
-                ))}
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  {WELLBEING_OPTIONS.map(opt => (
+                    <Chip
+                      key={opt.value}
+                      label={opt.label}
+                      active={wellbeing === opt.value}
+                      onClick={() => setWellbeing(opt.value)}
+                      reduce={shouldReduce}
+                    />
+                  ))}
+                </div>
+                {lastSessionWellbeing !== null && (
+                  <p className="text-xs" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+                    {t('checkin.wellbeing.last').replace('{score}', String(lastSessionWellbeing))}
+                  </p>
+                )}
               </div>
             )}
 
@@ -719,6 +738,16 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
               style={{ color: 'var(--color-muted)' }}
             >
               {t('checkin.skip')}
+            </button>
+          )}
+          {step === 0 && wellbeing !== null && wellbeing >= 4 && priorSessions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleStartDirect}
+              className="w-full py-2.5 text-sm font-medium text-center rounded-xl border hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--color-sage)', borderColor: 'var(--color-sage)', background: 'transparent' }}
+            >
+              {t('checkin.start.direct')}
             </button>
           )}
           {step === 0 && wellbeing !== null && wellbeing <= 2 && priorSessions.some(s => s.selectedWorkCard) && (

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, PatientSession, Closure, Strategy } from '@/lib/types';
-import { generateStrategies, generateReflectionQuestions } from '@/actions/ai';
+import { generateStrategies, generateReflectionQuestions, suggestCommitment } from '@/actions/ai';
 import { buildClosurePrompt } from '@/lib/ai-prompts';
 import { useAIStream } from '@/hooks/use-ai-stream';
 import { AICard } from '@/components/ai/ai-card';
@@ -119,6 +119,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   );
   const [commitmentText, setCommitmentText] = useState('');
   const [commitmentSkipped, setCommitmentSkipped] = useState(false);
+  const [aiCommitmentSuggestion, setAiCommitmentSuggestion] = useState<string | null>(null);
 
   // ─── Content state ──────────────────────────────────────────────────
   const [fullClosure, setFullClosure] = useState<Closure | null>(session.closure ?? null);
@@ -184,6 +185,23 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     const timer = setTimeout(() => onComplete(pendingAction), shouldReduce ? 0 : 1800);
     return () => clearTimeout(timer);
   }, [celebrating, pendingAction, shouldReduce, onComplete]);
+
+  // Fetch AI commitment suggestion when commitment section appears
+  useEffect(() => {
+    if (phase !== 'complete') return;
+    if (localCommitment || commitmentSkipped || aiCommitmentSuggestion) return;
+    if (!session.interpretation?.text) return;
+    suggestCommitment({
+      conflicts: session.conflicts,
+      interpretation: session.interpretation.text,
+      patient,
+      explorationRecord: session.explorationRecord ?? undefined,
+      locale,
+    }).then(suggestion => {
+      if (suggestion) setAiCommitmentSuggestion(suggestion);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const handleComplete = (action: ClosureAction) => {
     setPendingAction(action);
@@ -623,6 +641,24 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             <p style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: 'var(--color-deep)', lineHeight: 1.4 }}>
               {t('stage3.action.experiment.q')}
             </p>
+            {aiCommitmentSuggestion && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] uppercase tracking-widest font-medium" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
+                  {t('stage6.commitment.suggest.label')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCommitmentText(aiCommitmentSuggestion)}
+                  className="w-full text-left text-sm px-4 py-3 rounded-[var(--radius-inner)] transition-all hover:opacity-80"
+                  style={{ background: 'rgba(61,107,71,0.08)', border: '1px solid rgba(61,107,71,0.2)', color: 'var(--color-deep)', lineHeight: 1.5 }}
+                >
+                  {aiCommitmentSuggestion}
+                  <span className="block text-[11px] mt-1.5 font-medium" style={{ color: 'var(--color-sage)' }}>
+                    {t('stage6.commitment.suggest.use')} →
+                  </span>
+                </button>
+              </div>
+            )}
             <textarea
               value={commitmentText}
               onChange={e => setCommitmentText(e.target.value)}

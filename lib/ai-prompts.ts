@@ -112,6 +112,18 @@ function buildClinicalSafetyNote(priorSessions: PatientSession[]): string {
   return `\n    NOTA CLÍNICA — CONTENCIÓN PRIORITARIA: ${alerts.join('. ')}.\n    → El nivel de malestar clínico es significativo. Prioriza la validación emocional y la contención sobre la exploración profunda. Ancla la intervención en lo concreto y lo que el paciente puede sostener ahora mismo. Evita abrir nuevas áreas de vulnerabilidad.\n`;
 }
 
+function buildWellbeingTrend(priorSessions: PatientSession[]): string {
+  const withWellbeing = [...priorSessions]
+    .filter(s => s.stage === 6 && typeof s.wellbeingAfter === 'number')
+    .sort((a, b) => a.sessionNumber - b.sessionNumber);
+  if (withWellbeing.length < 2) return '';
+  const trend = withWellbeing.map(s => `s${s.sessionNumber}:${s.wellbeingAfter}/5`).join(' → ');
+  const last = withWellbeing[withWellbeing.length - 1].wellbeingAfter as number;
+  const first = withWellbeing[0].wellbeingAfter as number;
+  const direction = last > first ? 'mejora' : last < first ? 'descenso' : 'estable';
+  return `\n    Tendencia de bienestar entre sesiones (${direction}): ${trend}\n    → Reconoce este arco en la carta — no como evaluación, sino como testigo del proceso.\n`;
+}
+
 export function buildInterpretationPrompt(params: {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
@@ -165,6 +177,7 @@ ${stage3Section}${sessionHistory}${clinicalSafetyNote}
     Reglas:
     - Dirígete directamente al paciente (segunda persona "tú")
     - Conecta lo trabajado en sesión con su conflicto actual desde la lente del marco terapéutico
+    - OBLIGATORIO: Si el paciente tiene un motivo de consulta definido, conecta explícitamente la interpretación con ese motivo — no como mera mención, sino como hilo conductor que da sentido a lo trabajado hoy. El paciente debe reconocer la conexión entre lo que exploró y por qué vino.
     - Si hay notas de exploración, integra los insights concretos que el paciente compartió
     - Si hay historial de sesiones anteriores y existe un patrón recurrente, menciónalo brevemente para reforzar la continuidad del proceso
     - Usa lenguaje accesible, no técnico
@@ -192,6 +205,9 @@ export function buildClosurePrompt(params: {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
   const closureHistory = buildSessionHistory(params.priorSessions ?? []);
   const closureClinicalNote = buildClinicalSafetyNote(params.priorSessions ?? []);
+  const wellbeingTrendNote = (params.priorSessions?.length ?? 0) >= 2
+    ? buildWellbeingTrend(params.priorSessions ?? [])
+    : '';
   const solutionVisionNote = params.patient.solutionVision && (params.priorSessions?.length ?? 0) >= 3
     ? `\n    El paciente definió su visión de éxito al inicio del proceso: "${params.patient.solutionVision}"\n    → En la carta, relaciona sutilmente lo trabajado hoy con esa visión. ¿Nos estamos acercando? ¿Hay nuevos pasos visibles? No la cites textualmente — interpreta si existe conexión.\n`
     : '';
@@ -209,7 +225,7 @@ export function buildClosurePrompt(params: {
 
     Contexto del paciente:
     ${buildPatientContext(params.patient)}
-${closureHistory}${closureClinicalNote}${solutionVisionNote}
+${closureHistory}${wellbeingTrendNote}${closureClinicalNote}${solutionVisionNote}
     Se le ha dado esta interpretación:
     "${interpretation}"
     ${params.interpretationResponse ? `\n    El paciente respondió a la interpretación con:\n    "${params.interpretationResponse}"\n    → Si esta respuesta revela algo importante — acuerdo, resistencia, sorpresa — recógela en la carta. No la ignores.` : ''}

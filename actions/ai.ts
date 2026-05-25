@@ -1101,6 +1101,53 @@ ${explorationContext}${commitmentContext}
   return Array.isArray(parsed.strategies) ? parsed.strategies.slice(0, 3) : [];
 }
 
+export async function suggestCommitment(params: {
+  conflicts: Conflict[];
+  interpretation: string;
+  patient: Patient;
+  explorationRecord?: ExplorationRecord;
+  locale?: string;
+}): Promise<string> {
+  const explorationLine = params.explorationRecord?.insights?.length
+    ? `Insights de la exploración: ${params.explorationRecord.insights.map(i => i.theme).join(', ')}.`
+    : '';
+
+  const prompt = `
+    Eres un psicoterapeuta que sugiere un compromiso de acción concreto y pequeño.
+
+    Contexto del paciente:
+    ${buildPatientContext(params.patient)}
+
+    Conflictos trabajados: ${params.conflicts.map(c => c.synthesized).join(', ')}
+    Interpretación de la sesión: "${params.interpretation}"
+    ${explorationLine}
+
+    Genera UN SOLO compromiso de acción para esta semana. Debe:
+    - Ser conductualmente específico: qué hace, cuándo, durante cuánto tiempo (ej. "Esta semana, cuando notes que te criticas, escribe esa crítica en un papel y añade: ¿qué necesidad estoy intentando proteger?")
+    - Ser pequeño y realizable en 7 días sin ayuda profesional
+    - Conectar directamente con el material trabajado hoy
+    - Estar redactado en primera persona del paciente (empezar con "Esta semana..." o "Cuando..." o "Cada vez que...")
+    - Máximo 2 oraciones
+
+    Responde SOLO con el texto del compromiso, sin comillas, sin explicaciones.
+  ${getLanguageInstruction(params.locale)}`;
+
+  let content: string;
+  try {
+    const response = await getAI().chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.6,
+      max_tokens: 120,
+    });
+    content = response.choices[0]?.message?.content?.trim() || '';
+  } catch (error) {
+    handleAIError(error);
+  }
+
+  return content;
+}
+
 // --- ACTION 7: Pregunta adaptativa del terapeuta ---
 // Evalúa si la IA ya tiene suficiente información para formular su análisis.
 // Si no, devuelve la pregunta más importante que falta. Si sí, devuelve done: true.

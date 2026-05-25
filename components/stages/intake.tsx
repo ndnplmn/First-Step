@@ -250,7 +250,7 @@ function canProceed(
     case 5: { const n = parseInt(values.age); return n >= 18 && n < 120; }
     case 6: return values.hasChildren !== null;
     case 7: return values.livingSituation !== 'other' || values.livingSituationDetail.trim().length > 0;
-    case 8: return values.hasSupportNetwork !== null && values.previousTherapy !== null && values.takingMedication !== null;
+    case 8: return values.hasSupportNetwork !== null;
     case 9: return wellbeingAtIntake !== null;
     default: return false;
   }
@@ -476,12 +476,12 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
         values.hasSupportNetwork && values.supportDescription.trim()
           ? values.supportDescription.trim()
           : undefined,
-      previousTherapy: values.previousTherapy!,
+      previousTherapy: values.previousTherapy ?? false,
       previousTherapyDetail:
         values.previousTherapy && values.previousTherapyDetail.trim()
           ? values.previousTherapyDetail.trim()
           : undefined,
-      takingMedication: values.takingMedication!,
+      takingMedication: values.takingMedication ?? false,
       medicationDetail:
         values.takingMedication && values.medicationDetail.trim()
           ? values.medicationDetail.trim()

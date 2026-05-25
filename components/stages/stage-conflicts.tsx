@@ -128,6 +128,12 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
       return t('stage2.greeting.alignment_no');
     }
     if (session.consultationAlignment === 'partial') {
+      if (session.consultationAlignmentNote) {
+        const truncated = session.consultationAlignmentNote.length > 100
+          ? session.consultationAlignmentNote.slice(0, 97) + '…'
+          : session.consultationAlignmentNote;
+        return t('stage2.greeting.alignment_partial_note').replace('{note}', truncated);
+      }
       return t('stage2.greeting.alignment_partial');
     }
     if (session.commitmentFollowUp?.status === 'yes') {
