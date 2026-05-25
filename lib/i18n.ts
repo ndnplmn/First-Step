@@ -209,8 +209,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'dashboard.stage.ongoing': 'En progreso',
     'dashboard.start.first': 'Iniciar primera sesión',
     'dashboard.start.new': 'Iniciar nueva sesión',
-    'dashboard.start.first.sub': 'Comenzar tu proceso',
-    'dashboard.start.new.sub': 'Sesión {n}',
+    'dashboard.start.first.sub': 'Comenzar tu proceso · ~25 min',
+    'dashboard.start.new.sub': 'Sesión {n} · ~25 min',
     'dashboard.quick.record': 'Mi resumen',
     'dashboard.quick.diary': 'Mi diario',
     'dashboard.quick.progress': 'Tu camino',
@@ -830,9 +830,15 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     'record.share.title': 'Mi resumen — Tend',
 
+    // Session duration
+    'session_intro.duration': '~25-30 min · Sesión completa',
+    'checkin.gestalt.chip': 'Actividad pendiente: {title}',
+    'stage6.commitment.intro': 'Antes de cerrar — un pequeño paso concreto',
+
     // Chapter transitions
     'chapter.stage.2.name': 'APERTURA',
     'chapter.stage.3.name': 'EXPLORACIÓN',
+    'chapter.stage.4.name': 'COMPRENSIÓN',
     'chapter.stage.6.name': 'CIERRE',
 
     // AI card
@@ -1066,8 +1072,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'dashboard.stage.ongoing': 'Ongoing',
     'dashboard.start.first': 'Start first session',
     'dashboard.start.new': 'Start new session',
-    'dashboard.start.first.sub': 'Begin your process',
-    'dashboard.start.new.sub': 'Session {n}',
+    'dashboard.start.first.sub': 'Begin your process · ~25 min',
+    'dashboard.start.new.sub': 'Session {n} · ~25 min',
     'dashboard.quick.record': 'My summary',
     'dashboard.quick.diary': 'My diary',
     'dashboard.quick.progress': 'Your journey',
@@ -1687,9 +1693,15 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     'record.share.title': 'My summary — Tend',
 
+    // Session duration
+    'session_intro.duration': '~25-30 min · Full session',
+    'checkin.gestalt.chip': 'Pending activity: {title}',
+    'stage6.commitment.intro': 'Before we close — one small concrete step',
+
     // Chapter transitions
     'chapter.stage.2.name': 'OPENING',
     'chapter.stage.3.name': 'EXPLORATION',
+    'chapter.stage.4.name': 'INSIGHT',
     'chapter.stage.6.name': 'CLOSURE',
 
     // AI card
@@ -1923,8 +1935,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     'dashboard.stage.ongoing': 'В процессе',
     'dashboard.start.first': 'Начать первую сессию',
     'dashboard.start.new': 'Начать новую сессию',
-    'dashboard.start.first.sub': 'Начните ваш процесс',
-    'dashboard.start.new.sub': 'Сессия {n}',
+    'dashboard.start.first.sub': 'Начните ваш процесс · ~25 мин',
+    'dashboard.start.new.sub': 'Сессия {n} · ~25 мин',
     'dashboard.quick.record': 'Мой обзор',
     'dashboard.quick.diary': 'Мой дневник',
     'dashboard.quick.progress': 'Ваш путь',
@@ -2544,9 +2556,15 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     'record.share.title': 'Моё резюме — Tend',
 
+    // Session duration
+    'session_intro.duration': '~25-30 мин · Полная сессия',
+    'checkin.gestalt.chip': 'Незавершённая активность: {title}',
+    'stage6.commitment.intro': 'Перед закрытием — один небольшой конкретный шаг',
+
     // Chapter transitions
     'chapter.stage.2.name': 'ОТКРЫТИЕ',
     'chapter.stage.3.name': 'ИССЛЕДОВАНИЕ',
+    'chapter.stage.4.name': 'ПОНИМАНИЕ',
     'chapter.stage.6.name': 'ЗАВЕРШЕНИЕ',
 
     // AI card

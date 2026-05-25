@@ -544,11 +544,13 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
             {step === 3 && (
               <div className="space-y-3">
                 {(() => {
-                  const lastInsights = priorSessions
-                    .filter(s => s.stage >= 6 && s.explorationRecord?.insights?.length)
-                    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
-                    ?.explorationRecord?.insights?.slice(0, 3) ?? [];
-                  if (lastInsights.length === 0 || sessionIntention) return null;
+                  const lastSession = priorSessions
+                    .filter(s => s.stage >= 6)
+                    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0];
+                  const lastInsights = lastSession?.explorationRecord?.insights?.slice(0, 3) ?? [];
+                  const pendingGestalt = lastSession?.gestaltActivity && !lastSession.gestaltActivityResponse
+                    ? lastSession.gestaltActivity : null;
+                  if ((lastInsights.length === 0 && !pendingGestalt) || sessionIntention) return null;
                   return (
                     <motion.div
                       initial={shouldReduce ? false : { opacity: 0, y: 8 }}
@@ -556,6 +558,22 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                       transition={{ duration: 0.35 }}
                     >
                       <div className="flex flex-wrap gap-2">
+                        {pendingGestalt && (
+                          <button
+                            key="gestalt"
+                            type="button"
+                            onClick={() => setSessionIntention(t('checkin.gestalt.chip').replace('{title}', pendingGestalt.title))}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style={{
+                              background: 'rgba(109,40,217,0.08)',
+                              color: 'var(--color-violet)',
+                              border: '1px solid rgba(109,40,217,0.2)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {t('checkin.gestalt.chip').replace('{title}', pendingGestalt.title)}
+                          </button>
+                        )}
                         {lastInsights.map((insight, i) => (
                           <button
                             key={i}

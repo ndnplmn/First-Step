@@ -12,8 +12,7 @@ import { ArrowCounterClockwise, FileText, ArrowsClockwise, House } from '@phosph
 import { useLanguage } from '@/contexts/language-context';
 
 type ClosureAction = 'dashboard' | 'record' | 'new-session' | 'diary';
-type ClosurePhase = 'checkout' | 'commitment' | 'content' | 'complete';
-type CommitmentInputPhase = 'obstacle' | 'experiment';
+type ClosurePhase = 'checkout' | 'content' | 'complete';
 
 function StrategiesSection({ strategies, label, shouldReduce }: { strategies: Strategy[]; label: string; shouldReduce: boolean }) {
   const [expanded, setExpanded] = useState<number>(0);
@@ -114,13 +113,12 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     session.intentionOutcome ?? null
   );
 
-  // ─── Commitment state (moved from Stage 3) ──────────────────────────
-  const [commitmentInputPhase, setCommitmentInputPhase] = useState<CommitmentInputPhase>('obstacle');
-  const [obstacleText, setObstacleText] = useState('');
-  const [experimentText, setExperimentText] = useState('');
+  // ─── Commitment state (captured inline in complete phase) ───────────
   const [localCommitment, setLocalCommitment] = useState<string | undefined>(
     session.explorationRecord?.actionCommitment
   );
+  const [commitmentText, setCommitmentText] = useState('');
+  const [commitmentSkipped, setCommitmentSkipped] = useState(false);
 
   // ─── Content state ──────────────────────────────────────────────────
   const [fullClosure, setFullClosure] = useState<Closure | null>(session.closure ?? null);
@@ -269,30 +267,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
 
   const handleCheckoutContinue = () => {
     onUpdate({ wellbeingAfter: wellbeingAfter ?? undefined, intentionOutcome: intentionOutcome ?? undefined });
-    // Skip commitment if quick session or no exploration record
-    if (session.quickSession || !session.explorationRecord || localCommitment) {
-      setPhase('content');
-    } else {
-      setPhase('commitment');
-    }
-  };
-
-  const handleCommitmentAdvance = () => {
-    if (commitmentInputPhase === 'obstacle') {
-      setCommitmentInputPhase('experiment');
-      return;
-    }
-    const commitment = obstacleText.trim() && experimentText.trim()
-      ? `Obstáculo: ${obstacleText.trim()} → ${experimentText.trim()}`
-      : experimentText.trim() || undefined;
-    setLocalCommitment(commitment);
-    if (commitment && session.explorationRecord) {
-      onUpdate({ explorationRecord: { ...session.explorationRecord, actionCommitment: commitment } });
-    }
     setPhase('content');
   };
 
-  const handleSkipCommitment = () => setPhase('content');
+  const commitmentReady = session.quickSession || !session.explorationRecord || localCommitment !== undefined || commitmentSkipped;
 
   const displayText = shouldReduce ? (fullClosure?.text ?? text) : text;
   const showContent = isDone || isStreaming || (!!shouldReduce && !!fullClosure);
@@ -465,145 +443,6 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     );
   }
 
-  // ─── Phase: commitment (obstacle → experiment) ──────────────────────
-  if (phase === 'commitment') {
-    return (
-      <motion.div
-        initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-6 pb-48"
-      >
-        <div>
-          <p className="text-xs mb-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
-            {t('stage6.label')}
-          </p>
-          <h2
-            className="leading-tight"
-            style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 5vw, 42px)', color: 'var(--color-deep)' }}
-          >
-            {t('stage3.action.title')}
-          </h2>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {commitmentInputPhase === 'obstacle' ? (
-            <motion.div
-              key="obstacle"
-              initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={shouldReduce ? {} : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.35 }}
-              className="space-y-5"
-            >
-              <div
-                className="rounded-[var(--radius-card)] p-5"
-                style={{ background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}
-              >
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--color-deep)', lineHeight: 1.5, margin: 0 }}>
-                  {t('stage3.action.obstacle.q.pre')}
-                  <em>{session.selectedWorkCard?.title.toLowerCase() ?? session.conflicts[0]?.synthesized ?? ''}</em>
-                  {t('stage3.action.obstacle.q.post')}
-                </p>
-              </div>
-              <textarea
-                value={obstacleText}
-                onChange={e => setObstacleText(e.target.value)}
-                placeholder={t('stage3.action.obstacle.placeholder')}
-                autoFocus
-                rows={3}
-                style={textareaStyle}
-                onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-              />
-              <div className="space-y-3">
-                <AnimatePresence>
-                  {obstacleText.trim().length >= 5 && (
-                    <motion.button
-                      type="button"
-                      onClick={handleCommitmentAdvance}
-                      initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={shouldReduce ? {} : { opacity: 0 }}
-                      whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                      className="w-full py-4 rounded-2xl font-semibold text-white"
-                      style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', border: 'none', cursor: 'pointer', fontSize: '0.9375rem' }}
-                    >
-                      {t('stage3.action.obstacle.next')}
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-                <button
-                  type="button"
-                  onClick={handleSkipCommitment}
-                  style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center', width: '100%' }}
-                >
-                  {t('stage3.action.skip')}
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="experiment"
-              initial={shouldReduce ? {} : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={shouldReduce ? {} : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.35 }}
-              className="space-y-5"
-            >
-              <div
-                className="rounded-[var(--radius-card)] p-5"
-                style={{ background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}
-              >
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 2.5vw, 1.2rem)', color: 'var(--color-deep)', lineHeight: 1.5, margin: '0 0 0.5rem' }}>
-                  {t('stage3.action.experiment.q')}
-                </p>
-                <p style={{ color: 'var(--color-muted)', fontSize: '0.8125rem', margin: 0, lineHeight: 1.5 }}>
-                  {t('stage3.action.subtitle')}
-                </p>
-              </div>
-              <textarea
-                value={experimentText}
-                onChange={e => setExperimentText(e.target.value)}
-                placeholder={t('stage3.action.placeholder')}
-                autoFocus
-                rows={3}
-                style={textareaStyle}
-                onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-              />
-              <div className="space-y-3">
-                <AnimatePresence>
-                  {experimentText.trim().length >= 5 && (
-                    <motion.button
-                      type="button"
-                      onClick={handleCommitmentAdvance}
-                      initial={shouldReduce ? {} : { opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={shouldReduce ? {} : { opacity: 0 }}
-                      whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                      className="w-full py-4 rounded-2xl font-semibold text-white"
-                      style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', border: 'none', cursor: 'pointer', fontSize: '0.9375rem' }}
-                    >
-                      {t('stage3.action.commit')}
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-                <button
-                  type="button"
-                  onClick={handleSkipCommitment}
-                  style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center', width: '100%' }}
-                >
-                  {t('stage3.action.skip')}
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    );
-  }
-
   // ─── Phase: content + complete ───────────────────────────────────────
   return (
     <div className="space-y-8 pb-48">
@@ -755,16 +594,76 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         )}
       </AnimatePresence>
 
+      {/* Commitment capture — inline, after reading the letter */}
+      <AnimatePresence>
+        {phase === 'complete' && !commitmentReady && (
+          <motion.div
+            initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: shouldReduce ? 0 : 0.4 }}
+            className="rounded-[var(--radius-card)] p-6 space-y-4"
+            style={{ background: 'rgba(61,107,71,0.06)', border: '1px solid rgba(61,107,71,0.18)' }}
+          >
+            <p className="text-xs font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)' }}>
+              {t('stage6.commitment.intro')}
+            </p>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '17px', color: 'var(--color-deep)', lineHeight: 1.4 }}>
+              {t('stage3.action.experiment.q')}
+            </p>
+            <textarea
+              value={commitmentText}
+              onChange={e => setCommitmentText(e.target.value)}
+              placeholder={t('stage3.action.placeholder')}
+              rows={3}
+              style={textareaStyle}
+              onFocus={e => (e.target.style.borderColor = 'var(--color-sage)')}
+              onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+            />
+            <div className="space-y-2">
+              <AnimatePresence>
+                {commitmentText.trim().length >= 5 && (
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      const c = commitmentText.trim();
+                      setLocalCommitment(c);
+                      if (session.explorationRecord) {
+                        onUpdate({ explorationRecord: { ...session.explorationRecord, actionCommitment: c } });
+                      }
+                    }}
+                    initial={shouldReduce ? {} : { opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={shouldReduce ? {} : { opacity: 0 }}
+                    whileTap={shouldReduce ? {} : { scale: 0.97 }}
+                    className="w-full py-3.5 rounded-2xl font-semibold text-white"
+                    style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', border: 'none', cursor: 'pointer', fontSize: '0.9375rem' }}
+                  >
+                    {t('stage3.action.commit')}
+                  </motion.button>
+                )}
+              </AnimatePresence>
+              <button
+                type="button"
+                onClick={() => setCommitmentSkipped(true)}
+                style={{ background: 'none', border: 'none', color: 'var(--color-muted)', fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem', textAlign: 'center', width: '100%' }}
+              >
+                {t('stage3.action.skip')}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Estrategias prácticas */}
       <AnimatePresence>
-        {phase === 'complete' && strategies.length > 0 && (
+        {phase === 'complete' && commitmentReady && strategies.length > 0 && (
           <StrategiesSection strategies={strategies} label={t('stage6.strategies.label')} shouldReduce={!!shouldReduce} />
         )}
       </AnimatePresence>
 
       {/* Reflection questions — collapsed by default, with copy button */}
       <AnimatePresence>
-        {phase === 'complete' && reflectionQuestions.length > 0 && (
+        {phase === 'complete' && commitmentReady && reflectionQuestions.length > 0 && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -826,9 +725,9 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         )}
       </AnimatePresence>
 
-      {/* Resolution question — session 5+ */}
+      {/* Resolution question — odd sessions 5+ */}
       <AnimatePresence>
-        {phase === 'complete' && session.sessionNumber >= 5 && (
+        {phase === 'complete' && commitmentReady && session.sessionNumber >= 5 && session.sessionNumber % 2 !== 0 && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -866,9 +765,9 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         )}
       </AnimatePresence>
 
-      {/* Consultation reason closing loop — session 5+ */}
+      {/* Consultation reason closing loop — even sessions 6+ */}
       <AnimatePresence>
-        {phase === 'complete' && session.sessionNumber >= 5 && patient.consultationReason && (
+        {phase === 'complete' && commitmentReady && session.sessionNumber >= 6 && session.sessionNumber % 2 === 0 && patient.consultationReason && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -908,7 +807,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
 
       {/* Action cards */}
       <AnimatePresence>
-        {phase === 'complete' && (
+        {phase === 'complete' && commitmentReady && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}

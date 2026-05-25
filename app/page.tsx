@@ -355,6 +355,9 @@ export default function Home() {
           <p style={{ color: 'var(--color-muted)', fontSize: '1rem', lineHeight: 1.6 }}>
             {t('session_intro.subtitle')}
           </p>
+          <p style={{ color: 'var(--color-border)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
+            {t('session_intro.duration')}
+          </p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
