@@ -603,6 +603,22 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                       transition={{ duration: 0.35 }}
                     >
                       <div className="flex flex-wrap gap-2">
+                        {patient.solutionVision && (
+                          <button
+                            key="goal"
+                            type="button"
+                            onClick={() => setSessionIntention(patient.solutionVision!)}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style={{
+                              background: 'rgba(180,110,69,0.08)',
+                              color: 'var(--color-terracotta)',
+                              border: '1px solid rgba(180,110,69,0.2)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ↗ {patient.solutionVision.length > 55 ? patient.solutionVision.slice(0, 52) + '…' : patient.solutionVision}
+                          </button>
+                        )}
                         {pendingGestalt && (
                           <button
                             key="gestalt"

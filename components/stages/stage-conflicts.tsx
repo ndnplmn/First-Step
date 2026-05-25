@@ -372,6 +372,8 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
         stage3Type: data.stage3Type,
         patient,
         consultationAlignment: session.consultationAlignment,
+        consultationAlignmentNote: session.consultationAlignmentNote,
+        sessionIntention: session.sessionIntention,
         locale,
       }).then(cards => {
         // For session 3+, prepend a continuity card that picks up from the last exploration
@@ -383,7 +385,7 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
             const continuityCard: WorkCard = {
               id: 'continuity',
               title: `${t('stage2.cards.continuity.badge')}: ${theme}`,
-              subtitle: insight || `¿Qué ha movido en ti lo que exploramos la última vez?`,
+              subtitle: insight || t('stage2.cards.continuity.subtitle'),
               openingLine: r.actionCommitment
                 ? `La última vez te propusiste "${r.actionCommitment.replace('Obstáculo: ', '').split(' → ')[0]}". ¿Cómo estuvo eso?`
                 : `La última vez llegamos a "${theme}". ¿Qué ha surgido desde entonces?`,

@@ -284,6 +284,26 @@ export function ClinicalAssessment({ session, instrument = 'both', onComplete }:
             {t('assessment.results.body')}
           </p>
 
+          {(phq9Result?.severity === 'severe' || gad7Result?.severity === 'severe') && (
+            <motion.div
+              initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="p-4 rounded-[var(--radius-card)] space-y-2"
+              style={{ background: 'rgba(140,40,40,0.07)', border: '1px solid rgba(140,40,40,0.18)' }}
+            >
+              <p
+                className="text-[10px] font-medium uppercase tracking-widest"
+                style={{ fontFamily: 'var(--font-mono)', color: '#8c2828' }}
+              >
+                {t('assessment.escalation.label')}
+              </p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-deep)' }}>
+                {t('assessment.escalation.body')}
+              </p>
+            </motion.div>
+          )}
+
           <motion.button
             type="button"
             onClick={handleContinue}
