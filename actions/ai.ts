@@ -762,12 +762,15 @@ export async function getExplorationResponse(params: {
   phq9?: PHQ9Response | null;
   gad7?: GAD7Response | null;
   recentDiaryEntry?: string;
+  quickSession?: boolean;
+  solutionVision?: string;
 }): Promise<{ done: boolean; response: string; nextPhase: ExplorationPhase; insightDetected: boolean }> {
   const { selectedCard, messages, conflicts, frameworkMatches, patient, stage3Type, currentPhase, priorSessions = [] } = params;
 
   const patientTurns = messages.filter(m => m.role === 'patient').length;
   const isLightMode = params.wellbeingBefore !== undefined && params.wellbeingBefore <= 2;
-  const canClose = patientTurns >= (isLightMode ? 3 : 4);
+  const minTurns = params.quickSession ? 2 : (isLightMode ? 3 : 4);
+  const canClose = patientTurns >= minTurns;
 
   const frameworkLens: Record<Stage3Type, string> = {
     memories: 'Psicoanálisis freudiano: conecta el relato del paciente con figuras de apego tempranas, patrones de repetición, y el significado inconsciente que el paciente no puede ver directamente.',
@@ -858,7 +861,7 @@ CUÁNDO MARCAR done: true (solo si canClose es true — ya hay ${patientTurns} t
 - La fase de consolidación está activa Y el paciente ha dado al menos una respuesta integradora
 - Si hay más por explorar y el material está vivo — NO cierres, aunque hayan pasado muchos turnos
 - Un buen terapeuta no cierra por conveniencia — cierra cuando el trabajo está hecho`
-    : `CIERRE: Aún no es posible cerrar (mínimo 4 turnos del paciente — van ${patientTurns}). done debe ser false.`;
+    : `CIERRE: Aún no es posible cerrar (mínimo ${minTurns} turnos del paciente — van ${patientTurns}). done debe ser false.`;
 
   const phaseTransitionRules = `
 TRANSICIÓN DE FASE:
@@ -915,7 +918,7 @@ Eres un psicoterapeuta magistral. Tu trabajo no es hacer que el paciente se sien
 ═══════════════════════════════════════
 CONTEXTO DEL CASO
 ═══════════════════════════════════════
-Paciente: ${buildPatientContext(patient, params.lifeChanges, params.sessionIntention, params.locale)}${buildClinicalContext(params.phq9, params.gad7)}${params.recentDiaryEntry ? `\nEntrada reciente en diario: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo. No lo menciones directamente — úsalo como contexto de fondo.` : ''}${params.wellbeingBefore !== undefined ? `\nEstado al llegar a sesión: ${params.wellbeingBefore}/5` : ''}${isLightMode ? `\n\n⚠ MODO SUAVE ACTIVADO: El paciente llegó con bienestar muy bajo (${params.wellbeingBefore}/5). Prioriza contención y presencia sobre insight profundo. No empujes hacia fases de challenging o pattern_linking. El objetivo es que salga mejor de como entró. Sé especialmente cálido y no presiones si hay resistencia.` : ''}
+Paciente: ${buildPatientContext(patient, params.lifeChanges, params.sessionIntention, params.locale)}${buildClinicalContext(params.phq9, params.gad7)}${params.recentDiaryEntry ? `\nEntrada reciente en diario: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo. No lo menciones directamente — úsalo como contexto de fondo.` : ''}${params.wellbeingBefore !== undefined ? `\nEstado al llegar a sesión: ${params.wellbeingBefore}/5` : ''}${isLightMode ? `\n\n⚠ MODO SUAVE ACTIVADO: El paciente llegó con bienestar muy bajo (${params.wellbeingBefore}/5). Prioriza contención y presencia sobre insight profundo. No empujes hacia fases de challenging o pattern_linking. El objetivo es que salga mejor de como entró. Sé especialmente cálido y no presiones si hay resistencia.` : ''}${params.quickSession ? `\n\n⚡ SESIÓN CORTA: El paciente eligió una sesión abreviada. Sé más directo y sintético. Busca llegar a un punto de insight o validación en 2-3 turnos. Avanza hacia consolidación antes de lo habitual.` : ''}
 Conflictos: ${conflicts.map(c => c.synthesized).join(', ')}
 Marco: ${formatFrameworks(frameworkMatches)}
 ${priorContext}
@@ -924,7 +927,7 @@ FOCO DE ESTA SESIÓN
 ═══════════════════════════════════════
 Tema: "${selectedCard.title}"
 Eje: "${selectedCard.subtitle}"${params.sessionIntention ? `\nIntención del paciente para hoy: "${params.sessionIntention}"
-→ Alrededor del turno 4-5, si el material lo permite, conecta brevemente lo explorado con esta intención. No lo fuerces — solo si es natural.` : ''}
+→ Alrededor del turno 4-5, si el material lo permite, conecta brevemente lo explorado con esta intención. No lo fuerces — solo si es natural.` : ''}${params.solutionVision ? `\nVisión de éxito del paciente: "${params.solutionVision}" → En la fase de consolidación, si surge naturalmente, conecta lo explorado con esta visión. No lo menciones en fases tempranas.` : ''}
 
 ═══════════════════════════════════════
 CONVERSACIÓN — turno ${patientTurns} del paciente

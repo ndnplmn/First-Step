@@ -236,7 +236,7 @@ export function buildClosurePrompt(params: {
   const wellbeingTrendNote = (params.priorSessions?.length ?? 0) >= 2
     ? buildWellbeingTrend(params.priorSessions ?? [])
     : '';
-  const solutionVisionNote = params.patient.solutionVision && (params.priorSessions?.length ?? 0) >= 3
+  const solutionVisionNote = params.patient.solutionVision
     ? `\n    El paciente definió su visión de éxito al inicio del proceso: "${params.patient.solutionVision}"\n    → En la carta, relaciona sutilmente lo trabajado hoy con esa visión. ¿Nos estamos acercando? ¿Hay nuevos pasos visibles? No la cites textualmente — interpreta si existe conexión.\n`
     : '';
   const gender = params.patient.gender;

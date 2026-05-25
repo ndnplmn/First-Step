@@ -120,6 +120,11 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.consultationAnswer ?? undefined;
 
+  const lastReflectionQuestion = priorSessions
+    .filter(s => s.stage >= 6 && s.reflectionQuestions?.length)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.reflectionQuestions?.[0] ?? null;
+
   const openingGreeting = (() => {
     if (session.sessionIntention) {
       return t('stage2.greeting.intention').replace('{intention}', session.sessionIntention);
@@ -159,6 +164,12 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
         ? lastInterpretationResponse.slice(0, 80) + '…'
         : lastInterpretationResponse;
       return t('stage2.greeting.interpretation_response').replace('{response}', truncated);
+    }
+    if (lastReflectionQuestion && session.sessionNumber >= 2) {
+      const truncated = lastReflectionQuestion.length > 100
+        ? lastReflectionQuestion.slice(0, 97) + '…'
+        : lastReflectionQuestion;
+      return t('stage2.greeting.reflection').replace('{reflection}', truncated);
     }
     if (session.sessionNumber >= 3 && lastSessionWithExploration) {
       const conflictTheme = lastSessionWithExploration.explorationRecord!.insights[0]?.theme

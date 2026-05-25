@@ -66,10 +66,19 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
     openingLine: t('stage3.fallback.opening'),
   };
 
-  // Conversation state
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'therapist', text: workCard.openingLine },
-  ]);
+  const STORAGE_KEY = `exploration_draft_${session.id}`;
+
+  // Restore mid-session messages from localStorage on mount
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Message[];
+        if (Array.isArray(parsed) && parsed.length > 1) return parsed;
+      }
+    } catch { /* ignore */ }
+    return [{ role: 'therapist', text: workCard.openingLine }];
+  });
   const [currentInput, setCurrentInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<ExplorationPhase>('exploring');
@@ -119,6 +128,15 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
     if (historyRef.current) {
       historyRef.current.scrollTop = historyRef.current.scrollHeight;
     }
+  }, [messages]);
+
+  // Persist mid-session draft every 3 patient turns
+  useEffect(() => {
+    const turns = messages.filter(m => m.role === 'patient').length;
+    if (turns > 0 && turns % 3 === 0) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   // Auto-focus input when therapist speaks
@@ -174,6 +192,8 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
         recentDiaryEntry: lastDiaryEntry?.note
           ? `${lastDiaryEntry.emotion}: ${lastDiaryEntry.note}`
           : (lastDiaryEntry ? lastDiaryEntry.emotion : undefined),
+        quickSession: session.quickSession,
+        solutionVision: patient.solutionVision,
       });
 
       setCurrentPhase(result.nextPhase);
@@ -215,6 +235,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
       setSynthesisState('done');
     } catch {
       setSynthesisState('idle');
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
       onAdvance(
         { sessionNumber: session.sessionNumber, framework: frameworkKey, frameworkName, stage3Type, insights: [], aiReflection: '', completedAt: Date.now() },
       );
@@ -332,7 +353,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
           </div>
           <motion.button
             type="button"
-            onClick={() => onAdvance(explorationRecord!)}
+            onClick={() => { try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ } onAdvance(explorationRecord!); }}
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
             style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
           >
