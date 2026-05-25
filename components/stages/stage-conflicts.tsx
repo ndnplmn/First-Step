@@ -586,6 +586,26 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
         </div>
       )}
 
+      {/* ─── Progreso de turnos ─── */}
+      {!showAnalysis && questionsAsked.length > 0 && (
+        <div className="flex items-center justify-center gap-1.5 py-1" aria-hidden="true">
+          {Array.from({ length: SOFT_CAP }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                display: 'block',
+                width: i < questionsAsked.length ? 6 : 4,
+                height: i < questionsAsked.length ? 6 : 4,
+                borderRadius: '50%',
+                background: i < questionsAsked.length ? 'var(--color-sage)' : 'var(--color-border)',
+                transition: 'all 0.3s ease',
+                flexShrink: 0,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* ─── Evaluando ─── */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {isEvaluating ? 'El terapeuta está procesando tu respuesta' : ''}

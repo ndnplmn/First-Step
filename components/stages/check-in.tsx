@@ -10,7 +10,7 @@ import { Gear } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
 const BASE_STEPS = 4;
-const ALIGNMENT_SESSION_NUMBERS = [3, 5, 6, 9];
+const ALIGNMENT_SESSION_NUMBERS = [3, 4, 6, 9];
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -82,6 +82,11 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
     .filter(s => s.stage >= 6 && typeof s.wellbeingAfter === 'number')
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.wellbeingAfter ?? null;
+
+  const lastWorkCard = priorSessions
+    .filter(s => s.selectedWorkCard)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.selectedWorkCard ?? null;
 
   // Step 0
   const [wellbeing, setWellbeing] = useState<number | null>(null);
@@ -813,7 +818,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
               {t('checkin.start.direct')}
             </button>
           )}
-          {step === 0 && wellbeing !== null && wellbeing <= 2 && priorSessions.some(s => s.selectedWorkCard) && (
+          {step === 0 && wellbeing !== null && wellbeing <= 2 && lastWorkCard && (
             <div className="pt-1 space-y-1">
               <p className="text-xs text-center" style={{ color: 'var(--color-muted)' }}>
                 {t('checkin.quick.offer')}
@@ -827,7 +832,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                 {t('checkin.quick.cta')}
               </button>
               <p className="text-[10px] text-center" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}>
-                {t('checkin.quick.note')}
+                {t('checkin.quick.topic').replace('{theme}', lastWorkCard.title)}
               </p>
             </div>
           )}

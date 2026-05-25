@@ -143,6 +143,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
     session.reflectionQuestions ?? []
   );
   const [reflectionCopied, setReflectionCopied] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
 
   // ─── Celebration ────────────────────────────────────────────────────
   const [celebrating, setCelebrating] = useState(false);
@@ -778,9 +779,9 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         )}
       </AnimatePresence>
 
-      {/* Process reflection — combined resolution + consultation card, sessions 4+ */}
+      {/* Process reflection — combined resolution + consultation card, sessions 3+ */}
       <AnimatePresence>
-        {phase === 'complete' && commitmentReady && session.sessionNumber >= 4 && (
+        {phase === 'complete' && commitmentReady && session.sessionNumber >= 3 && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -859,7 +860,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         )}
       </AnimatePresence>
 
-      {/* Action cards */}
+      {/* Action cards — 2 primary + collapsed secondary */}
       <AnimatePresence>
         {phase === 'complete' && commitmentReady && (
           <motion.div
@@ -872,6 +873,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               {t('stage6.actions.label')}
             </p>
 
+            {/* Primary — Record */}
             <motion.button
               type="button"
               onClick={() => handleComplete('record')}
@@ -889,53 +891,70 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
               </div>
             </motion.button>
 
-            <motion.button
-              type="button"
-              onClick={() => handleComplete('new-session')}
-              whileHover={shouldReduce ? {} : { y: -2 }}
-              whileTap={shouldReduce ? {} : { scale: 0.98 }}
-              className="w-full flex items-center gap-4 p-5 rounded-[var(--radius-card)] text-left"
-              style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-sage-light)' }}>
-                <ArrowsClockwise size={18} style={{ color: 'var(--color-sage)' }} />
-              </div>
-              <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>{t('stage6.actions.new.title')}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>{t('stage6.actions.new.subtitle')}</p>
-              </div>
-            </motion.button>
-
+            {/* Primary — Home */}
             <motion.button
               type="button"
               onClick={() => handleComplete('dashboard')}
               whileTap={shouldReduce ? {} : { scale: 0.97 }}
-              className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-              style={{ color: 'var(--color-muted)' }}
+              className="w-full py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+              style={{ color: 'var(--color-muted)', border: '1px solid var(--color-border)', background: 'transparent' }}
             >
               <House size={15} />
               {t('stage6.actions.home')}
             </motion.button>
 
-            <motion.div
-              initial={shouldReduce ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: shouldReduce ? 0 : 0.6 }}
-              className="pt-2 text-center"
-              style={{ borderTop: '1px solid var(--color-border)' }}
-            >
-              <p className="text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
-                {t('stage6.diary.nudge')}
-              </p>
-              <button
-                type="button"
-                onClick={() => handleComplete('diary')}
-                className="text-xs font-medium hover:opacity-70 transition-opacity"
-                style={{ color: 'var(--color-sage)', background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                {t('stage6.diary.cta')}
-              </button>
-            </motion.div>
+            {/* Secondary — collapsed */}
+            <AnimatePresence>
+              {showMoreActions ? (
+                <motion.div
+                  initial={shouldReduce ? false : { opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden space-y-3"
+                >
+                  <motion.button
+                    type="button"
+                    onClick={() => handleComplete('new-session')}
+                    whileHover={shouldReduce ? {} : { y: -2 }}
+                    whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                    className="w-full flex items-center gap-4 p-5 rounded-[var(--radius-card)] text-left"
+                    style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}
+                  >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-sage-light)' }}>
+                      <ArrowsClockwise size={18} style={{ color: 'var(--color-sage)' }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--color-deep)' }}>{t('stage6.actions.new.title')}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>{t('stage6.actions.new.subtitle')}</p>
+                    </div>
+                  </motion.button>
+
+                  <div className="pt-1 text-center" style={{ borderTop: '1px solid var(--color-border)' }}>
+                    <p className="text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
+                      {t('stage6.diary.nudge')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleComplete('diary')}
+                      className="text-xs font-medium hover:opacity-70 transition-opacity"
+                      style={{ color: 'var(--color-sage)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      {t('stage6.diary.cta')}
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.button
+                  type="button"
+                  onClick={() => setShowMoreActions(true)}
+                  className="w-full py-2 text-xs text-center hover:opacity-70 transition-opacity"
+                  style={{ color: 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  {t('stage6.actions.more')} ↓
+                </motion.button>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
