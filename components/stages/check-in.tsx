@@ -10,7 +10,7 @@ import { Gear } from '@phosphor-icons/react';
 import { useLanguage } from '@/contexts/language-context';
 
 const BASE_STEPS = 4;
-const ALIGNMENT_SESSION_NUMBERS = [3, 4, 6, 9];
+const ALIGNMENT_SESSION_NUMBERS = [3, 6, 9];
 
 /* ── types ─────────────────────────────────────────────── */
 

@@ -38,7 +38,7 @@ const FRAMEWORK_KEYS: Record<Stage3Type, string> = {
 };
 
 
-const MIN_TURNS_DEFAULT = 3;
+const MIN_TURNS_DEFAULT = 4;
 const MIN_TURNS_LIGHT = 2; // when wellbeing on arrival is very low (1-2/5)
 
 export function StageExploration({ session, patient, priorSessions = [], lastDiaryEntry, onAdvance, onUpdate: _onUpdate }: Props) {
@@ -88,6 +88,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
   // Synthesis state
   const [synthesisState, setSynthesisState] = useState<'idle' | 'loading' | 'done'>('idle');
   const [explorationRecord, setExplorationRecord] = useState<ExplorationRecord | null>(null);
+  const [editedCommitment, setEditedCommitment] = useState('');
 
   // Voice
   const {
@@ -109,6 +110,13 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
   const lastExploration = [...priorSessions].reverse().find(s => s.explorationRecord)?.explorationRecord;
   const lastActionCommitment = lastExploration?.actionCommitment;
   const lastTherapistMsg = [...messages].reverse().find(m => m.role === 'therapist');
+
+  // Seed editable commitment when synthesis completes
+  useEffect(() => {
+    if (explorationRecord?.actionCommitment) {
+      setEditedCommitment(explorationRecord.actionCommitment);
+    }
+  }, [explorationRecord]);
 
   // Phase transition notification
   useEffect(() => {
@@ -351,9 +359,31 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
               </div>
             )}
           </div>
+          {explorationRecord.actionCommitment && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-sage)', fontSize: '0.75rem', fontWeight: 600, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {t('stage3.synthesis.commitment.label')}
+              </p>
+              <textarea
+                value={editedCommitment}
+                onChange={e => setEditedCommitment(e.target.value)}
+                rows={2}
+                style={{ width: '100%', background: 'var(--color-surface)', border: '2px solid var(--color-border)', borderRadius: 'var(--radius-inner)', padding: '0.75rem 1rem', fontSize: '0.9375rem', color: 'var(--color-deep)', resize: 'none', outline: 'none', fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box' }}
+              />
+              <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem', margin: 0 }}>
+                {t('stage3.synthesis.commitment.edit_hint')}
+              </p>
+            </div>
+          )}
           <motion.button
             type="button"
-            onClick={() => { try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ } onAdvance(explorationRecord!); }}
+            onClick={() => {
+              try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+              const finalRecord = editedCommitment.trim()
+                ? { ...explorationRecord!, actionCommitment: editedCommitment.trim() }
+                : explorationRecord!;
+              onAdvance(finalRecord);
+            }}
             whileTap={shouldReduce ? {} : { scale: 0.97 }}
             style={{ background: 'var(--color-sage)', boxShadow: 'var(--shadow-glow-sage)', color: 'white', border: 'none', borderRadius: 'var(--radius-inner)', padding: '1rem 1.5rem', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch', textAlign: 'center' }}
           >
@@ -396,6 +426,18 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
               </AnimatePresence>
             </div>
           </div>
+
+          {/* Session intention chip */}
+          {session.sessionIntention && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                {t('stage3.intention.label')}
+              </span>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--color-deep)', background: 'var(--color-surface)', padding: '0.25rem 0.75rem', borderRadius: '9999px', border: '1px solid var(--color-border)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                {session.sessionIntention}
+              </span>
+            </div>
+          )}
 
           {/* Conversation history */}
           {messages.length > 1 && (

@@ -16,7 +16,7 @@ import { useLanguage } from '@/contexts/language-context';
 
 const SOFT_CAP_SESSION1 = 6;
 const SOFT_CAP_DEFAULT = 4;
-const SOFT_CAP_WITH_INTENTION = 3;
+const SOFT_CAP_WITH_INTENTION = 4;
 
 
 type MessageRole = 'patient' | 'therapist';
@@ -125,6 +125,13 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.reflectionQuestions?.[0] ?? null;
 
+  const lastCompletedSession = [...priorSessions]
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)
+    .find(s => s.stage >= 6 && s.wellbeingAfter !== undefined && s.wellbeingBefore !== undefined);
+  const hadDifficultLastSession = lastCompletedSession
+    ? (lastCompletedSession.wellbeingAfter ?? 3) < (lastCompletedSession.wellbeingBefore ?? 3)
+    : false;
+
   const openingGreeting = (() => {
     if (session.sessionIntention) {
       return t('stage2.greeting.intention').replace('{intention}', session.sessionIntention);
@@ -181,6 +188,9 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
     if (session.wellbeingBefore !== undefined && priorSessions.length > 0) {
       if (session.wellbeingBefore <= 2) {
         return t('stage2.greeting.checkin_low');
+      }
+      if (hadDifficultLastSession) {
+        return t('stage2.greeting.difficult_last');
       }
       return t('stage2.greeting.checkin').replace('{wb}', String(session.wellbeingBefore));
     }
@@ -289,6 +299,8 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
         commitmentFollowUp: session.commitmentFollowUp,
         recentDiaryEntry: lastDiaryEntry?.note ? `${lastDiaryEntry.emotion}: ${lastDiaryEntry.note}` : (lastDiaryEntry ? lastDiaryEntry.emotion : undefined),
         priorInterpretation: lastInterpretation,
+        openingContextNote: openingGreeting,
+        hadDifficultLastSession,
       });
 
       if (done || !question) {
@@ -342,6 +354,8 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
         commitmentFollowUp: session.commitmentFollowUp,
         recentDiaryEntry: lastDiaryEntry?.note ? `${lastDiaryEntry.emotion}: ${lastDiaryEntry.note}` : (lastDiaryEntry ? lastDiaryEntry.emotion : undefined),
         priorInterpretation: lastInterpretation,
+        openingContextNote: openingGreeting,
+        hadDifficultLastSession,
       });
       if (done || !question) {
         if (bridgeMsg) {

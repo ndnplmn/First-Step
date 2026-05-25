@@ -1196,6 +1196,8 @@ export async function getNextTherapistQuestion(params: {
   commitmentFollowUp?: { status: 'yes' | 'partial' | 'no'; note?: string } | null;
   recentDiaryEntry?: string;
   priorInterpretation?: string;
+  openingContextNote?: string;
+  hadDifficultLastSession?: boolean;
 }): Promise<{ done: boolean; question: string | null; reflection: string | null; bridgeMessage: string | null }> {
   const { allInputs, questionsAsked } = params;
   const questionHistory = buildSessionHistory(params.priorSessions ?? []);
@@ -1211,7 +1213,7 @@ ${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) =
 Contexto del paciente (ya conocido — NO preguntes sobre esto):
 ${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention, params.locale)}${buildClinicalContext(params.phq9, params.gad7)}
 ${params.recentDiaryEntry ? `\nNota: El paciente escribió en su diario recientemente: "${params.recentDiaryEntry}". Si surge naturalmente en la conversación, puedes conectarlo con lo que trae hoy.\n` : ''}
-${params.priorInterpretation ? `\nInterpretación de la sesión anterior: "${params.priorInterpretation.slice(0, 300)}${params.priorInterpretation.length > 300 ? '…' : ''}". Si el conflicto actual parece relacionado con ese tema, reconócelo brevemente en la reflexión — sin repetir el análisis, solo el hilo de continuidad.\n` : ''}
+${params.priorInterpretation ? `\nInterpretación de la sesión anterior: "${params.priorInterpretation.slice(0, 300)}${params.priorInterpretation.length > 300 ? '…' : ''}". Si el conflicto actual parece relacionado con ese tema, reconócelo brevemente en la reflexión — sin repetir el análisis, solo el hilo de continuidad.\n` : ''}${params.openingContextNote ? `\nApertura de esta sesión (lo que ya dijo el terapeuta al inicio): "${params.openingContextNote}". El paciente respondió a continuación — ten en cuenta este hilo al formular la siguiente pregunta.\n` : ''}${params.hadDifficultLastSession ? `\nNota: La sesión anterior terminó peor de como empezó (el bienestar bajó). Sé especialmente contenedor y no presiones si hay resistencia — prioriza la presencia sobre la profundidad en las primeras rondas.\n` : ''}
 ${params.commitmentFollowUp?.status === 'no'
   ? `\nNota clínica: El paciente reportó que NO pudo cumplir su compromiso de la semana pasada${params.commitmentFollowUp.note ? ` ("${params.commitmentFollowUp.note}")` : ''}. Puede ser relevante — nómbralo si surge naturalmente, sin generar culpa.\n`
   : params.commitmentFollowUp?.status === 'partial'
