@@ -543,6 +543,39 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
             {/* Step 3: Session intention */}
             {step === 3 && (
               <div className="space-y-3">
+                {(() => {
+                  const lastInsights = priorSessions
+                    .filter(s => s.stage >= 6 && s.explorationRecord?.insights?.length)
+                    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+                    ?.explorationRecord?.insights?.slice(0, 3) ?? [];
+                  if (lastInsights.length === 0 || sessionIntention) return null;
+                  return (
+                    <motion.div
+                      initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35 }}
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        {lastInsights.map((insight, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setSessionIntention(insight.theme)}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium"
+                            style={{
+                              background: 'rgba(61,107,71,0.08)',
+                              color: 'var(--color-sage)',
+                              border: '1px solid rgba(61,107,71,0.2)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {insight.theme}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  );
+                })()}
                 {lastReflectionQuestion && !sessionIntention && (
                   <motion.div
                     initial={shouldReduce ? false : { opacity: 0, y: 8 }}

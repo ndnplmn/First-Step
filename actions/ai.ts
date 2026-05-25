@@ -172,6 +172,7 @@ export async function synthesizeConflicts(
   locale?: string,
   phq9?: PHQ9Response | null,
   gad7?: GAD7Response | null,
+  consultationAlignment?: 'yes' | 'partial' | 'no',
 ): Promise<{ conflicts: Conflict[]; frameworkMatches: FrameworkMatch[]; gestaltActivity: GestaltActivity | null; stage3Type: Stage3Type; unmappedPhrases: string[]; narrativeSummary: string }> {
   const frameworksDesc = Object.entries(FRAMEWORKS_DICTIONARY)
     .map(([key, fw]) => `- ${key}: ${fw.name} — ${fw.description}`)
@@ -183,9 +184,13 @@ export async function synthesizeConflicts(
 
   const sessionHistory = buildSessionHistory(priorSessions ?? []);
 
+  const alignmentAnchor = consultationAlignment === 'no'
+    ? `\n    ⚠️ NOTA CLÍNICA: El paciente indicó en el check-in que NO siente que estamos trabajando lo que originalmente lo trajo aquí (motivo de consulta: "${patient.consultationReason}"). Al sintetizar los conflictos y elegir el marco terapéutico, asegúrate de que el análisis conecte directamente con este motivo original. No desvíes hacia temas secundarios.\n`
+    : '';
+
   const prompt = `
     Analiza los siguientes motivos de consulta de un paciente y mápalos al marco terapéutico clásico más adecuado.
-
+${alignmentAnchor}
     Motivos: ${rawConflicts.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
     Contexto del paciente:

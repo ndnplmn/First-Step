@@ -136,7 +136,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
   const [resolutionAnswer, setResolutionAnswer] = useState<'much_better' | 'better' | 'still_working' | null>(
     session.resolutionAnswer ?? null
   );
-  const [consultationAnswer, setConsultationAnswer] = useState<'yes' | 'partial' | 'not_yet' | null>(null);
+  const [consultationAnswer, setConsultationAnswer] = useState<'yes' | 'partial' | 'not_yet' | null>(
+    session.consultationAnswer ?? null
+  );
+  const [reflectionExpanded, setReflectionExpanded] = useState(false);
   const [reflectionQuestions, setReflectionQuestions] = useState<string[]>(
     session.reflectionQuestions ?? []
   );
@@ -759,47 +762,66 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
         )}
       </AnimatePresence>
 
-      {/* Reflection questions — with copy button */}
+      {/* Reflection questions — collapsed by default, with copy button */}
       <AnimatePresence>
         {phase === 'complete' && reflectionQuestions.length > 0 && (
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.1 }}
-            className="rounded-[var(--radius-card)] p-6 space-y-4"
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 1.6 }}
+            className="rounded-[var(--radius-card)] overflow-hidden"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-terracotta)' }}
           >
-            <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setReflectionExpanded(e => !e)}
+              className="w-full flex items-center justify-between px-6 py-4"
+              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+            >
               <p className="text-xs font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-terracotta)' }}>
                 {t('stage6.reflection.label')}
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(reflectionQuestions.join('\n\n'));
-                  setReflectionCopied(true);
-                  setTimeout(() => setReflectionCopied(false), 2500);
-                }}
-                className="text-xs font-medium"
-                style={{ color: reflectionCopied ? 'var(--color-sage)' : 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
-              >
-                {reflectionCopied ? t('stage6.reflection.copied') : t('stage6.reflection.copy')}
-              </button>
-            </div>
-            <div className="space-y-3">
-              {reflectionQuestions.map((q, i) => (
-                <motion.p
-                  key={i}
-                  initial={shouldReduce ? false : { opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (shouldReduce ? 0 : 0.15) + i * 0.1 }}
-                  className="text-sm leading-relaxed"
-                  style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontStyle: 'italic' }}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(reflectionQuestions.join('\n\n'));
+                    setReflectionCopied(true);
+                    setTimeout(() => setReflectionCopied(false), 2500);
+                  }}
+                  className="text-xs font-medium"
+                  style={{ color: reflectionCopied ? 'var(--color-sage)' : 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
                 >
-                  {q}
-                </motion.p>
-              ))}
-            </div>
+                  {reflectionCopied ? t('stage6.reflection.copied') : t('stage6.reflection.copy')}
+                </button>
+                <motion.span animate={{ rotate: reflectionExpanded ? 180 : 0 }} transition={{ duration: 0.2 }} style={{ color: 'var(--color-muted)' }}>▾</motion.span>
+              </div>
+            </button>
+            <AnimatePresence>
+              {reflectionExpanded && (
+                <motion.div
+                  initial={shouldReduce ? {} : { height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={shouldReduce ? {} : { height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden px-6 pb-5 space-y-3"
+                >
+                  {reflectionQuestions.map((q, i) => (
+                    <motion.p
+                      key={i}
+                      initial={shouldReduce ? false : { opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="text-sm leading-relaxed"
+                      style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontStyle: 'italic' }}
+                    >
+                      {q}
+                    </motion.p>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -810,7 +832,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.2 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 2.2 }}
             className="rounded-[var(--radius-card)] p-6 space-y-4"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-sage)' }}
           >
@@ -850,7 +872,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 0.3 }}
+            transition={{ duration: 0.6, delay: shouldReduce ? 0 : 2.6 }}
             className="rounded-[var(--radius-card)] p-6 space-y-4"
             style={{ background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)', borderLeft: '3px solid var(--color-violet)' }}
           >
@@ -863,7 +885,10 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
                   <motion.button
                     key={opt}
                     type="button"
-                    onClick={() => setConsultationAnswer(opt)}
+                    onClick={() => {
+                      setConsultationAnswer(opt);
+                      onUpdate({ consultationAnswer: opt });
+                    }}
                     whileTap={shouldReduce ? {} : { scale: 0.98 }}
                     className="w-full text-left px-4 py-3 rounded-[var(--radius-inner)] text-sm"
                     style={{ background: 'var(--color-base)', border: '1.5px solid var(--color-border)', color: 'var(--color-deep)', cursor: 'pointer' }}
@@ -887,7 +912,7 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
           <motion.div
             initial={shouldReduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: shouldReduce ? 0 : 0.4 }}
+            transition={{ duration: 0.5, delay: shouldReduce ? 0 : 3.0 }}
             className="space-y-3"
           >
             <p className="text-xs font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>

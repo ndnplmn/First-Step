@@ -115,6 +115,11 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
     .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
     ?.interpretationResponse ?? undefined;
 
+  const lastConsultationAnswer = priorSessions
+    .filter(s => s.stage >= 6 && s.consultationAnswer)
+    .sort((a, b) => b.sessionNumber - a.sessionNumber)[0]
+    ?.consultationAnswer ?? undefined;
+
   const openingGreeting = (() => {
     if (session.sessionIntention) {
       return t('stage2.greeting.intention').replace('{intention}', session.sessionIntention);
@@ -137,11 +142,17 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
       const commitment = lastCommitment ?? t('stage2.commitment.generic');
       return t('stage2.greeting.commitment_missed').replace('{commitment}', commitment);
     }
+    if (lastConsultationAnswer === 'not_yet') {
+      return t('stage2.greeting.stuck');
+    }
     if (lastMissedIntention) {
       return t('stage2.greeting.intention_missed');
     }
     if (lastInterpretationResponse && session.sessionNumber >= 2) {
-      return t('stage2.greeting.interpretation_response').replace('{response}', lastInterpretationResponse.slice(0, 120));
+      const truncated = lastInterpretationResponse.length > 80
+        ? lastInterpretationResponse.slice(0, 80) + '…'
+        : lastInterpretationResponse;
+      return t('stage2.greeting.interpretation_response').replace('{response}', truncated);
     }
     if (session.sessionNumber >= 3 && lastSessionWithExploration) {
       const conflictTheme = lastSessionWithExploration.explorationRecord!.insights[0]?.theme
@@ -349,7 +360,7 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
     setError('');
     setCardsFailed(false);
     try {
-      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention, priorSessions, locale, session.phq9, session.gad7);
+      const data = await synthesizeConflicts(inputs, patient, session.lifeChanges, session.sessionIntention, priorSessions, locale, session.phq9, session.gad7, session.consultationAlignment);
       setResult(data);
       onUpdate({ conflicts: data.conflicts, frameworkMatches: data.frameworkMatches, gestaltActivity: data.gestaltActivity, narrativeSummary: data.narrativeSummary });
       setShowValidation(true);
