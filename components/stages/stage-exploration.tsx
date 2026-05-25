@@ -9,6 +9,8 @@ import { AIThinking } from '@/components/ai/ai-thinking';
 import { VoiceMicButton } from '@/components/ui/voice-mic-button';
 import { useVoice } from '@/hooks/use-voice';
 import { useLanguage } from '@/contexts/language-context';
+import { detectCrisis } from '@/lib/crisis';
+import { CrisisScreen } from '@/components/ui/crisis-screen';
 
 type Message = { role: 'patient' | 'therapist'; text: string; isInsight?: boolean };
 
@@ -89,6 +91,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
   const [synthesisState, setSynthesisState] = useState<'idle' | 'loading' | 'done'>('idle');
   const [explorationRecord, setExplorationRecord] = useState<ExplorationRecord | null>(null);
   const [editedCommitment, setEditedCommitment] = useState('');
+  const [showCrisis, setShowCrisis] = useState(false);
 
   // Voice
   const {
@@ -175,6 +178,7 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
   const handleSubmit = async (text?: string) => {
     const trimmed = (text ?? currentInput).trim();
     if (!trimmed || isThinking) return;
+    if (detectCrisis(trimmed)) { setShowCrisis(true); return; }
 
     const updatedMessages: Message[] = [...messages, { role: 'patient', text: trimmed }];
     setMessages(updatedMessages);
@@ -263,6 +267,8 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
     exit: shouldReduce ? {} : { opacity: 0, y: -8 },
   };
   const transition = { duration: 0.4, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] };
+
+  if (showCrisis) return <CrisisScreen onDismiss={() => setShowCrisis(false)} />;
 
   return (
     <div style={{ paddingBottom: '5rem' }}>

@@ -14,7 +14,6 @@ import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
 import { useLanguage } from '@/contexts/language-context';
 
-const SOFT_CAP_SESSION1 = 6;
 const SOFT_CAP_DEFAULT = 4;
 const SOFT_CAP_WITH_INTENTION = 4;
 
@@ -72,9 +71,7 @@ function UnmappedSection({ unmapped }: { unmapped: string[] }) {
 export function StageConflicts({ session, patient, priorSessions = [], lastDiaryEntry, onAdvance, onUpdate }: StageConflictsProps) {
   const shouldReduce = useReducedMotion();
   const { t, locale } = useLanguage();
-  const SOFT_CAP = session.sessionIntention
-    ? SOFT_CAP_WITH_INTENTION
-    : session.sessionNumber === 1 ? SOFT_CAP_SESSION1 : SOFT_CAP_DEFAULT;
+  const SOFT_CAP = session.sessionIntention ? SOFT_CAP_WITH_INTENTION : SOFT_CAP_DEFAULT;
   const hasExistingData = session.conflicts.length > 0 && session.frameworkMatches.length > 0;
 
   const STARTER_PROMPTS = [

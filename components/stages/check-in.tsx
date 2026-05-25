@@ -98,8 +98,10 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
   const [commitmentStatus, setCommitmentStatus] = useState<'yes' | 'partial' | 'no' | null>(null);
   const [commitmentNote, setCommitmentNote] = useState('');
   const [commitmentObstacle, setCommitmentObstacle] = useState('');
-  // Step 3 — session intention
-  const [sessionIntention, setSessionIntention] = useState('');
+  // Step 3 — session intention (pre-populated from consultation reason on session 1)
+  const [sessionIntention, setSessionIntention] = useState(
+    session.sessionNumber === 1 ? (patient.consultationReason ?? '') : ''
+  );
   // Step 4 — consultation alignment (only on sessions 3/6/9)
   const [consultationAlignment, setConsultationAlignment] = useState<'yes' | 'partial' | 'no' | null>(null);
   const [alignmentNote, setAlignmentNote] = useState('');
@@ -128,7 +130,9 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
       case 0: return t('checkin.step0.question');
       case 1: return t('checkin.step1.question');
       case 2: return t('checkin.step2.question');
-      case 3: return t('checkin.step3.question');
+      case 3: return session.sessionNumber === 1
+        ? t('checkin.step3.session1.question')
+        : t('checkin.step3.question');
       case 4: return t('checkin.alignment.question');
       default: return '';
     }

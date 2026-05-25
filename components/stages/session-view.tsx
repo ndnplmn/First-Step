@@ -83,8 +83,8 @@ export function SessionView({ patient, session, priorSessions = [], lastDiaryEnt
   };
 
   const handleStage3Advance = (record: ExplorationRecord) => {
-    // Quick session users skip interpretation — go directly to closure
-    if (session.quickSession) {
+    // Quick sessions and first sessions skip interpretation — go directly to closure
+    if (session.quickSession || session.sessionNumber === 1) {
       advanceStage({ explorationRecord: record, interpretation: null }, 6);
     } else {
       advanceStage({ explorationRecord: record, interpretation: null }, 4);

@@ -411,6 +411,11 @@ export function StageClosure({ session, patient, priorSessions = [], onComplete,
             <p style={{ color: 'var(--color-deep)', fontFamily: 'var(--font-display)', fontSize: '18px' }}>
               {t('stage6.wellbeing.question')}
             </p>
+            {session.wellbeingBefore != null && (
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--color-muted)' }}>
+                {t('stage6.checkout.wellbeing.arrived').replace('{score}', String(session.wellbeingBefore))}
+              </p>
+            )}
             <div className="flex gap-3 flex-wrap">
               {WELLBEING_OPTIONS.map(opt => (
                 <motion.button
