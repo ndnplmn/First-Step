@@ -36,6 +36,7 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
   const [isError, setIsError] = useState(false);
   const [resonated, setResonated] = useState(!!session.interpretation?.resonatedAt);
   const [showRing, setShowRing] = useState(false);
+  const [reframeCount, setReframeCount] = useState(0);
   const [responseText, setResponseText] = useState(session.interpretationResponse ?? '');
   const [responseSaved, setResponseSaved] = useState(!!session.interpretationResponse);
   const { text, isStreaming, isDone, startStream, streamFromUrl } = useAIStream();
@@ -251,20 +252,22 @@ export function StageInterpretation({ session, patient, priorSessions = [], onAd
                     )}
                   </AnimatePresence>
                 </div>
-                <motion.button
-                  type="button"
-                  onClick={() => generate(fullInterpretation?.text ?? (text || undefined))}
-                  whileTap={shouldReduce ? {} : { scale: 0.98 }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm"
-                  style={{
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-muted)',
-                    boxShadow: 'var(--shadow-card)',
-                  }}
-                >
-                  <ArrowCounterClockwise size={14} />
-                  {t('stage4.reframe')}
-                </motion.button>
+                {reframeCount < 2 && (
+                  <motion.button
+                    type="button"
+                    onClick={() => { setReframeCount(c => c + 1); generate(fullInterpretation?.text ?? (text || undefined)); }}
+                    whileTap={shouldReduce ? {} : { scale: 0.98 }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm"
+                    style={{
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-muted)',
+                      boxShadow: 'var(--shadow-card)',
+                    }}
+                  >
+                    <ArrowCounterClockwise size={14} />
+                    {t('stage4.reframe')}
+                  </motion.button>
+                )}
               </>
             ) : null
           }

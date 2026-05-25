@@ -99,11 +99,10 @@ const INITIAL_VALUES: IntakeValues = {
 // 5: age + gender        (combined)
 // 6: maritalStatus + children (combined)
 // 7: livingSituation + employment (combined)
-// 8: supportNetwork
-// 9: previousTherapy + medication (combined)
-// 10: wellbeingAtIntake
+// 8: supportNetwork + previousTherapy + medication (combined — reduces step count)
+// 9: wellbeingAtIntake
 
-const TOTAL_STEPS = 11;
+const TOTAL_STEPS = 10;
 
 function getStepQuestion(
   step: number,
@@ -128,8 +127,7 @@ function getStepQuestion(
     case 6: return t('intake.q4');
     case 7: return t('intake.q6');
     case 8: return t('intake.q8');
-    case 9: return t('intake.q9');
-    case 10: return t('intake.wellbeing.question');
+    case 9: return t('intake.wellbeing.question');
     default: return '';
   }
 }
@@ -207,14 +205,14 @@ function getStepAnswer(
       return [livingPart, employParts.join(' · ')].join(' · ');
     }
     case 8: {
-      if (values.hasSupportNetwork === null) return null;
-      if (!values.hasSupportNetwork) return t('intake.no');
-      return values.supportDescription.trim()
-        ? t('intake.yes.detail').replace('{detail}', values.supportDescription.trim())
-        : t('intake.yes');
-    }
-    case 9: {
       const parts: string[] = [];
+      if (values.hasSupportNetwork !== null) {
+        const supportPart = !values.hasSupportNetwork ? t('intake.no')
+          : values.supportDescription.trim()
+            ? t('intake.yes.detail').replace('{detail}', values.supportDescription.trim())
+            : t('intake.yes');
+        parts.push(supportPart);
+      }
       if (values.previousTherapy !== null) {
         parts.push(!values.previousTherapy ? t('intake.no')
           : values.previousTherapyDetail.trim()
@@ -229,7 +227,7 @@ function getStepAnswer(
       }
       return parts.join(' · ') || null;
     }
-    case 10: return wellbeingAtIntake
+    case 9: return wellbeingAtIntake
       ? t(`checkin.wellbeing.${wellbeingAtIntake}`)
       : null;
     default: return null;
@@ -252,9 +250,8 @@ function canProceed(
     case 5: { const n = parseInt(values.age); return n >= 18 && n < 120; }
     case 6: return values.hasChildren !== null;
     case 7: return values.livingSituation !== 'other' || values.livingSituationDetail.trim().length > 0;
-    case 8: return values.hasSupportNetwork !== null;
-    case 9: return values.previousTherapy !== null && values.takingMedication !== null;
-    case 10: return wellbeingAtIntake !== null;
+    case 8: return values.hasSupportNetwork !== null && values.previousTherapy !== null && values.takingMedication !== null;
+    case 9: return wellbeingAtIntake !== null;
     default: return false;
   }
 }
@@ -797,7 +794,7 @@ export function Intake({ onComplete, onBack }: IntakeProps) {
             </motion.button>
             <button
               type="button"
-              onClick={() => { setIntakeProcessing('idle'); setStep(10); }}
+              onClick={() => { setIntakeProcessing('idle'); setStep(9); }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -1079,36 +1076,11 @@ function StepInput({
 
     case 8:
       return (
-        <div className="space-y-3">
-          <YesNo value={values.hasSupportNetwork} onChange={v => set('hasSupportNetwork', v)} reduce={reduce} />
-          <AnimatePresence>
-            {values.hasSupportNetwork && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <TextArea
-                  value={values.supportDescription}
-                  onChange={v => set('supportDescription', v)}
-                  placeholder={t('intake.placeholder.support')}
-                  autoFocus
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      );
-
-    case 9:
-      return (
         <div className="space-y-5">
           <div className="space-y-3">
-            <YesNo value={values.previousTherapy} onChange={v => set('previousTherapy', v)} reduce={reduce} />
+            <YesNo value={values.hasSupportNetwork} onChange={v => set('hasSupportNetwork', v)} reduce={reduce} />
             <AnimatePresence>
-              {values.previousTherapy && (
+              {values.hasSupportNetwork && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
@@ -1116,15 +1088,38 @@ function StepInput({
                   transition={{ duration: 0.25 }}
                   className="overflow-hidden"
                 >
-                  <TextInput
-                    value={values.previousTherapyDetail}
-                    onChange={v => set('previousTherapyDetail', v)}
-                    placeholder={t('intake.placeholder.therapy')}
+                  <TextArea
+                    value={values.supportDescription}
+                    onChange={v => set('supportDescription', v)}
+                    placeholder={t('intake.placeholder.support')}
                     autoFocus
                   />
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+          <div>
+            {subLabel(t('intake.q9'))}
+            <div className="space-y-3">
+              <YesNo value={values.previousTherapy} onChange={v => set('previousTherapy', v)} reduce={reduce} />
+              <AnimatePresence>
+                {values.previousTherapy && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <TextInput
+                      value={values.previousTherapyDetail}
+                      onChange={v => set('previousTherapyDetail', v)}
+                      placeholder={t('intake.placeholder.therapy')}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
           <div>
             {subLabel(t('intake.q10'))}
@@ -1152,7 +1147,7 @@ function StepInput({
         </div>
       );
 
-    case 10: {
+    case 9: {
       const wellbeingOpts = [1,2,3,4,5].map(v => ({ value: v, label: t(`checkin.wellbeing.${v}`) }));
       return (
         <div className="flex flex-wrap gap-3">

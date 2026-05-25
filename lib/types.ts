@@ -205,6 +205,7 @@ export type PatientSession = {
   quickSession?: boolean;           // skips Stage 2, inherits last session's work
   resolutionAnswer?: 'much_better' | 'better' | 'still_working';  // session 5+ milestone question
   consultationAlignment?: 'yes' | 'partial' | 'no';  // sessions 3/6/9: are we still working on the original issue?
+  consultationAlignmentNote?: string;              // free-text when alignment === 'partial': what feels missing
   consultationAnswer?: 'yes' | 'partial' | 'not_yet';  // session 5+: did we resolve what they came for?
   createdAt: number;
   updatedAt: number;

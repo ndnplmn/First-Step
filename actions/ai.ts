@@ -626,6 +626,8 @@ export async function generateSessionWorkCards(params: {
 
   const recalibrateAnchor = params.consultationAlignment === 'no' && params.patient?.consultationReason
     ? `\nATENCIÓN: El paciente siente que no está trabajando su motivo de consulta original ("${params.patient.consultationReason.slice(0, 100)}"). Al menos una de las tres tarjetas DEBE recalibrar hacia ese motivo original, ayudando al paciente a reconectar con lo que le trajo aquí.\n`
+    : params.consultationAlignment === 'partial' && params.patient?.consultationReason
+    ? `\nNOTA: El paciente siente que estamos trabajando su motivo de consulta solo parcialmente ("${params.patient.consultationReason.slice(0, 100)}"). Al menos una tarjeta debe conectar directamente con ese motivo original. Las otras tarjetas pueden seguir la dirección actual del proceso.\n`
     : '';
 
   const prompt = `

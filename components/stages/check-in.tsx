@@ -91,6 +91,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
   const [sessionIntention, setSessionIntention] = useState('');
   // Step 4 — consultation alignment (only on sessions 3/6/9)
   const [consultationAlignment, setConsultationAlignment] = useState<'yes' | 'partial' | 'no' | null>(null);
+  const [alignmentNote, setAlignmentNote] = useState('');
 
   const WELLBEING_OPTIONS = [
     { value: 1, label: t('checkin.wellbeing.1') },
@@ -178,6 +179,7 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
       : undefined,
     sessionIntention: sessionIntention.trim() || undefined,
     consultationAlignment: consultationAlignment ?? undefined,
+    consultationAlignmentNote: (consultationAlignment === 'partial' && alignmentNote.trim()) ? alignmentNote.trim() : undefined,
   });
 
   const advanceStep = () => {
@@ -557,6 +559,29 @@ export function CheckIn({ patient, session, priorSessions = [], lastDiaryEntry, 
                     />
                   ))}
                 </div>
+                <AnimatePresence>
+                  {consultationAlignment === 'partial' && (
+                    <motion.div
+                      initial={shouldReduce ? false : { opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden space-y-2"
+                    >
+                      <p className="text-xs font-medium uppercase tracking-widest" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-muted)' }}>
+                        {t('checkin.alignment.partial.followup.q')}
+                      </p>
+                      <textarea
+                        value={alignmentNote}
+                        onChange={e => setAlignmentNote(e.target.value)}
+                        placeholder={t('checkin.alignment.partial.followup.placeholder')}
+                        rows={2}
+                        className="w-full bg-transparent outline-none resize-none p-4 rounded-[var(--radius-inner)] border-2 transition-all"
+                        style={{ borderColor: 'rgba(107,94,158,0.35)', color: 'var(--color-deep)' }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 

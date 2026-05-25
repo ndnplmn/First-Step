@@ -94,6 +94,24 @@ function buildSessionHistory(priorSessions: PatientSession[]): string {
   return `\nHistorial de sesiones anteriores (${completed.length} sesión/es completada/s):\n${lines.join('\n\n')}\n`;
 }
 
+function buildClinicalSafetyNote(priorSessions: PatientSession[]): string {
+  const sorted = [...priorSessions].sort((a, b) => b.sessionNumber - a.sessionNumber);
+  const recentPhq9 = sorted.find(s => s.phq9)?.phq9;
+  const recentGad7 = sorted.find(s => s.gad7)?.gad7;
+
+  const alerts: string[] = [];
+  if (recentPhq9 && recentPhq9.score >= 15) {
+    alerts.push(`PHQ-9: ${recentPhq9.score}/27 (${recentPhq9.severity}) — depresión moderada-grave`);
+  }
+  if (recentGad7 && recentGad7.score >= 10) {
+    alerts.push(`GAD-7: ${recentGad7.score}/21 (${recentGad7.severity}) — ansiedad moderada-grave`);
+  }
+
+  if (!alerts.length) return '';
+
+  return `\n    NOTA CLÍNICA — CONTENCIÓN PRIORITARIA: ${alerts.join('. ')}.\n    → El nivel de malestar clínico es significativo. Prioriza la validación emocional y la contención sobre la exploración profunda. Ancla la intervención en lo concreto y lo que el paciente puede sostener ahora mismo. Evita abrir nuevas áreas de vulnerabilidad.\n`;
+}
+
 export function buildInterpretationPrompt(params: {
   conflicts: Conflict[];
   frameworkMatches: FrameworkMatch[];
@@ -115,6 +133,7 @@ export function buildInterpretationPrompt(params: {
     : '';
 
   const sessionHistory = buildSessionHistory(params.priorSessions ?? []);
+  const clinicalSafetyNote = buildClinicalSafetyNote(params.priorSessions ?? []);
 
   const reframeInstruction = params.priorInterpretation
     ? `\n    Interpretación anterior que el paciente quiere reformular:\n    "${params.priorInterpretation.slice(0, 300)}${params.priorInterpretation.length > 300 ? '…' : ''}"\n    → Genera una perspectiva genuinamente distinta. No repitas las mismas metáforas ni los mismos marcos de comprensión. Busca un ángulo nuevo — otra dimensión del mismo material.\n`
@@ -139,7 +158,7 @@ ${reframeInstruction}
     Sentimiento ahora: "${m.feelingNow}"
     Palabras clave: ${m.keywords.join(', ')}
     `).join('\n---\n') : '(Sin recuerdos trabajados en esta sesión)'}
-${stage3Section}${sessionHistory}
+${stage3Section}${sessionHistory}${clinicalSafetyNote}
     Genera una interpretación clínica breve, profunda y reveladora desde el marco terapéutico elegido.
     Los marcos posibles son: Psicoanálisis Freudiano, Terapia Bioenergética, Psicología Individual de Adler, Terapia Gestalt, Sensibilización Sistemática Conductual.
 
@@ -172,6 +191,10 @@ export function buildClosurePrompt(params: {
 }): string {
   const { conflicts, frameworkMatches, interpretation, gestaltActivity } = params;
   const closureHistory = buildSessionHistory(params.priorSessions ?? []);
+  const closureClinicalNote = buildClinicalSafetyNote(params.priorSessions ?? []);
+  const solutionVisionNote = params.patient.solutionVision && (params.priorSessions?.length ?? 0) >= 3
+    ? `\n    El paciente definió su visión de éxito al inicio del proceso: "${params.patient.solutionVision}"\n    → En la carta, relaciona sutilmente lo trabajado hoy con esa visión. ¿Nos estamos acercando? ¿Hay nuevos pasos visibles? No la cites textualmente — interpreta si existe conexión.\n`
+    : '';
   const greetingMap: Record<string, string> = { es: `Querido/a`, en: `Dear`, ru: `Дорогой/ая` };
   const closingMap: Record<string, string> = { es: `Con cariño,\n    Tend`, en: `With love,\n    Tend`, ru: `С теплом,\n    Tend` };
   const greeting = greetingMap[params.locale ?? 'es'] ?? greetingMap.es;
@@ -186,8 +209,7 @@ export function buildClosurePrompt(params: {
 
     Contexto del paciente:
     ${buildPatientContext(params.patient)}
-${closureHistory}
-
+${closureHistory}${closureClinicalNote}${solutionVisionNote}
     Se le ha dado esta interpretación:
     "${interpretation}"
     ${params.interpretationResponse ? `\n    El paciente respondió a la interpretación con:\n    "${params.interpretationResponse}"\n    → Si esta respuesta revela algo importante — acuerdo, resistencia, sorpresa — recógela en la carta. No la ignores.` : ''}
