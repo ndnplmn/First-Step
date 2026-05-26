@@ -83,7 +83,7 @@ export default function Home() {
     const allSessions = await db.getSessions();
     setSessions(allSessions);
     const active = allSessions.find(s => s.stage < 6) ?? null;
-    if (active) setActiveSession(active);
+    setActiveSession(active);
 
     const diaryEntries = await db.getDiaryEntries().catch(() => []);
     const recent = diaryEntries.sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
@@ -231,6 +231,8 @@ export default function Home() {
   const handleComplete = async (action: 'dashboard' | 'record' | 'new-session' | 'diary') => {
     const allSessions = await db.getSessions();
     setSessions(allSessions);
+    // Clear the just-finished session so the dashboard no longer shows "continuar"
+    setActiveSession(null);
     if (action === 'dashboard') {
       setView('DASHBOARD');
     } else if (action === 'record') {
