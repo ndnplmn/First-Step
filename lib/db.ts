@@ -208,6 +208,7 @@ export const db = {
       copingUsed: r.coping_used as string | undefined,
       note: r.note as string | undefined,
       createdAt: new Date(r.created_at as string).getTime(),
+      sessionMilestone: r.session_milestone as DiaryEntry['sessionMilestone'],
     }));
   },
 
@@ -223,6 +224,7 @@ export const db = {
       triggers: entry.triggers,
       coping_used: entry.copingUsed,
       note: entry.note,
+      session_milestone: entry.sessionMilestone ?? null,
     });
   },
 

@@ -496,6 +496,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'diary.entry.copy': 'Copiar',
     'diary.entry.copied': 'Copiado',
     'diary.form.skip': 'Omitir',
+    'diary.milestone.label': 'Sesión completada',
+    'diary.milestone.session': 'Sesión #{n}',
+    'diary.milestone.wellbeing': 'Bienestar: {before} → {after}',
 
     // Progress
     'progress.back': 'Mis sesiones',
@@ -1400,6 +1403,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'diary.entry.copy': 'Copy',
     'diary.entry.copied': 'Copied',
     'diary.form.skip': 'Skip',
+    'diary.milestone.label': 'Session completed',
+    'diary.milestone.session': 'Session #{n}',
+    'diary.milestone.wellbeing': 'Wellbeing: {before} → {after}',
 
     // Progress
     'progress.back': 'My sessions',
@@ -2304,6 +2310,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'diary.entry.copy': 'Копировать',
     'diary.entry.copied': 'Скопировано',
     'diary.form.skip': 'Пропустить',
+    'diary.milestone.label': 'Сессия завершена',
+    'diary.milestone.session': 'Сессия #{n}',
+    'diary.milestone.wellbeing': 'Самочувствие: {before} → {after}',
 
     // Progress
     'progress.back': 'Мои сессии',

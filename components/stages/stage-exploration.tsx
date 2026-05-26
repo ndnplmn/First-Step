@@ -11,6 +11,7 @@ import { useVoice } from '@/hooks/use-voice';
 import { useLanguage } from '@/contexts/language-context';
 import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
+import { isSimilarQuestion } from '@/lib/similarity';
 
 type Message = { role: 'patient' | 'therapist'; text: string; isInsight?: boolean };
 
@@ -209,6 +210,23 @@ export function StageExploration({ session, patient, priorSessions = [], lastDia
       });
 
       setCurrentPhase(result.nextPhase);
+
+      // Client-side deduplication: if the AI generated a question semantically
+      // equivalent to any previous therapist question, advance to synthesis instead
+      const prevTherapistQuestions = updatedMessages
+        .filter(m => m.role === 'therapist' && m.text.includes('?'))
+        .map(m => m.text);
+      const responseIsQuestion = result.response.includes('?');
+      const isDuplicateQuestion =
+        responseIsQuestion &&
+        prevTherapistQuestions.some(prev => isSimilarQuestion(prev, result.response));
+
+      if (isDuplicateQuestion) {
+        setIsThinking(false);
+        handleSynthesize(updatedMessages);
+        return;
+      }
+
       const therapistMessage: Message = {
         role: 'therapist',
         text: result.response,

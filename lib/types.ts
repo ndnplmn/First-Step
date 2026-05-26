@@ -128,6 +128,11 @@ export type DiaryEntry = {
   copingUsed?: string;
   note?: string;
   createdAt: number;
+  sessionMilestone?: {
+    sessionNumber: number;
+    wellbeingBefore?: number;
+    wellbeingAfter?: number;
+  };
 };
 
 export type LifeChanges = {

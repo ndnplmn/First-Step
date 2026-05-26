@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { Patient, DiaryEntry, DiaryEmotion } from '@/lib/types';
 import { db } from '@/lib/db';
 import { generateId } from '@/lib/id';
-import { ArrowLeft, Plus, X, CaretLeft, CaretRight, BookOpen, Lightning, Clipboard, Check } from '@phosphor-icons/react';
+import { ArrowLeft, Plus, X, CaretLeft, CaretRight, BookOpen, Lightning, Clipboard, Check, CheckCircle } from '@phosphor-icons/react';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
@@ -157,27 +157,29 @@ export function Diary({ patient, onBack }: DiaryProps) {
   refDate.setDate(today.getDate() + weekOffset * 7);
   const weekDays = getWeekDays(refDate);
 
+  const userEntries = useMemo(() => entries.filter(e => !e.sessionMilestone), [entries]);
+
   const dayEmotionMap = useMemo(() => {
     const map = new Map<string, DiaryEmotion>();
-    for (const e of entries) {
+    for (const e of userEntries) {
       const d = new Date(e.createdAt);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       if (!map.has(key)) map.set(key, e.emotion);
     }
     return map;
-  }, [entries]);
+  }, [userEntries]);
 
   const entryDatesSet = useMemo(() => new Set(dayEmotionMap.keys()), [dayEmotionMap]);
 
   const emotionFrequency = useMemo(() => {
     const cutoff = Date.now() - 30 * 86_400_000;
     const counts: Partial<Record<DiaryEmotion, number>> = {};
-    for (const e of entries) {
+    for (const e of userEntries) {
       if (e.createdAt < cutoff) continue;
       counts[e.emotion] = (counts[e.emotion] ?? 0) + 1;
     }
     return counts;
-  }, [entries]);
+  }, [userEntries]);
 
   const topEmotions = useMemo(
     () =>
@@ -369,11 +371,11 @@ export function Diary({ patient, onBack }: DiaryProps) {
   };
 
   const entryCountLabel =
-    entries.length === 0
+    userEntries.length === 0
       ? t('diary.empty.count')
-      : entries.length === 1
+      : userEntries.length === 1
         ? t('diary.count.one')
-        : t('diary.count.many').replace('{n}', String(entries.length));
+        : t('diary.count.many').replace('{n}', String(userEntries.length));
 
   /* ── main render ── */
   return (
@@ -708,6 +710,44 @@ export function Diary({ patient, onBack }: DiaryProps) {
           {/* Entry timeline */}
           <div className="space-y-3">
             {entries.map((entry, i) => {
+              if (entry.sessionMilestone) {
+                const m = entry.sessionMilestone;
+                const hasWellbeing = m.wellbeingBefore != null && m.wellbeingAfter != null;
+                return (
+                  <motion.div
+                    key={entry.id}
+                    initial={shouldReduce ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04, type: 'spring', stiffness: 280, damping: 22 }}
+                    className="rounded-[var(--radius-card)] overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(61,107,71,0.06) 0%, var(--color-surface) 60%)',
+                      boxShadow: 'var(--shadow-card)',
+                      borderLeft: '3px solid var(--color-sage)',
+                    }}
+                  >
+                    <div className="p-4 flex items-center gap-3">
+                      <CheckCircle size={18} weight="fill" style={{ color: 'var(--color-sage)', flexShrink: 0 }} />
+                      <div className="flex-1 min-w-0">
+                        <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1rem', color: 'var(--color-sage)', lineHeight: 1.2 }}>
+                          {t('diary.milestone.session').replace('{n}', String(m.sessionNumber))}
+                        </p>
+                        {hasWellbeing && (
+                          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--color-muted)', letterSpacing: '0.04em', marginTop: 3 }}>
+                            {t('diary.milestone.wellbeing')
+                              .replace('{before}', String(m.wellbeingBefore))
+                              .replace('{after}', String(m.wellbeingAfter))}
+                          </p>
+                        )}
+                      </div>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--color-muted)', letterSpacing: '0.04em', flexShrink: 0 }}>
+                        {formatRelativeTime(entry.createdAt)}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              }
+
               const emotionColor = EMOTION_COLORS[entry.emotion];
               const emotionRaw = EMOTION_RAW[entry.emotion];
               const isCopied = copiedId === entry.id;
@@ -829,7 +869,7 @@ export function Diary({ patient, onBack }: DiaryProps) {
           </div>
 
           {/* Empty state */}
-          {entries.length === 0 && !isAdding && (
+          {userEntries.length === 0 && !isAdding && (
             <motion.div
               initial={shouldReduce ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}

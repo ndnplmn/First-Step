@@ -934,7 +934,7 @@ CONVERSACIÓN — turno ${patientTurns} del paciente
 ═══════════════════════════════════════
 ${history || '(El paciente está a punto de responder por primera vez)'}
 
-Ya preguntaste (NO repetir ninguna de estas):
+Ya preguntaste (NO repetir ninguna de estas, ni variantes semánticamente equivalentes — si ya preguntaste por emoción, no preguntes por "sentimiento" o "estado interior"):
 ${therapistQuestions.length > 0 ? therapistQuestions.join('\n') : 'Ninguna aún'}
 
 ═══════════════════════════════════════
@@ -1208,7 +1208,7 @@ Eres un psicoterapeuta experto${questionHistory ? ' con historial de sesiones pr
 El paciente ha compartido lo siguiente:
 ${allInputs.map((t, i) => `${i + 1}. "${t}"`).join('\n')}
 
-${questionsAsked.length > 0 ? `Ya has preguntado:\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}` : ''}
+${questionsAsked.length > 0 ? `Ya has preguntado (NO repitas ninguna, ni con palabras distintas que exploren el mismo tema):\n${questionsAsked.map((q, i) => `${i + 1}. "${q}"`).join('\n')}\n\nIMPORTANTE: "¿Qué sientes cuando eso ocurre?" y "¿Qué emoción aparece en ese momento?" son LA MISMA PREGUNTA. No cambies la forma — cambia el TEMA. Si ya preguntaste sobre emoción, pregunta sobre tiempo, cuerpo, relación o conducta.` : ''}
 
 Contexto del paciente (ya conocido — NO preguntes sobre esto):
 ${buildPatientContext(params.patient, params.lifeChanges, params.sessionIntention, params.locale)}${buildClinicalContext(params.phq9, params.gad7)}

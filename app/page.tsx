@@ -233,6 +233,24 @@ export default function Home() {
     setSessions(allSessions);
     // Clear the just-finished session so the dashboard no longer shows "continuar"
     setActiveSession(null);
+
+    // Auto-create a session milestone diary entry
+    if (activeSession && activePatient) {
+      const milestoneEntry: DiaryEntry = {
+        id: generateId(),
+        patientId: activePatient.id,
+        emotion: 'Calma',
+        intensity: 3,
+        createdAt: Date.now(),
+        sessionMilestone: {
+          sessionNumber: activeSession.sessionNumber,
+          wellbeingBefore: activeSession.wellbeingBefore,
+          wellbeingAfter: activeSession.wellbeingAfter,
+        },
+      };
+      await db.saveDiaryEntry(milestoneEntry).catch(() => {});
+    }
+
     if (action === 'dashboard') {
       setView('DASHBOARD');
     } else if (action === 'record') {

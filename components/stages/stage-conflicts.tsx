@@ -13,6 +13,7 @@ import { VoiceMicButton } from '@/components/ui/voice-mic-button';
 import { detectCrisis } from '@/lib/crisis';
 import { CrisisScreen } from '@/components/ui/crisis-screen';
 import { useLanguage } from '@/contexts/language-context';
+import { isSimilarQuestion } from '@/lib/similarity';
 
 const SOFT_CAP_DEFAULT = 4;
 const SOFT_CAP_WITH_INTENTION = 4;
@@ -308,13 +309,20 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
           goToAnalysis(patientInputs);
         }
       } else {
-        const newMsgs: Message[] = [];
-        if (reflection) {
-          newMsgs.push({ role: 'therapist', text: reflection, isReflection: true });
+        // Client-side semantic deduplication: if the AI generated a question
+        // semantically equivalent to a previous one, skip it and advance
+        const isDuplicate = questionsAsked.some(prev => isSimilarQuestion(prev, question));
+        if (isDuplicate) {
+          goToAnalysis(patientInputs);
+        } else {
+          const newMsgs: Message[] = [];
+          if (reflection) {
+            newMsgs.push({ role: 'therapist', text: reflection, isReflection: true });
+          }
+          newMsgs.push({ role: 'therapist', text: question });
+          setMessages(prev => [...prev, ...newMsgs]);
+          setQuestionsAsked(prev => [...prev, question]);
         }
-        newMsgs.push({ role: 'therapist', text: question });
-        setMessages(prev => [...prev, ...newMsgs]);
-        setQuestionsAsked(prev => [...prev, question]);
       }
     } catch {
       goToAnalysis(patientInputs);
@@ -362,13 +370,18 @@ export function StageConflicts({ session, patient, priorSessions = [], lastDiary
           goToAnalysis(patientInputs);
         }
       } else {
-        const newMsgs: Message[] = [];
-        if (reflection) {
-          newMsgs.push({ role: 'therapist', text: reflection, isReflection: true });
+        const isDuplicate = questionsAsked.some(prev => isSimilarQuestion(prev, question));
+        if (isDuplicate) {
+          goToAnalysis(patientInputs);
+        } else {
+          const newMsgs: Message[] = [];
+          if (reflection) {
+            newMsgs.push({ role: 'therapist', text: reflection, isReflection: true });
+          }
+          newMsgs.push({ role: 'therapist', text: question });
+          setMessages(prev => [...prev, ...newMsgs]);
+          setQuestionsAsked(prev => [...prev, question]);
         }
-        newMsgs.push({ role: 'therapist', text: question });
-        setMessages(prev => [...prev, ...newMsgs]);
-        setQuestionsAsked(prev => [...prev, question]);
       }
     } catch {
       goToAnalysis(patientInputs);
